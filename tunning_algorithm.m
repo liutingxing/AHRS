@@ -1,5 +1,4 @@
 clear all;
-close all;
 clc;
 
 ahrs_data = load('.\data\快速正手一次1.txt');
@@ -29,17 +28,88 @@ vD = zeros(N, 1);
 pN = zeros(N, 1);
 pE = zeros(N, 1);
 pD = zeros(N, 1);
+
+x = zeros(9, 1); % roll, pitch, yaw, gyro_bias_x, gyro_bias_y, gyro_bias_z, acc_bias_x, acc_bias_y, acc_bias_z
+F = zeros(9, 9);
+PHIM = zeros(9, 9);
+qdt = zeros(9, 9);
+Q = zeros(9, 9);
+G = zeros(9, 9);
+Corr_time_gyro = 100;
+Corr_time_acc = 100;
+sigma_Win = 1.0e-6;
+sigma_acc = ((5.0e-4) * 9.78032667 * (5.0e-4) * 9.78032667);
+sigma_gyro = (20.0 * pi / 180.0 / 3600 * 20.0 * pi / 180.0 / 3600);
+sigma_phim_e_n = 1.0*pi/180;
+sigma_phim_u = 1.0*pi/180;
+sigma_phim_gyro = 1000*pi/180/3600;
+sigma_phim_acc = 0.3;
+P = eye(9, 9);
+P(1, 1) = sigma_phim_e_n^2;
+P(2, 2) = sigma_phim_e_n^2;
+P(3, 3) = sigma_phim_u^2;
+P(4, 4) = sigma_phim_gyro^2;
+P(5, 5) = sigma_phim_gyro^2;
+P(6, 6) = sigma_phim_gyro^2;
+P(7, 7) = sigma_phim_acc^2;
+P(8, 8) = sigma_phim_acc^2;
+P(9, 9) = sigma_phim_acc^2;
+
 fd = fopen('DataForPlatform.txt', 'w+');
+
+%% find start and end timing
+% find start timing
+for i = 1:N
+    acc_det = sqrt(sum(Acc(i, :).^2));
+    if acc_det > 7*9.8
+        action_start = i;
+        break;
+    end
+end
+% find end timing
+for i = action_start + 1:N
+    acc_det = sqrt(sum(Acc(i, :).^2));
+    if acc_det < 1.5*9.8
+        action_end = i;
+        break;
+    end
+end
 
 %% initial alignment
 yaw_initial = 0;
 pitch_initial = 0;
 roll_initial = 0;
-q = euler2q(yaw_initial, pitch_initial, roll_initial);
 
-%% find start and end timing
-action_start = 476;
-action_end = 500;
+window_length = 100;
+window_count = 1;
+window_buffer = zeros(1, window_length);
+for i = 1:action_start-1
+    acc_det = sqrt(sum(Acc(i, :).^2));
+    window_buffer(window_count) = acc_det;
+    window_count = window_count + 1;
+    if window_count > window_length
+        window_count = 1;
+        window_std = std(window_buffer);
+        if window_std < 0.1
+            alignment_end = i;
+            break;
+        end
+    end
+end
+if alignment_end >= window_length
+    alignment_start = alignment_end - window_length + 1;
+else
+    alignment_start = 0;
+    alignment_end = 0;
+end
+
+% g~ in body frame is [g_x, g_y, g_z], and g~b = Cnb*[0, 0, g]
+g_x = -mean(Acc(alignment_start:alignment_end,1));
+g_y = -mean(Acc(alignment_start:alignment_end,2));
+g_z = -mean(Acc(alignment_start:alignment_end,3));
+pitch_initial = -asin(g_x/9.8);
+roll_initial = atan2(g_y/9.8, g_z/9.8);
+q = euler2q(yaw_initial, pitch_initial, roll_initial);
 
 for i = 1 : N
 %% attitude integration process
@@ -62,14 +132,104 @@ for i = 1 : N
     
     q = q + dq*dt;
     q = q_norm(q);
-    Cbn = q2dcm(q);
-    [yaw(i), pitch(i), roll(i)] = dcm2euler(Cbn);
+    
 
 %% acc fuison for bias estimate and attitude correction 
-    if i < action_start
-       
+    if i < action_start || i > action_end
+        Cbn = q2dcm(q);
+        F(1, 4) = -Cbn(1, 1);
+        F(1, 5) = -Cbn(1, 2);
+        F(1, 6) = -Cbn(1, 3);
+        F(2, 4) = -Cbn(2, 1);
+        F(2, 5) = -Cbn(2, 2);
+        F(2, 6) = -Cbn(2, 3);
+        F(3, 4) = -Cbn(3, 1);
+        F(3, 5) = -Cbn(3, 2);
+        F(3, 6) = -Cbn(3, 3);
+        F(4, 4) = -1/Corr_time_gyro;
+        F(5, 5) = -1/Corr_time_gyro;
+        F(6, 6) = -1/Corr_time_gyro;
+        F(7, 7) = -1/Corr_time_acc;
+        F(8, 8) = -1/Corr_time_acc;
+        F(9, 9) = -1/Corr_time_acc;
+
+        qdt(1, 1) = sigma_Win;
+        qdt(2, 2) = sigma_Win;
+        qdt(3, 3) = sigma_Win;
+        qdt(4, 4) = sigma_gyro;
+        qdt(5, 5) = sigma_gyro;
+        qdt(6, 6) = sigma_gyro;
+        qdt(7, 7) = sigma_acc;
+        qdt(8, 8) = sigma_acc;
+        qdt(9, 9) = sigma_acc;
+
+        G(1, 1) = -Cbn(1, 1);
+        G(1, 2) = -Cbn(1, 2);
+        G(1, 3) = -Cbn(1, 3);
+        G(2, 1) = -Cbn(2, 1);
+        G(2, 2) = -Cbn(2, 2);
+        G(2, 3) = -Cbn(2, 3);
+        G(3, 1) = -Cbn(3, 1);
+        G(3, 2) = -Cbn(3, 2);
+        G(3, 3) = -Cbn(3, 3);
+        G(4, 4) = 1;
+        G(5, 5) = 1;
+        G(6, 6) = 1;
+        G(7, 7) = 1;
+        G(8, 8) = 1;
+        G(9, 9) = 1;
+
+        % Q matrix discretization-2 order
+        Q_basic = G*qdt*G';
+        M1 = Q_basic;
+        M2 = Q_basic*F'+F*Q_basic;
+        Q = dt*M1 + 1/2*dt*dt*M2;
+
+        % PHIM matrix discretization-2 order
+        I = eye(9, 9);
+        PHIM = I + dt*F + 1/2*dt*dt*F*F;
+        
+        % predict
+        x = PHIM*x;
+        P = PHIM*P*PHIM' + Q;
+        
+        % update from acc
+        H = zeros(3, 9);
+        H(1, 2) = G_vector(3);
+        H(2, 1) = -G_vector(3);
+        H(1, 7) = Cbn(1, 1);
+        H(1, 8) = Cbn(1, 2);
+        H(1, 9) = Cbn(1, 3);
+        H(2, 7) = Cbn(2, 1);
+        H(2, 8) = Cbn(2, 2);
+        H(2, 9) = Cbn(2, 3);
+        H(3, 7) = Cbn(3, 1);
+        H(3, 8) = Cbn(3, 2);
+        H(3, 9) = Cbn(3, 3);
+
+        R = eye(3, 3);
+        R(1, 1) = 0.5^2;
+        R(2, 2) = 0.5^2;
+        R(3, 3) = 0.5^2;
+        
+        acc_liner_b = zeros(3, 1);
+        g_estimate = Cbn*(acc_bias - Acc(i, :)' + acc_liner_b);
+        Z = G_vector - g_estimate;
+
+        K = P*H'*((H*P*H'+R)^-1);
+        x = x + K*(Z - H*x);
+        P = (I - K*H)*P;
+        [deltCbn] = euler2dcm (x(3), x(2), x(1)); % (I+P)Cbn
+        Cbn = deltCbn*Cbn;
+        [yaw(i), pitch(i), roll(i)] = dcm2euler(Cbn);
+
+        acc_bias = acc_bias + x(7:9);
+        gyro_bias = gyro_bias + x(4:6);
+        x(1:9) = 0;
+    else
+        Cbn = q2dcm(q);
+        [yaw(i), pitch(i), roll(i)] = dcm2euler(Cbn);
     end
-    
 
 %% ins mechanization
     if i >= action_start && i <= action_end
@@ -96,6 +256,7 @@ fclose(fd);
 
 %% display result
 % acc measurement
+if 0
 figure
 plot(Acc(:, 1), 'r');
 hold on;
@@ -105,6 +266,7 @@ title('acc measurement');
 legend('x', 'y', 'z');
 xlabel('sample point');
 ylabel('acc (g)');
+end
 
 % yaw
 figure;
@@ -147,27 +309,8 @@ ylabel('Y');
 zlabel('Z');
 axis equal;
 
-if 0
-figure;
-plot(pN(action_start-1:action_end), pE(action_start-1:action_end), 'r');
-xlabel('Px');
-ylabel('Py');
-title('OXY');
-
-figure;
-plot(pN(action_start-1:action_end), pD(action_start-1:action_end), 'g');
-xlabel('Px');
-ylabel('Pz');
-title('OXZ');
-
-figure;
-plot(pE(action_start-1:action_end), pD(action_start-1:action_end), 'b');
-xlabel('Py');
-ylabel('Pz');
-title('OYZ');
-end
-
 % velocity
+if 0
 figure;
 plot(vN(action_start-1:action_end), 'r');
 xlabel('sample point');
@@ -185,5 +328,6 @@ plot(vD(action_start-1:action_end), 'r');
 xlabel('sample point');
 ylabel('velocity (m/s)');
 title('Z velocity');
+end
 
 
