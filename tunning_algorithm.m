@@ -83,6 +83,10 @@ roll_initial = 0;
 window_length = 100;
 window_count = 1;
 window_buffer = zeros(1, window_length);
+
+alignment_start = 1;
+alignment_end = 1;
+    
 for i = 1:action_start-1
     acc_det = sqrt(sum(Acc(i, :).^2));
     window_buffer(window_count) = acc_det;
@@ -98,9 +102,6 @@ for i = 1:action_start-1
 end
 if alignment_end >= window_length
     alignment_start = alignment_end - window_length + 1;
-else
-    alignment_start = 0;
-    alignment_end = 0;
 end
 
 % g~ in body frame is [g_x, g_y, g_z], and g~b = Cnb*[0, 0, g]
@@ -274,6 +275,7 @@ plot(yaw*180/pi, 'r');
 hold on;
 plot(Yaw, 'b');
 legend('yuewu', 'daoyuan');
+grid on;
 title('yaw comparison');
 xlabel('sample point');
 ylabel('yaw (degree)');
@@ -284,6 +286,7 @@ plot(pitch*180/pi, 'r');
 hold on;
 plot(Pitch, 'b');
 legend('yuewu', 'daoyuan');
+grid on;
 title('pitch comparison');
 xlabel('sample point');
 ylabel('pitch (degree)');
@@ -294,6 +297,7 @@ plot(roll*180/pi, 'r');
 hold on;
 plot(Roll, 'b');
 legend('yuewu', 'daoyuan');
+grid on;
 title('roll comparison');
 xlabel('sample point');
 ylabel('roll (degree)');
