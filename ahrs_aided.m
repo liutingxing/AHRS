@@ -4,7 +4,7 @@ clc;
 
 %% read data from file
 
-ahrs_data = load('.\test.txt');
+ahrs_data = load('.\rotate.txt');
 
 Time = ahrs_data(:, 1);                      % ( ms )
 Roll = ahrs_data(:, 3);                      % ( degree )
@@ -92,8 +92,8 @@ PHIM = zeros(9, 9);
 qdt = zeros(9, 9);
 Q = zeros(9, 9);
 G = zeros(9, 9);
-Corr_time_gyro = 100;
-Corr_time_acc = 100;
+Corr_time_gyro = 0.01;
+Corr_time_acc = 0.01;
 sigma_Win = 1.0e-6;
 sigma_acc = ((5.0e-4) * 9.78032667 * (5.0e-4) * 9.78032667);
 sigma_gyro = (20.0 * pi / 180.0 / 3600 * 20.0 * pi / 180.0 / 3600);
@@ -253,8 +253,8 @@ for i = 1 : N
     Z = Mag_vector - mag_estimate;
     
     K = P*H'*((H*P*H'+R)^-1);
-%     x = x + K*(Z - H*x);
-%     P = (I - K*H)*P;
+    x = x + K*(Z - H*x);
+    P = (I - K*H)*P;
     
     %% feedback    
     [deltCbn] = euler2dcm (x(3), x(2), x(1)); % (I+P)Cbn
