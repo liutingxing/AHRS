@@ -13,16 +13,6 @@ extern "C" {
 #define     Z               (2)
 #define     CHN             (3)
 
-#define     STATE_NUM       (9)
-#define     UD_NUM          (STATE_NUM*(STATE_NUM+1)/2)
-#define     MEAS_ACC_NUM    (3)
-
-#define     SIG_PHI_E       (1.0*PI/180)                /* rms of pitch and roll */
-#define     SIG_PHI_N       (1.0*PI/180)                /* rms of pitch and roll */
-#define     SIG_PHI_U       (1.0*PI/180)                /* (rad)0.001 rms of heading */
-#define     SIG_ACC         (0.3)                       /* rms of acc error(m/(s.s)) */
-#define     SIG_GYRO        (1000.0*DEG2RAD/3600.0)     /* rms of gyro error  */
-
     
     typedef struct quaternion
     {

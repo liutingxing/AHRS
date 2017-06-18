@@ -19,6 +19,8 @@ extern "C" {
 #define     RAD2DEG         ((FLT)180.0/(FLT)PI)
 #define     GRAVITY         ((FLT)9.80665)
 
+    DBL** mallocArray2D_DBL(U32 row, U32 col);
+    U32 freeArray2D_DBL(DBL **pmatrix, U32 row, U32 col);
     U32 computeMeanStd(FLT* const mean, FLT* const std, const FLT array[][CHN], U32 count);
     void dcm2euler(const FLT cbn[3][3], FLT* const pyaw, FLT* const ppitch, FLT* const proll);
     void euler2dcm(FLT cbn[3][3], FLT fyaw, FLT fpitch, FLT froll);
@@ -28,6 +30,12 @@ extern "C" {
     void f3x3matrixTranspose(FLT matrix[3][3]);
     void f3x3matrixEqI(FLT matrix[3][3]);
     void f3x3matrixEqScalar(FLT matrix[3][3], FLT scalar);
+    U32 matrixMult(const DBL** const matrixA, const DBL** const matrixB, U32 rowA, U32 colA, U32 rowB, U32 colB, DBL** const matrixC);
+    void udDecompose(DBL** const matrix, U32 n);
+    void multPhimUp(const DBL** const phim, const DBL* const u, U32 n, DBL** const w);
+    void storeUq(const U32 l, const U32 m, const DBL** const u, const U32 istart, const U32 jstart, DBL** const w);
+    void udTimeUpdate(const U32 iw, const U32 jw, DBL** const w, const DBL* const dw, DBL* const u);
+    void udMeasUpdate(DBL* const u, DBL* const x, const U32 n, const DBL r, const DBL* const a, const DBL z, DBL* const alpha, DBL* const res);
 
 #ifdef __cplusplus
 }      /* extern "C" */

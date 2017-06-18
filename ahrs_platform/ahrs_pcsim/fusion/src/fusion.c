@@ -7,13 +7,29 @@
 
 #define     ALIGN_NUM       (100)
 
-enum
+#define     STATE_NUM       (9)
+#define     UD_NUM          (STATE_NUM*(STATE_NUM+1)/2)
+#define     MEAS_ACC_NUM    (3)
+
+#define     SIG_PHI_E       (1.0*PI/180)                /* rms of pitch and roll */
+#define     SIG_PHI_N       (1.0*PI/180)                /* rms of pitch and roll */
+#define     SIG_PHI_U       (1.0*PI/180)                /* (rad)0.001 rms of heading */
+#define     SIG_ACC         (0.3)                       /* rms of acc error(m/(s.s)) */
+#define     SIG_GYRO        (1000.0*DEG2RAD/3600.0)     /* rms of gyro error  */
+
+typedef enum sensorFusionStatus
 {
     Initial = 0,
     Aligment = 1,
     Attitude = 2,
     Navigation = 3,
-};
+} sensorFusionStatus_t;
+
+typedef enum kalmanFilterStatus
+{
+    OK = 0,
+    InnovationCheckFailed = 1,
+} kalmanFilterStatus_t;
 
 typedef struct fusionFixData
 {
@@ -43,6 +59,7 @@ typedef struct fusionFixCtrl
     U32   uStaticFlag;              // indicate the device is static now
     U32   uAlignFlag;               // indicate alignment between body frame and navigation frame is completed
     U32   uMagCaliFlag;             // indicate mag calibration process is completed
+	U32   uKalmanFusionFlag;		// indicate kalman fusion can be executed
     U32   uMechanizationFlag;       // indicate INS strapdown mechanization process
 } fusionFixCtrl_t;
 
@@ -59,6 +76,12 @@ static U32 sensorDataCorrection(FLT gyro[], FLT acc[], FLT mag[], const fusionIn
 static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[], FLT accArray[][CHN]);
 static U32 quaternionIntegration(U32 utime, const FLT gyro[], fusionFixData_t* const pfusionFix);
 static void ouputResult(const fusionFixData_t* const pfusionFix, fusionOutputData_t* const poutputData);
+static FLT dtCalculate(U32 timeNow, U32 timeLast);
+static void setPhimQd(U32 utime, kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
+static kalmanFilterStatus_t sensorFusionKalman(U32 utime, const FLT acc[], const FLT mag[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
+static U32 accMeasUpdate(const FLT acc[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
+static void errCorrection(kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
+
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -355,8 +378,7 @@ static U32 quaternionIntegration(U32 utime, const FLT gyro[], fusionFixData_t * 
     fdq[2] =  (omegaPBB[1] * fq[0] - omegaPBB[2] * fq[1] + omegaPBB[0] * fq[3]) / 2.0F;
     fdq[3] =  (omegaPBB[2] * fq[0] + omegaPBB[1] * fq[1] - omegaPBB[0] * fq[2]) / 2.0F;
 
-    //fdt = (utime - pfusionFix->uTime) / 1.0F;
-    fdt = 1.0F / 100.0F; //100Hz
+    fdt = dtCalculate(utime, pfusionFix->uTime);
     for (i = 0; i < 4; i++)
     {
         fq[i] += fdq[i] * fdt;
@@ -376,6 +398,15 @@ static U32 quaternionIntegration(U32 utime, const FLT gyro[], fusionFixData_t * 
     return 0;
 }
 
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
 static void ouputResult(const fusionFixData_t* const pfusionFix, fusionOutputData_t* const poutputData)
 {
     poutputData->uTime = pfusionFix->uTime;
@@ -390,6 +421,334 @@ static void ouputResult(const fusionFixData_t* const pfusionFix, fusionOutputDat
     poutputData->fPosN = pfusionFix->fPosN;
     poutputData->fPosE = pfusionFix->fPosE;
     poutputData->fPosD = pfusionFix->fPosD;
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+static FLT dtCalculate(U32 timeNow, U32 timeLast)
+{
+    //if (timeLast > timeNow)
+    //{
+    //    return (0xFFFFFFFF - timeLast + timeNow) / 1000.0F;
+    //}
+    //else
+    //{
+    //    return (timeNow - timeLast) / 1000.0F;
+    //}
+
+    return 1.0F / 100.0F;
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+#define     GYRO_TIME_CONSTANT      (0.01F)
+#define     ACC_TIME_CONSTANT       (0.01F)
+#define     SIGMA_WIN               ((FLT)1.0e-6)
+#define     SIGMA_ACC               ((FLT)((5.0e-4) * 9.78032667 * (5.0e-4) * 9.78032667))
+#define     SIGMA_GYRO              ((FLT)(20.0 * PI / 180.0 / 3600 * 20.0 * PI / 180.0 / 3600))
+static void setPhimQd(U32 utime, kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix)
+{
+    U32 i = 0;
+    U32 j = 0;
+    U32 stateNum = pkalmanInfo->uStateNum;
+    DBL **phim = pkalmanInfo->pPhim;
+    DBL **qdt = pkalmanInfo->pQd;
+    FLT (*fCbn)[3] = pfusionFix->fCbn;
+    DBL G[STATE_NUM][STATE_NUM] = {0};         // the row and col of shaping matrix are related with model rather than fixed.
+    DBL GT[STATE_NUM][STATE_NUM] = {0};        // the transpose of G matrix
+    DBL M2[STATE_NUM][STATE_NUM] = {0};
+    DBL temp[STATE_NUM][STATE_NUM] = {0};
+    DBL *pRowA[STATE_NUM] = {0};
+    DBL *pRowB[STATE_NUM] = {0};
+    FLT fdt = 0.0F;
+
+    for (i = 0; i <stateNum; i++)
+    {
+        for (j = 0; j < stateNum; j++)
+        {
+            phim[i][j] = 0.0F;
+            qdt[i][j] = 0.0F;
+        }
+    }
+
+    //set PHI matrix
+    phim[0][3] = (DBL) -fCbn[0][0];
+    phim[0][4] = (DBL) -fCbn[0][1];
+    phim[0][5] = (DBL) -fCbn[0][2];
+
+    phim[1][3] = (DBL) -fCbn[1][0];
+    phim[1][4] = (DBL) -fCbn[1][1];
+    phim[1][5] = (DBL) -fCbn[1][2];
+
+    phim[2][3] = (DBL) -fCbn[2][0];
+    phim[2][4] = (DBL) -fCbn[2][1];
+    phim[2][5] = (DBL) -fCbn[2][2];
+
+    phim[3][3] = (DBL) - 1.0F / GYRO_TIME_CONSTANT;
+    phim[4][4] = (DBL) - 1.0F / GYRO_TIME_CONSTANT;
+    phim[5][5] = (DBL) - 1.0F / GYRO_TIME_CONSTANT;
+
+    phim[6][6] = (DBL) - 1.0F / ACC_TIME_CONSTANT;
+    phim[7][7] = (DBL) - 1.0F / ACC_TIME_CONSTANT;
+    phim[8][8] = (DBL) - 1.0F / ACC_TIME_CONSTANT;
+
+    //set Q matrix
+    qdt[0][0] = (DBL)SIGMA_WIN;
+    qdt[1][1] = (DBL)SIGMA_WIN;
+    qdt[2][2] = (DBL)SIGMA_WIN;
+
+    qdt[3][3] = (DBL)SIGMA_GYRO;
+    qdt[4][4] = (DBL)SIGMA_GYRO;
+    qdt[5][5] = (DBL)SIGMA_GYRO;
+
+    qdt[6][6] = (DBL)SIGMA_ACC;
+    qdt[7][7] = (DBL)SIGMA_ACC;
+    qdt[8][8] = (DBL)SIGMA_ACC;
+
+    // set G matrix
+    G[0][0] = (DBL) -fCbn[0][0];
+    G[0][1] = (DBL) -fCbn[0][1];
+    G[0][2] = (DBL) -fCbn[0][2];
+
+    G[1][0] = (DBL) -fCbn[1][0];
+    G[1][1] = (DBL) -fCbn[1][1];
+    G[1][2] = (DBL) -fCbn[1][2];
+
+    G[2][0] = (DBL) -fCbn[2][0];
+    G[2][1] = (DBL) -fCbn[2][1];
+    G[2][2] = (DBL) -fCbn[2][2];
+
+    for (i = 3; i < STATE_NUM; i++)
+    {
+        G[i][i] = 1.0;
+    }
+
+    for (i = 0; i < STATE_NUM; i++)
+    {
+        for (j = 0; j < STATE_NUM; j++)
+        {
+            GT[j][i] = G[i][j];
+        }
+    }
+
+    // qdt = G*w*G'
+    for (i = 0; i < stateNum; i++)
+    {
+        pRowA[i] = G[i];
+    }
+    for (i = 0; i < stateNum; i++)
+    {
+        pRowB[i] = temp[i];
+    }
+    matrixMult(pRowA, qdt, stateNum, stateNum, stateNum, stateNum, pRowB);
+    for (i = 0; i < stateNum; i++)
+    {
+        pRowA[i] = GT[i];
+    }
+    matrixMult(pRowB, pRowA, stateNum, stateNum, stateNum, stateNum, qdt);
+
+    // Q matrix discretization-2 order
+    // M2=phi¡ÁM1£¬M1£½Q
+    for (i = 0; i < stateNum; i++)
+    {
+        pRowA[i] = M2[i];
+    }
+    matrixMult(phim, qdt, stateNum, stateNum, stateNum, stateNum, pRowA);
+
+    fdt = dtCalculate(utime, pfusionFix->uTime);
+    for (i = 0; i < stateNum; i++)
+    {
+        for (j = 0; j < stateNum; j++)
+
+        {
+            qdt[i][j] = qdt[i][j] * fdt + (M2[i][j] + M2[j][i]) * fdt * fdt / 2.0;
+        }
+    }
+    
+    // ud decompose for Q matrix
+    udDecompose(qdt, stateNum);
+
+    // phi matrix discretization-2 order
+    for (i = 0; i < stateNum; i++)
+    {
+        pRowA[i] = temp[i];
+    }
+    matrixMult(phim, phim, stateNum, stateNum, stateNum, stateNum, pRowA);
+
+    for (i = 0; i < stateNum; i++)
+    {
+        for (j = 0; j < stateNum; j++)
+        {
+            phim[i][j] = phim[i][j] * fdt + temp[i][j] * fdt * fdt / 2.0; //second order phi matrix
+
+            if (j == i)
+            {
+                phim[i][j] += 1.0;
+            }
+        }
+    }
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+static U32 accMeasUpdate(const FLT acc[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix)
+{
+    U32 i = 0;
+    U32 j = 0;
+    DBL zc = 0.0;
+    DBL rc = 0.0;
+    DBL hc[STATE_NUM] = {0.0};
+    DBL z[MEAS_ACC_NUM] = {0.0};
+    DBL h[MEAS_ACC_NUM][STATE_NUM] = {0.0};
+    DBL r[MEAS_ACC_NUM] = {0.0};
+    DBL xSave[STATE_NUM];
+    DBL udSave[UD_NUM];
+    DBL ion = 0.0;
+    DBL res = 0.0;
+    DBL gEstimate[3] = {0.0};
+    DBL test = 0.0;
+
+    h[0][1] = GRAVITY;
+    h[1][0] = -GRAVITY;
+    h[0][6] = pfusionFix->fCbn[0][0];
+    h[0][7] = pfusionFix->fCbn[0][1];
+    h[0][8] = pfusionFix->fCbn[0][2];
+    h[1][6] = pfusionFix->fCbn[1][0];
+    h[1][7] = pfusionFix->fCbn[1][1];
+    h[1][8] = pfusionFix->fCbn[1][2];
+    h[2][6] = pfusionFix->fCbn[2][0];
+    h[2][7] = pfusionFix->fCbn[2][1];
+    h[2][8] = pfusionFix->fCbn[2][2];
+
+    r[0] = 0.5 * 0.5;
+    r[1] = 0.5 * 0.5;
+    r[2] = 0.5 * 0.5;
+
+    for (i = X; i <= Z; i++)
+    {
+        gEstimate[i] = -(pfusionFix->fCbn[i][X] * acc[X] + pfusionFix->fCbn[i][Y] * acc[Y] + pfusionFix->fCbn[i][Z] * acc[Z]);
+    }
+
+    z[X] = 0 - gEstimate[X];
+    z[Y] = 0 - gEstimate[Y];
+    z[Z] = GRAVITY - gEstimate[Z];
+
+    for (i = 0; i < MEAS_ACC_NUM; i++)
+    {
+        zc = z[i];
+        rc = r[i];
+
+        for (j = 0; j < STATE_NUM; j++)
+        {
+            hc[j] = h[i][j];
+        }
+
+        // save x,p in case the measurement is rejected
+        memcpy(xSave, pkalmanInfo->pStateX, sizeof(xSave));
+        memcpy(udSave, pkalmanInfo->pUd, sizeof(udSave));
+
+        // scalar measurement update
+        udMeasUpdate(pkalmanInfo->pUd, pkalmanInfo->pStateX, pkalmanInfo->uStateNum, rc, hc, zc, &ion, &res);
+        test = fabs(res) / sqrt(ion);
+
+        // reject this measurement
+        // 1. innovation test > 5, generally it is around 3.24
+        if (test > 5)
+        {
+            memcpy(pkalmanInfo->pStateX, xSave, sizeof(xSave));
+            memcpy(pkalmanInfo->pUd, udSave, sizeof(udSave));
+        }
+    }
+
+    return 0;
+}
+
+static void errCorrection(kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix)
+{
+    U32 i = 0;
+    U32 j = 0;
+    U32 k = 0;
+    FLT fq[4] = {0.0};
+    FLT deltaCbn[3][3] = {0.0};
+    FLT temp = 0.0;
+    FLT tempMatrix[3][3] = {0.0};
+
+    euler2dcm(deltaCbn, (FLT)pkalmanInfo->pStateX[2], (FLT)pkalmanInfo->pStateX[1], (FLT)pkalmanInfo->pStateX[0]);
+    for (i = X; i <= Z; i++)
+    {
+        for (j = X; j <= Z; j++)
+        {
+            temp = 0.0F;
+            for (k = X; k <= Z; k++)
+            {
+                temp += deltaCbn[i][k] * pfusionFix->fCbn[k][j];
+            }
+            tempMatrix[i][j] = temp;
+        }
+    }
+    memcpy(pfusionFix->fCbn, tempMatrix, sizeof(pfusionFix->fCbn));
+    memcpy(pfusionFix->fCnb, tempMatrix, sizeof(pfusionFix->fCnb));
+    f3x3matrixTranspose(pfusionFix->fCnb);
+
+    for (i = X; i <= Z; i++)
+    {
+        pfusionFix->fGyroBias[i] += (FLT)pkalmanInfo->pStateX[i + 3];
+        pfusionFix->fAccBias[i] += (FLT)pkalmanInfo->pStateX[i + 6];
+    }
+
+    dcm2euler(pfusionFix->fCbn, &pfusionFix->fPsiPl, &pfusionFix->fThePl, &pfusionFix->fPhiPl);
+    euler2q(fq, pfusionFix->fPsiPl, pfusionFix->fThePl, pfusionFix->fPhiPl);
+    qNorm(fq);
+    pfusionFix->fqPl.q0 = fq[0];
+    pfusionFix->fqPl.q1 = fq[1];
+    pfusionFix->fqPl.q2 = fq[2];
+    pfusionFix->fqPl.q3 = fq[3];
+
+    // clear x
+    for (i = 0; i < STATE_NUM; i++)
+    {
+        pkalmanInfo->pStateX[i] = 0.0;
+    }
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+static kalmanFilterStatus_t sensorFusionKalman(U32 utime, const FLT acc[], const FLT mag[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix)
+{
+    setPhimQd(utime, pkalmanInfo, pfusionFix);
+    predict(pkalmanInfo);
+    accMeasUpdate(acc, pkalmanInfo, pfusionFix);
+    errCorrection(pkalmanInfo, pfusionFix);
+
+    return OK;
 }
 
 /*-------------------------------------------------------------------------*/
@@ -465,6 +824,22 @@ U32 sensorFusionExec(const fusionInputData_t* const pinputData, fusionOutputData
     // quaternion integration
     quaternionIntegration(utime, fgyro, &FusionFix);
 
+    // action detect for fusion and ins mechanization
+    FusionCtrl.uKalmanFusionFlag = 1;
+
+	// kalman filter fusion
+	if (FusionCtrl.uKalmanFusionFlag == 1)
+    {
+        kalmanFilterStatus_t status;
+
+        status = sensorFusionKalman(utime, facc, fmag, &KalmanInfo, &FusionFix);
+
+        if (status != OK)
+        {
+            // kalman filter failed
+        }
+    }
+
     // restore time tag for next epoch
     FusionFix.uTime = utime;
     // output result
@@ -472,5 +847,4 @@ U32 sensorFusionExec(const fusionInputData_t* const pinputData, fusionOutputData
 
     return retvel;
 };
-
 

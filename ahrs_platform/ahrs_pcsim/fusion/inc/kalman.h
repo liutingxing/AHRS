@@ -14,12 +14,13 @@ extern "C" {
         DBL *pStateX;
         DBL *pUd;
         DBL **pQd;
-        DBL **pPhi;
+        DBL **pPhim;
     } kalmanInfo_t;
 
 
     U32 kalmanInit(kalmanInfo_t *pkalmanInfo, U32 ustateNum);
     U32 UDInit(DBL *pud, U32 len1, const DBL rms[], U32 len2);
+    void predict(kalmanInfo_t* const pkalmanInfo);
 
 #ifdef __cplusplus
 }      /* extern "C" */
