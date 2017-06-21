@@ -46,6 +46,9 @@ typedef struct fusionFixData
     FLT   finvW[3][3];              // current inverse soft iron matrix
     FLT   fB;                       // current geomagnetic field magnitude (uT)
     FLT   fFitError;                // value of fit error (%)
+    FLT   fLinerAccN;               // liner accelerate toward North (m/s2)
+    FLT   fLinerAccE;               // liner accelerate toward East (m/s2)
+    FLT   fLinerAccD;               // liner accelerate toward Down (m/s2)
     FLT   fVelN;                    // velocity toward the North (m/s)
     FLT   fVelE;                    // velocity toward the East (m/s)
     FLT   fVelD;                    // velocity toward the Down (m/s)
@@ -61,6 +64,8 @@ typedef struct fusionFixCtrl
     U32   uMagCaliFlag;             // indicate mag calibration process is completed
 	U32   uKalmanFusionFlag;		// indicate kalman fusion can be executed
     U32   uMechanizationFlag;       // indicate INS strapdown mechanization process
+    U32   uActionStartFlag;         // indicate high dynamic action start
+    U32   uActionEndFlag;           // indicate high dynamic action end
 } fusionFixCtrl_t;
 
 static fusionFixData_t FusionFix;
@@ -77,6 +82,7 @@ static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[]
 static U32 quaternionIntegration(U32 utime, const FLT gyro[], fusionFixData_t* const pfusionFix);
 static void ouputResult(const fusionFixData_t* const pfusionFix, fusionOutputData_t* const poutputData);
 static FLT dtCalculate(U32 timeNow, U32 timeLast);
+static U32 actionDetect(U32 utime, FLT gyro[], FLT acc[], fusionFixCtrl_t* const pfusionCtrl);
 static void setPhimQd(U32 utime, kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
 static kalmanFilterStatus_t sensorFusionKalman(U32 utime, const FLT acc[], const FLT mag[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
 static U32 accMeasUpdate(const FLT acc[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
@@ -455,6 +461,61 @@ static FLT dtCalculate(U32 timeNow, U32 timeLast)
 
  */
 /*--------------------------------------------------------------------------*/
+#define     ACC_MAX     (8*GRAVITY)
+#define     ACC_START   (0.9)
+#define     ACC_END     (0.2)
+static U32 actionDetect(U32 utime, FLT gyro[], FLT acc[], fusionFixCtrl_t* const pfusionCtrl)
+{
+    FLT acc_det = 0.0F;
+
+    acc_det = sqrtf(acc[X]*acc[X] + acc[Y]*acc[Y] + acc[Z]*acc[Z]);
+
+    if (acc_det > ACC_START*ACC_MAX)
+    {
+        pfusionCtrl->uActionStartFlag = 1;
+    }
+
+    if (pfusionCtrl->uActionStartFlag == 1 && acc_det < ACC_END * ACC_MAX)
+    {
+        pfusionCtrl->uActionEndFlag = 1;
+    }
+
+    return 0;
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+static U32 resetInsData(fusionFixData_t* const pfusionFix)
+{
+    pfusionFix->fLinerAccN = 0;
+    pfusionFix->fLinerAccE = 0;
+    pfusionFix->fLinerAccD = 0;
+    pfusionFix->fVelN = 0;
+    pfusionFix->fVelE = 0;
+    pfusionFix->fVelD = 0;
+    pfusionFix->fPosN = 0;
+    pfusionFix->fPosE = 0;
+    pfusionFix->fPosD = 0;
+
+    return 0;
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
 #define     GYRO_TIME_CONSTANT      (0.01F)
 #define     ACC_TIME_CONSTANT       (0.01F)
 #define     SIGMA_WIN               ((FLT)1.0e-6)
@@ -751,6 +812,45 @@ static kalmanFilterStatus_t sensorFusionKalman(U32 utime, const FLT acc[], const
     return OK;
 }
 
+static void insStrapdownMechanization(U32 utime, const FLT acc[], fusionFixData_t* const pfusionFix)
+{
+    U32 i = 0;
+    FLT dt = 0.0;
+    DBL linerAccIBP[CHN] = {0.0};
+    DBL velIBP[CHN] = {0.0};
+    DBL linerAccAve[CHN] = {0.0};
+    DBL velAve[CHN] = {0.0};
+
+    dt = dtCalculate(utime, pfusionFix->uTime);
+    
+    for (i = X; i <= Z; i++)
+    {
+        linerAccIBP[i] = acc[X]*pfusionFix->fCbn[i][X] + acc[Y]*pfusionFix->fCbn[i][Y] + acc[Z]*pfusionFix->fCbn[i][Z];
+    }
+    linerAccIBP[Z] += GRAVITY;
+
+    linerAccAve[X] = (linerAccIBP[X] + pfusionFix->fLinerAccN) / 2.0;
+    linerAccAve[Y] = (linerAccIBP[Y] + pfusionFix->fLinerAccE) / 2.0;
+    linerAccAve[Z] = (linerAccIBP[Z] + pfusionFix->fLinerAccD) / 2.0;
+    velIBP[X] = pfusionFix->fVelN + linerAccAve[X] * dt;
+    velIBP[Y] = pfusionFix->fVelE + linerAccAve[Y] * dt;
+    velIBP[Z] = pfusionFix->fVelD + linerAccAve[Z] * dt;
+    velAve[X] = pfusionFix->fVelN + linerAccAve[X] * dt / 2.0;
+    velAve[Y] = pfusionFix->fVelE + linerAccAve[Y] * dt / 2.0;
+    velAve[Z] = pfusionFix->fVelD + linerAccAve[Z] * dt / 2.0;
+
+    pfusionFix->fLinerAccN = (FLT)linerAccIBP[X];
+    pfusionFix->fLinerAccE = (FLT)linerAccIBP[Y];
+    pfusionFix->fLinerAccD = (FLT)linerAccIBP[Z];
+    pfusionFix->fVelN = (FLT)velIBP[X];
+    pfusionFix->fVelE = (FLT)velIBP[Y];
+    pfusionFix->fVelD = (FLT)velIBP[Z];
+    pfusionFix->fPosN += (FLT)velAve[X] * dt;
+    pfusionFix->fPosE += (FLT)velAve[Y] * dt;
+    pfusionFix->fPosD += (FLT)velAve[Z] * dt;
+
+}
+
 /*-------------------------------------------------------------------------*/
 /**
   @brief    
@@ -825,7 +925,25 @@ U32 sensorFusionExec(const fusionInputData_t* const pinputData, fusionOutputData
     quaternionIntegration(utime, fgyro, &FusionFix);
 
     // action detect for fusion and ins mechanization
-    FusionCtrl.uKalmanFusionFlag = 1;
+    actionDetect(utime, fgyro, facc, &FusionCtrl);
+    if (FusionCtrl.uActionStartFlag == 1)
+    {
+        FusionCtrl.uMechanizationFlag = 1;
+        FusionCtrl.uKalmanFusionFlag = 0;
+    }
+    else
+    {
+        FusionCtrl.uKalmanFusionFlag = 1;
+    }
+
+    if (FusionCtrl.uActionEndFlag == 1)
+    {
+        FusionCtrl.uMechanizationFlag = 0;
+        FusionCtrl.uActionStartFlag = 0;
+        FusionCtrl.uActionEndFlag = 0;
+        // clear INS data
+        resetInsData(&FusionFix);
+    }
 
 	// kalman filter fusion
 	if (FusionCtrl.uKalmanFusionFlag == 1)
@@ -838,6 +956,13 @@ U32 sensorFusionExec(const fusionInputData_t* const pinputData, fusionOutputData
         {
             // kalman filter failed
         }
+    }
+
+    // ins mechanization
+
+    if (FusionCtrl.uMechanizationFlag == 1)
+    {
+        insStrapdownMechanization(utime, facc, &FusionFix);
     }
 
     // restore time tag for next epoch
