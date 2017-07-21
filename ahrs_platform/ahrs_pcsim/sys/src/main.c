@@ -15,7 +15,7 @@ int main(int argc,char *argv[])
 #ifdef DEBUG
     fopen_s(&FpOutput, "../../data/output.txt", "w");
 #endif
-	if (fp == NULL) 
+	if (fp == NULL)
 	{
 		printf("open file failed!\r\n");
 		return -1;

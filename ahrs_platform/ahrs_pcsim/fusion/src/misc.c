@@ -273,6 +273,35 @@ void f3x3matrixTranspose(FLT matrix[3][3])
 
  */
 /*--------------------------------------------------------------------------*/
+void fmatrixAeqI(FLT *A[], U32 rc)
+{
+    // rc = rows and columns in A
+
+    FLT *pAij;	    // pointer to A[i][j]
+    U32 i, j;		// loop counters
+
+    for (i = 0; i < rc; i++)
+    {
+        // set pAij to &A[i][j=0]
+        pAij = A[i];
+        for (j = 0; j < rc; j++)
+        {
+            *(pAij++) = 0.0F;
+        }
+        A[i][i] = 1.0F;
+    }
+    return;
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
 void f3x3matrixEqI(FLT matrix[3][3])
 {
     U32 i = 0;
@@ -320,6 +349,57 @@ void f3x3matrixEqScalar(FLT matrix[3][3], FLT scalar)
 
  */
 /*--------------------------------------------------------------------------*/
+void f3x3matrixEqAxScalar(FLT A[][3], FLT scalar)
+{
+    FLT *pAij;
+    U32 i, j;
+
+    for (i = 0; i < 3; i++)
+    {
+        // set pAij to &A[i][j=0]
+        pAij = A[i];
+        for (j = 0; j < 3; j++)
+        {
+            *(pAij++) *= scalar;
+        }
+    }
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+void f3x3matrixEqMinusA(FLT A[][3])
+{
+    FLT *pAij;
+    U32 i, j;
+
+    for (i = 0; i < 3; i++)
+    {
+        // set pAij to &A[i][j=0]
+        pAij = A[i];
+        for (j = 0; j < 3; j++)
+        {
+            *pAij = -*pAij;
+            pAij++;
+        }
+    }
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
 U32 matrixMult(const DBL** const matrixA, const DBL** const matrixB, U32 rowA, U32 colA, U32 rowB, U32 colB, DBL** const matrixC)
 {
     U32 i = 0;
@@ -346,6 +426,205 @@ U32 matrixMult(const DBL** const matrixA, const DBL** const matrixB, U32 rowA, U
     }
 
     return 0;
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+void fmatrixAeqInvA(FLT *A[], S32 iColInd[], S32 iRowInd[], S32 iPivot[], S32 isize, U32 *pierror)
+{
+    FLT largest;
+    FLT scaling;
+    FLT recippiv;
+    FLT ftmp;
+    S32 i, j, k, l, m;
+    U32 iPivotRow, iPivotCol;
+
+    iPivotRow = iPivotCol = 0;
+    *pierror = 0;
+    for (j = 0; j < isize; j++)
+    {
+        iPivot[j] = 0;
+    }
+    for (i = 0; i < isize; i++)
+    {
+        largest = 0.0F;
+        for (j = 0; j < isize; j++)
+        {
+            if (iPivot[j] != 1)
+            {
+                for (k = 0; k < isize; k++)
+                {
+                    if (iPivot[k] == 0)
+                    {
+                        if (fabsf(A[j][k]) >= largest)
+                        {
+                            iPivotRow = j;
+                            iPivotCol = k;
+                            largest = (FLT)fabsf(A[iPivotRow][iPivotCol]);
+                        }
+                    }
+                    else if (iPivot[k] > 1)
+                    {
+                        fmatrixAeqI(A, isize);
+                        *pierror = 1;
+                        return;
+                    }
+                }
+            }
+        }
+        iPivot[iPivotCol]++;
+        if (iPivotRow != iPivotCol)
+        {
+            for (l = 0; l < isize; l++)
+            {
+                ftmp = A[iPivotRow][l];
+                A[iPivotRow][l] = A[iPivotCol][l];
+                A[iPivotCol][l] = ftmp;
+            }
+        }
+        iRowInd[i] = iPivotRow;
+        iColInd[i] = iPivotCol;
+        if (A[iPivotCol][iPivotCol] == 0.0F)
+        {
+            fmatrixAeqI(A, isize);
+            *pierror = 1;
+            return;
+        }
+        recippiv = 1.0F / A[iPivotCol][iPivotCol];
+        A[iPivotCol][iPivotCol] = 1.0F;
+        for (l = 0; l < isize; l++)
+        {
+            if (A[iPivotCol][l] != 0.0F)
+                A[iPivotCol][l] *= recippiv;
+        }
+        for (m = 0; m < isize; m++)
+        {
+            if (m != iPivotCol)
+            {
+                scaling = A[m][iPivotCol];
+                A[m][iPivotCol] = 0.0F;
+                for (l = 0; l < isize; l++)
+                {
+                    if ((A[iPivotCol][l] != 0.0F) && (scaling != 0.0F))
+                        A[m][l] -= A[iPivotCol][l] * scaling;
+                }
+            }
+        }
+    }
+    for (l = isize - 1; l >= 0; l--)
+    {
+        i = iRowInd[l];
+        j = iColInd[l];
+
+        if (i != j)
+        {
+            for (k = 0; k < isize; k++)
+            {
+                ftmp = A[k][i];
+                A[k][i] = A[k][j];
+                A[k][j] = ftmp;
+            }
+        }
+    }
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+void eigencompute10(FLT A[][10], FLT eigval[], FLT eigvec[][10], S32 n)
+{
+#define NITERATIONS 15
+
+    FLT cot2phi, tanhalfphi, tanphi, sinphi, cosphi;
+    FLT ftmp;
+    FLT residue;
+    S32 ir, ic;
+    S32 j;
+    S32 ctr;
+
+    for (ir = 0; ir < n; ir++)
+    {
+        for (ic = 0; ic < n; ic++)
+        {
+            eigvec[ir][ic] = 0.0F;
+        }
+        eigvec[ir][ir] = 1.0F;
+        eigval[ir] = A[ir][ir];
+    }
+    ctr = 0;
+    do
+    {
+        residue = 0.0F;
+        for (ir = 0; ir < n - 1; ir++)
+        {
+            for (ic = ir + 1; ic < n; ic++)
+            {
+                residue += fabsf(A[ir][ic]);
+            }
+        }
+        if (residue > 0.0F)
+        {
+            for (ir = 0; ir < n - 1; ir++)
+            {
+                for (ic = ir + 1; ic < n; ic++)
+                {
+                    if (fabsf(A[ir][ic]) > 0.0F)
+                    {
+                        cot2phi = 0.5F * (eigval[ic] - eigval[ir]) / (A[ir][ic]);
+                        tanphi = 1.0F / (fabsf(cot2phi) + sqrtf(1.0F + cot2phi * cot2phi));
+                        if (cot2phi < 0.0F)
+                        {
+                            tanphi = -tanphi;
+                        }
+                        cosphi = 1.0F / sqrtf(1.0F + tanphi * tanphi);
+                        sinphi = tanphi * cosphi;
+                        tanhalfphi = sinphi / (1.0F + cosphi);
+                        ftmp = tanphi * A[ir][ic];
+                        eigval[ir] -= ftmp;
+                        eigval[ic] += ftmp;
+                        A[ir][ic] = 0.0F;
+                        for (j = 0; j < n; j++)
+                        {
+                            ftmp = eigvec[j][ir];
+                            eigvec[j][ir] = ftmp - sinphi * (eigvec[j][ic] + tanhalfphi * ftmp);
+                            eigvec[j][ic] = eigvec[j][ic] + sinphi * (ftmp - tanhalfphi * eigvec[j][ic]);
+                        }
+                        for (j = 0; j <= ir - 1; j++)
+                        {
+                            ftmp = A[j][ir];
+                            A[j][ir] = ftmp - sinphi * (A[j][ic] + tanhalfphi * ftmp);
+                            A[j][ic] = A[j][ic] + sinphi * (ftmp - tanhalfphi * A[j][ic]);
+                        }
+                        for (j = ir + 1; j <= ic - 1; j++)
+                        {
+                            ftmp = A[ir][j];
+                            A[ir][j] = ftmp - sinphi * (A[j][ic] + tanhalfphi * ftmp);
+                            A[j][ic] = A[j][ic] + sinphi * (ftmp - tanhalfphi * A[j][ic]);
+                        }
+                        for (j = ic + 1; j < n; j++)
+                        {
+                            ftmp = A[ir][j];
+                            A[ir][j] = ftmp - sinphi * (A[ic][j] + tanhalfphi * ftmp);
+                            A[ic][j] = A[ic][j] + sinphi * (ftmp - tanhalfphi * A[ic][j]);
+                        }
+                    }
+                }
+            }
+        }
+    } while ((residue > 0.0F) && (ctr++ < NITERATIONS));
 }
 
 /*-------------------------------------------------------------------------*/

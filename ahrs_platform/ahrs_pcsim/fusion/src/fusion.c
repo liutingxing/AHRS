@@ -4,6 +4,7 @@
 #include "fusion.h"
 #include "kalman.h"
 #include "misc.h"
+#include "magcal.h"
 
 #define     ALIGN_NUM       (100)
 
@@ -73,6 +74,8 @@ static fusionFixCtrl_t FusionCtrl;
 static kalmanInfo_t KalmanInfo;
 static FLT AlignGyroArray[ALIGN_NUM][CHN];
 static FLT AlignAccArray[ALIGN_NUM][CHN];
+static magneticBuffer_t MagBuffer;
+static magCalibration_t MagCalibration;
 
 const DBL INIT_RMS[] = {SIG_PHI_E, SIG_PHI_N, SIG_PHI_U, SIG_GYRO, SIG_GYRO, SIG_GYRO, SIG_ACC, SIG_ACC, SIG_ACC};
 
@@ -101,6 +104,7 @@ static void errCorrection(kalmanInfo_t* const pkalmanInfo, fusionFixData_t* cons
 static U32 sensorDataCorrection(FLT gyro[], FLT acc[], FLT mag[], const fusionInputData_t * const pinputData, const fusionFixData_t * const pfusionFix, const fusionFixCtrl_t * const pfuisonCtrl)
 {
     U32 i = 0;
+    FLT ftemp[CHN] = {0};
 
     // gyro data correction
     for (i = X; i <= Z; i++)
@@ -115,20 +119,16 @@ static U32 sensorDataCorrection(FLT gyro[], FLT acc[], FLT mag[], const fusionIn
     }
 
     // mag data correction
-    if (pfuisonCtrl->uMagCaliFlag != 0)
-    {
-        FLT ftemp[CHN] = {0};
 
-        // remove the computed hard iron offsets (uT): ftmp[] = fmag[] - fV[]
-        for (i = X; i <= Z; i++)
-        {
-            ftemp[i] = pinputData->fMag[i] - pfusionFix->fV[i];
-        }
-        // remove the computed soft iron offsets (uT): fmag = inv(W)*(fmag[] - fV[])
-        for (i = X; i <= Z; i++)
-        {
-            mag[i] = pfusionFix->finvW[i][X]*ftemp[X] + pfusionFix->finvW[i][Y]*ftemp[Y] + pfusionFix->finvW[i][Z]*ftemp[Z];
-        }
+    // remove the computed hard iron offsets (uT): ftmp[] = fmag[] - fV[]
+    for (i = X; i <= Z; i++)
+    {
+        ftemp[i] = pinputData->fMag[i] - pfusionFix->fV[i];
+    }
+    // remove the computed soft iron offsets (uT): fmag = inv(W)*(fmag[] - fV[])
+    for (i = X; i <= Z; i++)
+    {
+        mag[i] = pfusionFix->finvW[i][X]*ftemp[X] + pfusionFix->finvW[i][Y]*ftemp[Y] + pfusionFix->finvW[i][Z]*ftemp[Z];
     }
 
     return 0;
@@ -297,7 +297,7 @@ static U32 accTiltInit(const FLT accArray[][CHN], U32 count, fusionFixData_t *pf
     cnb[Y][X] = -cnb[X][Z] * cnb[Y][Z] * ftmp;
     cnb[Z][X] = -cnb[X][Z] * cnb[Z][Z] * ftmp;
 
-    // // construct y column of orientation matrix
+    // construct y column of orientation matrix
     cnb[X][Y] = 0.0F;
     cnb[Y][Y] = cnb[Z][Z] * ftmp;
     cnb[Z][Y] = -cnb[Y][Z] * ftmp;
@@ -598,14 +598,6 @@ static void setPhimQd(U32 utime, kalmanInfo_t* const pkalmanInfo, fusionFixData_
         G[i][i] = 1.0;
     }
 
-    for (i = 0; i < STATE_NUM; i++)
-    {
-        for (j = 0; j < STATE_NUM; j++)
-        {
-            GT[j][i] = G[i][j];
-        }
-    }
-
     // qdt = G*w*G'
     for (i = 0; i < stateNum; i++)
     {
@@ -862,6 +854,12 @@ static void insStrapdownMechanization(U32 utime, const FLT acc[], fusionFixData_
 /*--------------------------------------------------------------------------*/
 U32 sensorFusionInit(void)
 {
+    if (magCalibrationInit(&MagCalibration, &MagBuffer))
+    {
+        printf("mag calibration init failed!\r\n");
+        return -1;
+    }
+
     if (kalmanInit(&KalmanInfo, STATE_NUM))
     {
         printf("kalman init failed!\r\n");
@@ -877,6 +875,10 @@ U32 sensorFusionInit(void)
     memset(&FusionFix, 0, sizeof(fusionFixData_t));
     memset(&FusionCtrl, 0, sizeof(fusionFixCtrl_t));
 
+    f3x3matrixEqI(FusionFix.finvW);
+    f3x3matrixEqI(FusionFix.fCbn);
+    f3x3matrixEqI(FusionFix.fCnb);
+
     return 0;
 };
 
@@ -891,16 +893,21 @@ U32 sensorFusionInit(void)
 /*--------------------------------------------------------------------------*/
 U32 sensorFusionExec(const fusionInputData_t* const pinputData, fusionOutputData_t* const poutputData)
 {
-    U32 retvel = Initial;
+    U32 retval = Initial;
     U32 utime = 0;
     U32 i = 0;
     FLT fgyro[CHN] = {0};
     FLT facc[CHN] = {0};
     FLT fmag[CHN] = {0};
+    static U32 LoopCounter = 0;
 
     utime = pinputData->uTime;
 
     sensorDataCorrection(fgyro, facc, fmag, pinputData, &FusionFix, &FusionCtrl);
+
+    magBufferUpdate(&MagBuffer, pinputData->fMag, fmag, LoopCounter);
+    LoopCounter++;
+    magCalibrationExec(&MagCalibration, &MagBuffer);
 
     if (FusionCtrl.uAlignFlag == 0)
     {
@@ -912,15 +919,15 @@ U32 sensorFusionExec(const fusionInputData_t* const pinputData, fusionOutputData
             // start initial alignment
             if (!accTiltInit(AlignAccArray, ALIGN_NUM, &FusionFix))
             {
-                retvel = Aligment;
+                retval = Aligment;
                 FusionCtrl.uAlignFlag = 1;
             }
         }
 
-        return retvel;
+        return retval;
     }
 
-    retvel = Attitude;
+    retval = Attitude;
     // quaternion integration
     quaternionIntegration(utime, fgyro, &FusionFix);
 
@@ -970,6 +977,6 @@ U32 sensorFusionExec(const fusionInputData_t* const pinputData, fusionOutputData
     // output result
     ouputResult(&FusionFix, poutputData);
 
-    return retvel;
+    return retval;
 };
 

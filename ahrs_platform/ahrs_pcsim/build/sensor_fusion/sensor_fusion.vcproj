@@ -42,7 +42,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\..\sys\inc;..\..\fusion\inc"
-				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
+				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;DEBUG"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -158,6 +158,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\fusion\src\magcal.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\fusion\src\misc.c"
 				>
 			</File>
@@ -173,6 +177,10 @@
 			</File>
 			<File
 				RelativePath="..\..\fusion\inc\kalman.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\fusion\inc\magcal.h"
 				>
 			</File>
 			<File
