@@ -151,7 +151,7 @@ U32 sensorNavExec(sensorData_t *psensorData)
 
 #ifdef DEBUG
     //format: time, yaw, pitch, roll, vx, vy, vz, px, py, pz
-    fprintf(FpOutput, "%d %-5.3f %-5.3f %-5.3f %-5.3f %-5.3f %-5.3f %-5.3f %-5.3f %-5.3f\r\n",
+    fprintf(FpOutput, "%d %-5.3f %-5.3f %-5.3f %-5.3f %-5.3f %-5.3f %-5.3f %-5.3f %-5.3f\n",
             fusionOutputData.uTime, fusionOutputData.fPsiPl, fusionOutputData.fThePl, fusionOutputData.fPhiPl,
             fusionOutputData.fVelN, fusionOutputData.fVelE, fusionOutputData.fVelD, fusionOutputData.fPosN,
             fusionOutputData.fPosE, fusionOutputData.fPosD);

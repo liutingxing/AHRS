@@ -6,17 +6,24 @@
 #include "misc.h"
 #include "magcal.h"
 
-#define     ALIGN_NUM       (100)
+#define     ALIGN_NUM               (100)
 
-#define     STATE_NUM       (9)
-#define     UD_NUM          (STATE_NUM*(STATE_NUM+1)/2)
-#define     MEAS_ACC_NUM    (3)
+#define     STATE_NUM               (9)
+#define     UD_NUM                  (STATE_NUM*(STATE_NUM+1)/2)
+#define     MEAS_ACC_NUM            (3)
+#define     MEAS_MAG_NUM            (3)
 
-#define     SIG_PHI_E       (1.0*PI/180)                /* rms of pitch and roll */
-#define     SIG_PHI_N       (1.0*PI/180)                /* rms of pitch and roll */
-#define     SIG_PHI_U       (1.0*PI/180)                /* (rad)0.001 rms of heading */
-#define     SIG_ACC         (0.3)                       /* rms of acc error(m/(s.s)) */
-#define     SIG_GYRO        (1000.0*DEG2RAD/3600.0)     /* rms of gyro error  */
+#define     SIG_PHI_E               (1.0*PI/180)                /* rms of pitch and roll */
+#define     SIG_PHI_N               (1.0*PI/180)                /* rms of pitch and roll */
+#define     SIG_PHI_U               (1.0*PI/180)                /* (rad)0.001 rms of heading */
+#define     SIG_ACC                 (0.3)                       /* rms of acc error(m/(s.s)) */
+#define     SIG_GYRO                (1000.0*DEG2RAD/3600.0)     /* rms of gyro error  */
+
+#define     GYRO_TIME_CONSTANT      (100.0F)
+#define     ACC_TIME_CONSTANT       (100.0F)
+#define     SIGMA_WIN               ((FLT)1.0e-6)
+#define     SIGMA_ACC               ((FLT)((5.0e-4) * 9.78032667 * (5.0e-4) * 9.78032667))
+#define     SIGMA_GYRO              ((FLT)(20.0 * PI / 180.0 / 3600 * 20.0 * PI / 180.0 / 3600))
 
 typedef enum sensorFusionStatus
 {
@@ -43,10 +50,11 @@ typedef struct fusionFixData
     quaternion_t fqPl;              // a posteriori orientation quaternion
     FLT   fGyroBias[CHN];           // gyro bias (rad/s)
     FLT   fAccBias[CHN];            // acc bias (m/s2)
-    FLT   fV[3];                      // current hard iron offset x, y, z, (uT)
+    FLT   fV[3];                    // current hard iron offset x, y, z, (uT)
     FLT   finvW[3][3];              // current inverse soft iron matrix
     FLT   fB;                       // current geomagnetic field magnitude (uT)
     FLT   fFitError;                // value of fit error (%)
+    FLT   fDelta;                   // inclination angle (rad)
     FLT   fLinerAccN;               // liner accelerate toward North (m/s2)
     FLT   fLinerAccE;               // liner accelerate toward East (m/s2)
     FLT   fLinerAccD;               // liner accelerate toward Down (m/s2)
@@ -74,23 +82,28 @@ static fusionFixCtrl_t FusionCtrl;
 static kalmanInfo_t KalmanInfo;
 static FLT AlignGyroArray[ALIGN_NUM][CHN];
 static FLT AlignAccArray[ALIGN_NUM][CHN];
+static FLT AlignMagArray[ALIGN_NUM][CHN];
 static magneticBuffer_t MagBuffer;
 static magCalibration_t MagCalibration;
 
 const DBL INIT_RMS[] = {SIG_PHI_E, SIG_PHI_N, SIG_PHI_U, SIG_GYRO, SIG_GYRO, SIG_GYRO, SIG_ACC, SIG_ACC, SIG_ACC};
 
-
-static U32 sensorDataCorrection(FLT gyro[], FLT acc[], FLT mag[], const fusionInputData_t* const pinputData, const fusionFixData_t* const pfusionFix, const fusionFixCtrl_t* const pfuisonCtrl);
-static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[], FLT accArray[][CHN]);
-static U32 quaternionIntegration(U32 utime, const FLT gyro[], fusionFixData_t* const pfusionFix);
+static U32 sensorDataCorrection(FLT gyro[], FLT acc[], FLT mag[], const fusionInputData_t * const pinputData, const fusionFixData_t * const pfusionFix, const fusionFixCtrl_t * const pfuisonCtrl);
+static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[], FLT accArray[][CHN], const FLT mag[], FLT magArray[][CHN]);
+static U32 accTiltInit(const FLT accArray[][CHN], const U32 count, fusionFixData_t* const pfusionFix);
+static U32 compassAlignment(const FLT accArray[][CHN], const FLT magArray[][CHN], const U32 count, fusionFixData_t *pfusionFix);
+static U32 quaternionIntegration(U32 utime, const FLT gyro[], fusionFixData_t * const pfusionFix);
+static U32 quaternionIntegration(U32 utime, const FLT gyro[], fusionFixData_t * const pfusionFix);
 static void ouputResult(const fusionFixData_t* const pfusionFix, fusionOutputData_t* const poutputData);
 static FLT dtCalculate(U32 timeNow, U32 timeLast);
 static U32 actionDetect(U32 utime, FLT gyro[], FLT acc[], fusionFixCtrl_t* const pfusionCtrl);
+static U32 resetInsData(fusionFixData_t* const pfusionFix);
 static void setPhimQd(U32 utime, kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
-static kalmanFilterStatus_t sensorFusionKalman(U32 utime, const FLT acc[], const FLT mag[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
 static U32 accMeasUpdate(const FLT acc[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
+static U32 magMeasUpdate(const FLT mag[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
 static void errCorrection(kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
-
+static kalmanFilterStatus_t sensorFusionKalman(U32 utime, const FLT acc[], const FLT mag[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix);
+static void insStrapdownMechanization(U32 utime, const FLT acc[], fusionFixData_t* const pfusionFix);
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -145,7 +158,7 @@ static U32 sensorDataCorrection(FLT gyro[], FLT acc[], FLT mag[], const fusionIn
 /*--------------------------------------------------------------------------*/
 #define     ACC_STATIC      (0.1)
 #define     GYRO_STATIC     (0.01)
-static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[], FLT accArray[][CHN])
+static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[], FLT accArray[][CHN], const FLT mag[], FLT magArray[][CHN])
 {
     FLT gyro_mean = 0;
     FLT gyro_std = 0;
@@ -161,6 +174,7 @@ static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[]
         {
             gyroArray[uCount][i] = gyro[i];
             accArray[uCount][i] = acc[i];
+            magArray[uCount][i] = mag[i];
         }
     }
     else
@@ -171,12 +185,14 @@ static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[]
             {
                 gyroArray[i][j] = gyroArray[i+1][j];
                 accArray[i][j] = accArray[i+1][j];
+                magArray[i][j] = magArray[i+1][j];
             }
         }
         for (i = X; i <= Z; i++)
         {
             gyroArray[uCount-1][i] = gyro[i];
             accArray[uCount-1][i] = acc[i];
+            magArray[uCount-1][i] = mag[i];
         }
     }
 
@@ -213,7 +229,7 @@ static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[]
 
  */
 /*--------------------------------------------------------------------------*/
-static U32 accTiltInit(const FLT accArray[][CHN], U32 count, fusionFixData_t *pfusionFix)
+static U32 accTiltInit(const FLT accArray[][CHN], const U32 count, fusionFixData_t* const pfusionFix)
 {
     U32 i = 0;
     FLT fyaw = 0;
@@ -320,6 +336,137 @@ static U32 accTiltInit(const FLT accArray[][CHN], U32 count, fusionFixData_t *pf
 
     return 0;
 }
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+static U32 compassAlignment(const FLT accArray[][CHN], const FLT magArray[][CHN], const U32 count, fusionFixData_t *pfusionFix)
+{
+    FLT fg[CHN] = {0.0F};
+    FLT fmag[CHN] = {0.0F};
+    FLT fR[3][3] = {0.0F};
+    FLT fmod[3] = {0.0F};
+    FLT ftmp = 0.0F;
+    FLT fmodMag = 0.0F;
+    FLT fGdotMag = 0.0F;
+    FLT fyaw = 0.0F;
+    FLT fpitch = 0.0F;
+    FLT froll = 0.0F;
+    FLT fq[4] = {0.0F};
+    U32 i, j, retval;
+
+    retval = 0;
+
+    for (i = 0; i < count; i++)
+    {
+        fg[X] -= accArray[i][X];
+        fg[Y] -= accArray[i][Y];
+        fg[Z] -= accArray[i][Z];
+        fmag[X] += magArray[i][X];
+        fmag[Y] += magArray[i][Y];
+        fmag[Z] += magArray[i][Z];
+    }
+    for (i = X; i <= Z; i++)
+    {
+        fg[i] = fg[i] / count;
+        fmag[i] = fmag[i] / count;
+        fR[i][Z] = fg[i];
+        fR[i][X] = fmag[i];
+    }
+
+    // set y vector to vector product of z and x vectors
+    fR[X][Y] = fR[Y][Z] * fR[Z][X] - fR[Z][Z] * fR[Y][X];
+    fR[Y][Y] = fR[Z][Z] * fR[X][X] - fR[X][Z] * fR[Z][X];
+    fR[Z][Y] = fR[X][Z] * fR[Y][X] - fR[Y][Z] * fR[X][X];
+
+    // set x vector to vector product of y and z vectors
+    fR[X][X] = fR[Y][Y] * fR[Z][Z] - fR[Z][Y] * fR[Y][Z];
+    fR[Y][X] = fR[Z][Y] * fR[X][Z] - fR[X][Y] * fR[Z][Z];
+    fR[Z][X] = fR[X][Y] * fR[Y][Z] - fR[Y][Y] * fR[X][Z];
+
+    for (i = X; i <= Z; i++)
+    {
+        fmod[i] = sqrtf(fR[X][i] * fR[X][i] + fR[Y][i] * fR[Y][i] + fR[Z][i] * fR[Z][i]);
+    }
+
+    if (!((fmod[X] == 0.0F) || (fmod[Y] == 0.0F) || (fmod[Z] == 0.0F)))
+    {
+        for (j = X; j <= Z; j++)
+        {
+            ftmp = 1.0F / fmod[j];
+            for (i = X; i <= Z; i++)
+            {
+                fR[i][j] *= ftmp;
+            }
+        }
+    }
+    else
+    {
+        // no solution is possible so set rotation to identity matrix
+        f3x3matrixEqI(fR);
+        retval = -1;
+    }
+    memcpy(pfusionFix->fCnb, fR, sizeof(pfusionFix->fCnb));
+    memcpy(pfusionFix->fCbn, fR, sizeof(pfusionFix->fCbn));
+    f3x3matrixTranspose(pfusionFix->fCbn);
+
+    fmodMag = sqrtf(fmag[X] * fmag[X] + fmag[Y] * fmag[Y] + fmag[Z] * fmag[Z]);
+    fGdotMag = fg[X] * fmag[X] + fg[Y] * fmag[Y] + fg[Z] * fmag[Z];
+    if (!((fmod[Z] == 0.0F) || (fmodMag == 0.0F)))
+    {
+        pfusionFix->fDelta = asinf(fGdotMag / (fmod[Z] * fmodMag));
+    }
+    dcm2euler(pfusionFix->fCbn, &fyaw, &fpitch, &froll);
+    pfusionFix->fPsiPl = fyaw;
+    pfusionFix->fThePl = fpitch;
+    pfusionFix->fPhiPl = froll;
+
+    euler2q(fq, fyaw, fpitch, froll);
+    pfusionFix->fqPl.q0 = fq[0];
+    pfusionFix->fqPl.q1 = fq[1];
+    pfusionFix->fqPl.q2 = fq[2];
+    pfusionFix->fqPl.q3 = fq[3];
+
+    // only for test mag measure update in kalman.
+    // magnetic strength update in mag calibration process.
+    // this code need to be removed.
+    pfusionFix->fB = fmodMag;
+
+    return retval;
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+static void gyroCalibration(const FLT gyroArray[][CHN], const U32 count, fusionFixData_t *pfusionFix)
+{
+    FLT fgyro[CHN] = {0.0F};
+    U32 i = 0;
+    
+    for (i = 0; i < count; i++)
+    {
+        fgyro[X] += gyroArray[i][X];
+        fgyro[Y] += gyroArray[i][Y];
+        fgyro[Z] += gyroArray[i][Z];
+    }
+    pfusionFix->fGyroBias[X] += (FLT)(fgyro[X] * 1.0 / count);
+    pfusionFix->fGyroBias[Y] += (FLT)(fgyro[Y] * 1.0 / count);
+    pfusionFix->fGyroBias[Z] += (FLT)(fgyro[Z] * 1.0 / count);
+}
+
+
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -516,11 +663,6 @@ static U32 resetInsData(fusionFixData_t* const pfusionFix)
 
  */
 /*--------------------------------------------------------------------------*/
-#define     GYRO_TIME_CONSTANT      (0.01F)
-#define     ACC_TIME_CONSTANT       (0.01F)
-#define     SIGMA_WIN               ((FLT)1.0e-6)
-#define     SIGMA_ACC               ((FLT)((5.0e-4) * 9.78032667 * (5.0e-4) * 9.78032667))
-#define     SIGMA_GYRO              ((FLT)(20.0 * PI / 180.0 / 3600 * 20.0 * PI / 180.0 / 3600))
 static void setPhimQd(U32 utime, kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix)
 {
     U32 i = 0;
@@ -737,6 +879,92 @@ static U32 accMeasUpdate(const FLT acc[], kalmanInfo_t* const pkalmanInfo, fusio
     return 0;
 }
 
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
+static U32 magMeasUpdate(const FLT mag[], kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix)
+{
+    U32 i = 0;
+    U32 j = 0;
+    DBL zc = 0.0;
+    DBL rc = 0.0;
+    DBL hc[STATE_NUM] = {0.0};
+    DBL z[MEAS_MAG_NUM] = {0.0};
+    DBL h[MEAS_MAG_NUM][STATE_NUM] = {0.0};
+    DBL r[MEAS_MAG_NUM] = {0.0};
+    DBL xSave[STATE_NUM];
+    DBL udSave[UD_NUM];
+    DBL ion = 0.0;
+    DBL res = 0.0;
+    DBL magEstimate[3] = {0.0};
+    DBL magVector[3] = {0.0};
+    DBL test = 0.0;
+
+    magVector[0] = pfusionFix->fB * cosf(pfusionFix->fDelta);
+    magVector[2] = pfusionFix->fB * sinf(pfusionFix->fDelta);
+    h[0][1] = magVector[2];
+    h[1][0] = -magVector[2];
+    h[1][2] = magVector[0];
+    h[2][1] = -magVector[0];
+
+    r[0] = 1 * 1;
+    r[1] = 1 * 1;
+    r[2] = 1 * 1;
+
+    for (i = X; i <= Z; i++)
+    {
+        magEstimate[i] = pfusionFix->fCbn[i][X] * mag[X] + pfusionFix->fCbn[i][Y] * mag[Y] + pfusionFix->fCbn[i][Z] * mag[Z];
+    }
+
+    z[X] = magVector[X] - magEstimate[X];
+    z[Y] = magVector[Y] - magEstimate[Y];
+    z[Z] = magVector[Z] - magEstimate[Z];
+
+    for (i = 0; i < MEAS_MAG_NUM; i++)
+    {
+        zc = z[i];
+        rc = r[i];
+
+        for (j = 0; j < STATE_NUM; j++)
+        {
+            hc[j] = h[i][j];
+        }
+
+        // save x,p in case the measurement is rejected
+        memcpy(xSave, pkalmanInfo->pStateX, sizeof(xSave));
+        memcpy(udSave, pkalmanInfo->pUd, sizeof(udSave));
+
+        // scalar measurement update
+        udMeasUpdate(pkalmanInfo->pUd, pkalmanInfo->pStateX, pkalmanInfo->uStateNum, rc, hc, zc, &ion, &res);
+        test = fabs(res) / sqrt(ion);
+
+        // reject this measurement
+        // 1. innovation test > 5, generally it is around 3.24
+        if (test > 5)
+        {
+            memcpy(pkalmanInfo->pStateX, xSave, sizeof(xSave));
+            memcpy(pkalmanInfo->pUd, udSave, sizeof(udSave));
+        }
+    }
+
+    return 0;
+}
+
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
 static void errCorrection(kalmanInfo_t* const pkalmanInfo, fusionFixData_t* const pfusionFix)
 {
     U32 i = 0;
@@ -799,11 +1027,21 @@ static kalmanFilterStatus_t sensorFusionKalman(U32 utime, const FLT acc[], const
     setPhimQd(utime, pkalmanInfo, pfusionFix);
     predict(pkalmanInfo);
     accMeasUpdate(acc, pkalmanInfo, pfusionFix);
+    magMeasUpdate(mag, pkalmanInfo, pfusionFix);
     errCorrection(pkalmanInfo, pfusionFix);
 
     return OK;
 }
 
+/*-------------------------------------------------------------------------*/
+/**
+  @brief    
+  @param    
+  @return   
+  
+
+ */
+/*--------------------------------------------------------------------------*/
 static void insStrapdownMechanization(U32 utime, const FLT acc[], fusionFixData_t* const pfusionFix)
 {
     U32 i = 0;
@@ -874,6 +1112,7 @@ U32 sensorFusionInit(void)
 
     memset(&FusionFix, 0, sizeof(fusionFixData_t));
     memset(&FusionCtrl, 0, sizeof(fusionFixCtrl_t));
+    FusionCtrl.uKalmanFusionFlag = 1;
 
     f3x3matrixEqI(FusionFix.finvW);
     f3x3matrixEqI(FusionFix.fCbn);
@@ -908,16 +1147,20 @@ U32 sensorFusionExec(const fusionInputData_t* const pinputData, fusionOutputData
     magBufferUpdate(&MagBuffer, pinputData->fMag, fmag, LoopCounter);
     LoopCounter++;
     magCalibrationExec(&MagCalibration, &MagBuffer);
+    if (MagCalibration.iValidMagCal != 0)
+    {
+        // indicate mag calibration is valid
+    }
+
+    // static detection
+    FusionCtrl.uStaticFlag = staticDectect(fgyro, AlignGyroArray, facc, AlignAccArray, fmag, AlignMagArray);
 
     if (FusionCtrl.uAlignFlag == 0)
     {
-        // static detection
-        FusionCtrl.uStaticFlag = staticDectect(fgyro, AlignGyroArray, facc, AlignAccArray);
-
         if (FusionCtrl.uStaticFlag == 1)
         {
             // start initial alignment
-            if (!accTiltInit(AlignAccArray, ALIGN_NUM, &FusionFix))
+            if (!compassAlignment(AlignAccArray, AlignMagArray, ALIGN_NUM, &FusionFix))
             {
                 retval = Aligment;
                 FusionCtrl.uAlignFlag = 1;
@@ -928,11 +1171,20 @@ U32 sensorFusionExec(const fusionInputData_t* const pinputData, fusionOutputData
     }
 
     retval = Attitude;
+
+    if (FusionCtrl.uStaticFlag == 1)
+    {
+        // gyro bias calibration
+        //gyroCalibration(AlignGyroArray, ALIGN_NUM, &FusionFix);
+
+        // delta angle update
+    }
+
     // quaternion integration
     quaternionIntegration(utime, fgyro, &FusionFix);
 
     // action detect for fusion and ins mechanization
-    actionDetect(utime, fgyro, facc, &FusionCtrl);
+    //actionDetect(utime, fgyro, facc, &FusionCtrl);
     if (FusionCtrl.uActionStartFlag == 1)
     {
         FusionCtrl.uMechanizationFlag = 1;
@@ -955,7 +1207,7 @@ U32 sensorFusionExec(const fusionInputData_t* const pinputData, fusionOutputData
 	// kalman filter fusion
 	if (FusionCtrl.uKalmanFusionFlag == 1)
     {
-        kalmanFilterStatus_t status;
+        kalmanFilterStatus_t status = OK;
 
         status = sensorFusionKalman(utime, facc, fmag, &KalmanInfo, &FusionFix);
 

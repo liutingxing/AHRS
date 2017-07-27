@@ -11,7 +11,7 @@ int main(int argc,char *argv[])
 	FILE *fp;
 	U8 line[MAX_BUFF_LEN];
 
-	fopen_s(&fp, "../../data/right_hand.txt", "r");
+	fopen_s(&fp, "../../data/rotate.txt", "r");
 #ifdef DEBUG
     fopen_s(&FpOutput, "../../data/output.txt", "w");
 #endif

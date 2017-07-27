@@ -4,7 +4,7 @@ clc;
 %% read data from file
 
 ahrs_data = load('.\output.txt');
-ref_data = load('.\right_hand.txt');
+ref_data = load('.\rotate.txt');
 
 time = ahrs_data(:, 1);                      % ( ms )
 yaw = ahrs_data(:, 2);                       % ( rad )
