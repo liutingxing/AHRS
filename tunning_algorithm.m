@@ -250,7 +250,13 @@ for i = 1 : N
         pE(i) = pE(i-1) + (vE(i) + vE(i-1))*dt/2;
         pD(i) = pD(i-1) + (vD(i) + vD(i-1))*dt/2;
 %% store result data
-        fprintf(fd, '%d %f %f %f %f %f %f %f\r\n', Time(i), pN(i), pE(i), pD(i), q(1), q(2), q(3), q(4));
+        % NED(xyz) -> Unity3D(XYZ): right hand -> left hand
+        % X = x, Y = y, Z = -z
+        unity_x = pN(i);
+        unity_y = pE(i);
+        unity_z = pD(i);
+        unity_q = [q(1), q(2), q(3), -q(4)];
+        fprintf(fd, '%d %f %f %f %f %f %f %f\r\n', Time(i),unity_x, unity_y, unity_z, unity_q(1), unity_q(2), unity_q(3), unity_q(4));
     end
 end
 fclose(fd);
