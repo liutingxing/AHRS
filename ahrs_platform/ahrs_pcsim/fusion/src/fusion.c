@@ -880,8 +880,8 @@ static U32 accMeasUpdate(const FLT acc[], kalmanInfo_t* const pkalmanInfo, fusio
         // 1. innovation test > 5, generally it is around 3.24
         if (test > 5)
         {
-            //memcpy(pkalmanInfo->pStateX, xSave, sizeof(xSave));
-            //memcpy(pkalmanInfo->pUd, udSave, sizeof(udSave));
+            memcpy(pkalmanInfo->pStateX, xSave, sizeof(xSave));
+            memcpy(pkalmanInfo->pUd, udSave, sizeof(udSave));
         }
     }
 
