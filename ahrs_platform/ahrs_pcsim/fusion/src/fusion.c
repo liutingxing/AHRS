@@ -19,8 +19,8 @@
 #define     SIG_ACC                 (0.3)                       /* rms of acc error(m/(s.s)) */
 #define     SIG_GYRO                (1000.0*DEG2RAD/3600.0)     /* rms of gyro error  */
 
-#define     GYRO_TIME_CONSTANT      (100.0F)
-#define     ACC_TIME_CONSTANT       (100.0F)
+#define     GYRO_TIME_CONSTANT      (0.01F)
+#define     ACC_TIME_CONSTANT       (0.01F)
 #define     SIGMA_WIN               ((FLT)1.0e-6)
 #define     SIGMA_ACC               ((FLT)((5.0e-4) * 9.78032667 * (5.0e-4) * 9.78032667))
 #define     SIGMA_GYRO              ((FLT)(20.0 * PI / 180.0 / 3600 * 20.0 * PI / 180.0 / 3600))
@@ -179,7 +179,7 @@ static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[]
     }
     else
     {
-        for(i = 0; i < uCount - 1; i++)
+        for(i = 0; i < ALIGN_NUM - 1; i++)
         {
             for (j = X; j <= Z; j++)
             {
@@ -190,22 +190,22 @@ static U32 staticDectect(const FLT gyro[], FLT gyroArray[][CHN], const FLT acc[]
         }
         for (i = X; i <= Z; i++)
         {
-            gyroArray[uCount-1][i] = gyro[i];
-            accArray[uCount-1][i] = acc[i];
-            magArray[uCount-1][i] = mag[i];
+            gyroArray[ALIGN_NUM-1][i] = gyro[i];
+            accArray[ALIGN_NUM-1][i] = acc[i];
+            magArray[ALIGN_NUM-1][i] = mag[i];
         }
     }
 
     uCount++;
     if (uCount >= ALIGN_NUM)
     {
-        uCount = ALIGN_NUM;
-        if (computeMeanStd(&gyro_mean, &gyro_std, gyroArray, uCount))
+        //uCount = ALIGN_NUM;
+        if (computeMeanStd(&gyro_mean, &gyro_std, gyroArray, ALIGN_NUM))
         {
             return -1;
         }
 
-        if (computeMeanStd(&acc_mean, &acc_std, accArray, uCount))
+        if (computeMeanStd(&acc_mean, &acc_std, accArray, ALIGN_NUM))
         {
             return -1;
         }
@@ -735,9 +735,18 @@ static void setPhimQd(U32 utime, kalmanInfo_t* const pkalmanInfo, fusionFixData_
     G[2][1] = (DBL) -fCbn[2][1];
     G[2][2] = (DBL) -fCbn[2][2];
 
-    for (i = 3; i < STATE_NUM; i++)
+    for (i = 3; i < stateNum; i++)
     {
         G[i][i] = 1.0;
+    }
+
+    // GT = G'
+    for (i = 0; i < stateNum; i++)
+    {
+        for (j = 0; j < stateNum; j++)
+        {
+            GT[i][j] = G[j][i];
+        }
     }
 
     // qdt = G*w*G'
@@ -871,8 +880,8 @@ static U32 accMeasUpdate(const FLT acc[], kalmanInfo_t* const pkalmanInfo, fusio
         // 1. innovation test > 5, generally it is around 3.24
         if (test > 5)
         {
-            memcpy(pkalmanInfo->pStateX, xSave, sizeof(xSave));
-            memcpy(pkalmanInfo->pUd, udSave, sizeof(udSave));
+            //memcpy(pkalmanInfo->pStateX, xSave, sizeof(xSave));
+            //memcpy(pkalmanInfo->pUd, udSave, sizeof(udSave));
         }
     }
 
@@ -948,8 +957,8 @@ static U32 magMeasUpdate(const FLT mag[], kalmanInfo_t* const pkalmanInfo, fusio
         // 1. innovation test > 5, generally it is around 3.24
         if (test > 5)
         {
-            memcpy(pkalmanInfo->pStateX, xSave, sizeof(xSave));
-            memcpy(pkalmanInfo->pUd, udSave, sizeof(udSave));
+            //memcpy(pkalmanInfo->pStateX, xSave, sizeof(xSave));
+            //memcpy(pkalmanInfo->pUd, udSave, sizeof(udSave));
         }
     }
 

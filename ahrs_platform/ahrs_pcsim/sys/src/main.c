@@ -41,8 +41,10 @@ int main(int argc,char *argv[])
 
         sensorNavExec(&sensorData);
     }
+#ifdef DEBUG
     fclose(fp);
     fclose(FpOutput);
+#endif
 
 	return 0;
 }
