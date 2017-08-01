@@ -1,7 +1,7 @@
 clear all;
 clc;
 
-ahrs_data = load('.\data\快速正手一次1.txt');
+ahrs_data = load('.\data\actionData.txt');
 
 Time = ahrs_data(:, 1);                      % ( ms )
 Roll = ahrs_data(:, 3);                      % ( degree )
@@ -9,7 +9,7 @@ Pitch = ahrs_data(:, 4);                     % ( degree )
 Yaw = ahrs_data(:, 5);                       % ( degree )
 Gyro = ahrs_data(:, 6:8) * pi / 180;         % ( rad/s )
 Acc = ahrs_data(:, 9:11) * 9.8;              % ( m/s2 )
-Mag = ahrs_data(:, 12:14);                   % ( count )
+% Mag = ahrs_data(:, 12:14);                   % ( count )
 
 %% variable prepare
 G_vector = [0, 0, 9.8]';
