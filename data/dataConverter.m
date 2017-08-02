@@ -78,6 +78,18 @@ while ~feof(fin)
         audio = audio - 65536;
     end
     
+    % sensor hal: sensor frame(xyz) -> device frame(XYZ)
+    % X = -y, Y = -x, Z = -z
+    temp = -gyro_x;
+    gyro_x = -gyro_y;
+    gyro_y = temp;
+    gyro_z = -gyro_z;
+    
+    temp = -acc_x;
+    acc_x = -acc_y;
+    acc_y = temp;
+    acc_z = -acc_z;
+    
     % store in file
     fprintf(fout, '%d %d %d %d %d %f %f %f %f %f %f %f\r\n', 1, 2, 3, 4, 5, gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z, audio);
 end
