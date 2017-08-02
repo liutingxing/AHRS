@@ -55,25 +55,13 @@ P(7, 7) = sigma_phim_acc^2;
 P(8, 8) = sigma_phim_acc^2;
 P(9, 9) = sigma_phim_acc^2;
 
-fd = fopen('DataForPlatform.txt', 'w+');
+peace = 0;
+step1 = 1;
+step2 = 2;
+step3 = 3;
+curve_condition = 0;
 
-%% find start and end timing
-% find start timing
-for i = 1:N
-    acc_det = sqrt(sum(Acc(i, :).^2));
-    if acc_det > 7*9.8
-        action_start = i;
-        break;
-    end
-end
-% find end timing
-for i = action_start + 1:N
-    acc_det = sqrt(sum(Acc(i, :).^2));
-    if acc_det < 1.5*9.8
-        action_end = i;
-        break;
-    end
-end
+fd = fopen('DataForPlatform.txt', 'w+');
 
 %% initial alignment
 yaw_initial = 0;
@@ -81,40 +69,22 @@ pitch_initial = 0;
 roll_initial = 0;
 
 window_length = 100;
-window_count = 1;
-window_buffer = zeros(1, window_length);
-
-alignment_start = 1;
-alignment_end = 1;
-    
-for i = 1:action_start-1
-    acc_det = sqrt(sum(Acc(i, :).^2));
-    window_buffer(window_count) = acc_det;
-    window_count = window_count + 1;
-    if window_count > window_length
-        window_count = 1;
-        window_std = std(window_buffer);
-        if window_std < 0.1
-            alignment_end = i;
-            break;
-        end
-    end
-end
-if alignment_end >= window_length
-    alignment_start = alignment_end - window_length + 1;
-end
+action_start = 0;
+action_end = 0;
+action_start_index = 0;
+action_end_index = 0;
 
 % g~ in body frame is [g_x, g_y, g_z], and g~b = Cnb*[0, 0, g]
-g_x = -mean(Acc(alignment_start:alignment_end,1));
-g_y = -mean(Acc(alignment_start:alignment_end,2));
-g_z = -mean(Acc(alignment_start:alignment_end,3));
+g_x = -mean(Acc(1:window_length,1));
+g_y = -mean(Acc(1:window_length,2));
+g_z = -mean(Acc(1:window_length,3));
 pitch_initial = -asin(g_x/9.8);
 roll_initial = atan2(g_y/9.8, g_z/9.8);
 q = euler2q(yaw_initial, pitch_initial, roll_initial);
 
 for i = 1 : N
 %% attitude integration process
-    dt = 10/1000; % 100Hz output rate
+    dt = 1/40; % 40Hz output rate
     
     Cbn = q2dcm(q);
     Cnb = Cbn';
@@ -134,9 +104,8 @@ for i = 1 : N
     q = q + dq*dt;
     q = q_norm(q);
     
-
-%% acc fuison for bias estimate and attitude correction 
-    if i < action_start || i > action_end
+%% acc fuison for bias estimate and attitude correction
+    if action_start ~= 1
         Cbn = q2dcm(q);
         F(1, 4) = -Cbn(1, 1);
         F(1, 5) = -Cbn(1, 2);
@@ -233,16 +202,70 @@ for i = 1 : N
     end
 
 %% ins mechanization
-    if i >= action_start && i <= action_end
-        f_b = Acc(i, :)' - acc_bias;
-        f_p = Cbn*f_b;
-        acc_liner_p(i, :) = f_p - cross((2*Wiep+Wepp), [vN(i); vE(i); vD(i)]) + G_vector;
-        % static constrain
-        for j = 1:3
-            if abs(acc_liner_p(i, j)) < 1
-                acc_liner_p(i, j) = 0;
-            end
+    f_b = Acc(i, :)' - acc_bias;
+    f_p = Cbn*f_b;
+     % static constrain
+    for j = 1:3
+        if abs(f_p(j)) < 1
+            f_p(j) = 0;
         end
+    end
+    %% use liner acc to detect action start and end
+    liner_acc_x = f_p(1);
+    switch curve_condition
+        case peace
+            if liner_acc_x > 10
+                action_start = 1;
+                action_start_index = i;
+                curve_condition = step1;
+            end
+ 
+        case step1
+            if liner_acc_x > liner_acc_x_last
+                slop = 1;
+            else
+                slop = -1;
+                % reach the up peak
+                if liner_acc_x_last < 20
+                    % false peak
+                    curve_condition = peace;
+                    action_start = 0;
+                    action_start_index = 0;
+                else
+                    curve_condition = step2;
+                end
+            end
+            
+        case step2
+            if liner_acc_x > liner_acc_x_last
+                slop = 1;
+                % reach the down peak
+                if liner_acc_x_last > -20
+                    % false peak
+                else
+                    curve_condition = step3;
+                end
+            else
+                slop = -1;
+            end
+            
+        case step3
+            if liner_acc_x > liner_acc_x_last
+                slop = 1;
+            else
+                slop = -1;
+            end
+            if liner_acc_x > -10 && liner_acc_x < 10
+                action_end = 1;
+                action_end_index = i - 1;
+                curve_condition = peace;
+            end
+    end
+    liner_acc_x_last = liner_acc_x;
+
+    %% ins
+    acc_liner_p(i, :) = f_p - cross((2*Wiep+Wepp), [vN(i); vE(i); vD(i)]) + G_vector;
+    if action_start == 1 && action_end == 0;
         vN(i) = vN(i-1) + (acc_liner_p(i, 1) + acc_liner_p(i-1, 1))*dt/2;
         vE(i) = vE(i-1) + (acc_liner_p(i, 2) + acc_liner_p(i-1, 2))*dt/2;
         vD(i) = vD(i-1) + (acc_liner_p(i, 3) + acc_liner_p(i-1, 3))*dt/2;
@@ -250,12 +273,16 @@ for i = 1 : N
         pE(i) = pE(i-1) + (vE(i) + vE(i-1))*dt/2;
         pD(i) = pD(i-1) + (vD(i) + vD(i-1))*dt/2;
 %% store result data
-        % NED(xyz) -> Unity3D(XYZ): right hand -> left hand
-        % X = x, Y = y, Z = -z
+        % Rotate: NED(xyz) -> Unity3D(XYZ): right hand -> left hand
+        % X = -x, Y = -y, Z = z
+        
+        % Transform: NED(xyz) -> Unity3D(XYZ):
+        % X = x, Y = -z, Z = -Y
+        
         unity_x = pN(i);
-        unity_y = pE(i);
-        unity_z = pD(i);
-        unity_q = [q(1), q(2), q(3), -q(4)];
+        unity_y = -pD(i);
+        unity_z = -pE(i);
+        unity_q = [q(1), -q(2), -q(3), q(4)];
         fprintf(fd, '%d %f %f %f %f %f %f %f\r\n', Time(i),unity_x, unity_y, unity_z, unity_q(1), unity_q(2), unity_q(3), unity_q(4));
     end
 end
@@ -273,6 +300,24 @@ title('acc measurement');
 legend('x', 'y', 'z');
 xlabel('sample point');
 ylabel('acc (g)');
+end
+
+if 0
+figure;
+for i = 1 : length(Acc)
+    acc_det(i) = norm(Acc(i, :));
+end
+plot(acc_det, 'r');
+title('acc measurement');
+legend('acc det');
+xlabel('sample point');
+ylabel('acc (g)');
+end
+
+if 1
+figure;
+plot(acc_liner_p(:, 1), 'r');
+title('liner acc x');
 end
 
 % yaw
@@ -310,7 +355,7 @@ ylabel('roll (degree)');
 
 % position
 figure;
-plot3(pN(action_start-1:action_end), pE(action_start-1:action_end), pD(action_start-1:action_end), 'r', 'linewidth', 3);
+plot3(pN(action_start_index:action_end_index), pE(action_start_index:action_end_index), pD(action_start_index:action_end_index), 'r', 'linewidth', 3);
 title('position');
 box on;
 grid;
@@ -322,19 +367,19 @@ axis equal;
 % velocity
 if 0
 figure;
-plot(vN(action_start-1:action_end), 'r');
+plot(vN(action_start_index:action_end_index), 'r');
 xlabel('sample point');
 ylabel('velocity (m/s)');
 title('X velocity');
 
 figure;
-plot(vE(action_start-1:action_end), 'r');
+plot(vE(action_start_index:action_end_index), 'r');
 xlabel('sample point');
 ylabel('velocity (m/s)');
 title('Y velocity');
 
 figure;
-plot(vD(action_start-1:action_end), 'r');
+plot(vD(action_start_index:action_end_index), 'r');
 xlabel('sample point');
 ylabel('velocity (m/s)');
 title('Z velocity');
