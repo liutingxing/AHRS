@@ -1,7 +1,7 @@
 clear all;
 clc;
 
-fin = fopen('正手田区1次1.txt', 'r');
+fin = fopen('leonPingPong.txt', 'r');
 fout = fopen('actionData.txt', 'w');
 if fin == -1
     fprintf('file not exist');

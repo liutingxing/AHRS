@@ -212,54 +212,56 @@ for i = 1 : N
     end
     %% use liner acc to detect action start and end
     liner_acc_x = f_p(1);
-    switch curve_condition
-        case peace
-            if liner_acc_x > 10
-                action_start = 1;
-                action_start_index = i;
-                curve_condition = step1;
-            end
- 
-        case step1
-            if liner_acc_x > liner_acc_x_last
-                slop = 1;
-            else
-                slop = -1;
-                % reach the up peak
-                if liner_acc_x_last < 20
-                    % false peak
+    if action_end ~= 1
+        switch curve_condition
+            case peace
+                if liner_acc_x > 10
+                    action_start = 1;
+                    action_start_index = i;
+                    curve_condition = step1;
+                end
+
+            case step1
+                if liner_acc_x > liner_acc_x_last
+                    slop = 1;
+                else
+                    slop = -1;
+                    % reach the up peak
+                    if liner_acc_x_last < 20
+                        % false peak
+                        curve_condition = peace;
+                        action_start = 0;
+                        action_start_index = 0;
+                    else
+                        curve_condition = step2;
+                    end
+                end
+
+            case step2
+                if liner_acc_x > liner_acc_x_last
+                    slop = 1;
+                    % reach the down peak
+                    if liner_acc_x_last > -20
+                        % false peak
+                    else
+                        curve_condition = step3;
+                    end
+                else
+                    slop = -1;
+                end
+
+            case step3
+                if liner_acc_x > liner_acc_x_last
+                    slop = 1;
+                else
+                    slop = -1;
+                end
+                if liner_acc_x > -10 && liner_acc_x < 10
+                    action_end = 1;
+                    action_end_index = i - 1;
                     curve_condition = peace;
-                    action_start = 0;
-                    action_start_index = 0;
-                else
-                    curve_condition = step2;
                 end
-            end
-            
-        case step2
-            if liner_acc_x > liner_acc_x_last
-                slop = 1;
-                % reach the down peak
-                if liner_acc_x_last > -20
-                    % false peak
-                else
-                    curve_condition = step3;
-                end
-            else
-                slop = -1;
-            end
-            
-        case step3
-            if liner_acc_x > liner_acc_x_last
-                slop = 1;
-            else
-                slop = -1;
-            end
-            if liner_acc_x > -10 && liner_acc_x < 10
-                action_end = 1;
-                action_end_index = i - 1;
-                curve_condition = peace;
-            end
+        end
     end
     liner_acc_x_last = liner_acc_x;
 
@@ -283,7 +285,7 @@ for i = 1 : N
         unity_y = -pD(i);
         unity_z = -pE(i);
         unity_q = [q(1), -q(2), -q(3), q(4)];
-        fprintf(fd, '%d %f %f %f %f %f %f %f\r\n', Time(i),unity_x, unity_y, unity_z, unity_q(1), unity_q(2), unity_q(3), unity_q(4));
+        fprintf(fd, '%d %f %f %f %f %f %f %f\r\n', i,unity_x, unity_y, unity_z, unity_q(1), unity_q(2), unity_q(3), unity_q(4));
     end
 end
 fclose(fd);
