@@ -61,6 +61,9 @@ step2 = 2;
 step3 = 3;
 curve_condition = 0;
 
+platform_omega_Zmax = 0;
+platform_omega_Zmin = 0;
+
 fd = fopen('DataForPlatform.txt', 'w+');
 fp = fopen('Angle.txt', 'w+');
 
@@ -202,6 +205,9 @@ for i = 1 : N
         [yaw(i), pitch(i), roll(i)] = dcm2euler(Cbn);
     end
     fprintf(fp, '%d %f %f %f\r\n', i, yaw(i), pitch(i), roll(i));
+    
+%% platform omega
+    platform_omega(i, :) = Cbn * Wpbb;
 
 %% ins mechanization
     f_b = Acc(i, :)' - acc_bias;
@@ -234,6 +240,8 @@ for i = 1 : N
                         curve_condition = peace;
                         action_start = 0;
                         action_start_index = 0;
+                        platform_omega_Zmax = 0;
+                        platform_omega_Zmin = 0;
                     else
                         curve_condition = step2;
                     end
@@ -276,6 +284,14 @@ for i = 1 : N
         pN(i) = pN(i-1) + (vN(i) + vN(i-1))*dt/2;
         pE(i) = pE(i-1) + (vE(i) + vE(i-1))*dt/2;
         pD(i) = pD(i-1) + (vD(i) + vD(i-1))*dt/2;
+        
+        if platform_omega(i, 3) > platform_omega_Zmax
+            platform_omega_Zmax = platform_omega(i, 3);
+        end
+        
+        if platform_omega(i, 3) < platform_omega_Zmin
+            platform_omega_Zmin = platform_omega(i, 3);
+        end
 %% store result data
         % Rotate: NED(xyz) -> Unity3D(XYZ): right hand -> left hand
         % X = -x, Y = -y, Z = z
@@ -293,6 +309,12 @@ end
 fclose(fd);
 fclose(fp);
 
+if abs(platform_omega_Zmax) > abs(platform_omega_Zmin)
+    fprintf('back hand');
+else
+    fprintf('fore hand');
+end
+
 %% display result
 % acc measurement
 if 0
@@ -304,21 +326,36 @@ plot(Acc(:, 3), 'b');
 title('acc measurement');
 legend('x', 'y', 'z');
 xlabel('sample point');
-ylabel('acc (g)');
+ylabel('acc (m/s2)');
 end
 
+% gyro measurement
 if 0
-figure;
-for i = 1 : length(Acc)
-    acc_det(i) = norm(Acc(i, :));
-end
-plot(acc_det, 'r');
-title('acc measurement');
-legend('acc det');
+figure
+plot(Gyro(:, 1), 'r');
+hold on;
+plot(Gyro(:, 2), 'g');
+plot(Gyro(:, 3), 'b');
+title('gyro measurement');
+legend('x', 'y', 'z');
 xlabel('sample point');
-ylabel('acc (g)');
+ylabel('gyro (rad/s)');
 end
 
+% platform omega
+if 1
+figure;
+plot(platform_omega(:, 1), 'r');
+hold on;
+plot(platform_omega(:, 2), 'g');
+plot(platform_omega(:, 3), 'b');
+title('platform omega');
+legend('x', 'y', 'z');
+xlabel('sample point');
+ylabel('omega (rad/s)');
+end
+
+% liner accelerate
 if 1
 figure;
 plot(acc_liner_p(:, 1), 'r');
