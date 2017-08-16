@@ -62,6 +62,7 @@ step3 = 3;
 curve_condition = 0;
 
 fd = fopen('DataForPlatform.txt', 'w+');
+fp = fopen('Angle.txt', 'w+');
 
 %% initial alignment
 yaw_initial = 0;
@@ -200,6 +201,7 @@ for i = 1 : N
         Cbn = q2dcm(q);
         [yaw(i), pitch(i), roll(i)] = dcm2euler(Cbn);
     end
+    fprintf(fp, '%d %f %f %f\r\n', i, yaw(i), pitch(i), roll(i));
 
 %% ins mechanization
     f_b = Acc(i, :)' - acc_bias;
@@ -289,6 +291,7 @@ for i = 1 : N
     end
 end
 fclose(fd);
+fclose(fp);
 
 %% display result
 % acc measurement
@@ -319,7 +322,11 @@ end
 if 1
 figure;
 plot(acc_liner_p(:, 1), 'r');
-title('liner acc x');
+hold on;
+plot(acc_liner_p(:, 2), 'g');
+plot(acc_liner_p(:, 3), 'b');
+legend('x', 'y', 'z');
+title('liner acc');
 end
 
 % yaw
