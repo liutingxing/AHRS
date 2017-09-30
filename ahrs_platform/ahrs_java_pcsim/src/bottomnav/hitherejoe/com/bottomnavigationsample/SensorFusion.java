@@ -221,11 +221,11 @@ public class SensorFusion {
 
             if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
             {
-                trainData.sActionType = "forehand";
+                trainData.sActionType = "backhand";
             }
             else
             {
-                trainData.sActionType = "backhand";
+                trainData.sActionType = "forehand";
             }
 
             // replace the type character in trajectory
