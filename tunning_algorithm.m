@@ -54,6 +54,7 @@ P(6, 6) = sigma_phim_gyro^2;
 P(7, 7) = sigma_phim_acc^2;
 P(8, 8) = sigma_phim_acc^2;
 P(9, 9) = sigma_phim_acc^2;
+kf_count = 1;
 
 peace = 0;
 step1 = 1;
@@ -86,7 +87,11 @@ pitch_initial = -asin(g_x/9.8);
 roll_initial = atan2(g_y/9.8, g_z/9.8);
 q = euler2q(yaw_initial, pitch_initial, roll_initial);
 
-for i = 1 : N
+% gyro calibration
+gyro_bias = mean(Gyro(1:window_length, :))';
+
+
+for i = 101 : N
 %% attitude integration process
     dt = 1/40; % 40Hz output rate
     
@@ -110,6 +115,7 @@ for i = 1 : N
     
 %% acc fuison for bias estimate and attitude correction
     if action_start ~= 1
+        deltaT = dt*kf_count;
         Cbn = q2dcm(q);
         F(1, 4) = -Cbn(1, 1);
         F(1, 5) = -Cbn(1, 2);
@@ -157,11 +163,11 @@ for i = 1 : N
         Q_basic = G*qdt*G';
         M1 = Q_basic;
         M2 = Q_basic*F'+F*Q_basic;
-        Q = dt*M1 + 1/2*dt*dt*M2;
+        Q = deltaT*M1 + 1/2*deltaT*deltaT*M2;
 
         % PHIM matrix discretization-2 order
         I = eye(9, 9);
-        PHIM = I + dt*F + 1/2*dt*dt*F*F;
+        PHIM = I + deltaT*F + 1/2*deltaT*deltaT*F*F;
         
         % predict
         x = PHIM*x;
@@ -182,9 +188,9 @@ for i = 1 : N
         H(3, 9) = Cbn(3, 3);
 
         R = eye(3, 3);
-        R(1, 1) = 0.5^2;
-        R(2, 2) = 0.5^2;
-        R(3, 3) = 0.5^2;
+        R(1, 1) = 5^2;
+        R(2, 2) = 5^2;
+        R(3, 3) = 5^2;
         
         acc_liner_b = zeros(3, 1);
         g_estimate = Cbn*(acc_bias - Acc(i, :)' + acc_liner_b);
@@ -200,9 +206,11 @@ for i = 1 : N
         acc_bias = acc_bias + x(7:9);
         gyro_bias = gyro_bias + x(4:6);
         x(1:9) = 0;
+        kf_count = 1;
     else
         Cbn = q2dcm(q);
         [yaw(i), pitch(i), roll(i)] = dcm2euler(Cbn);
+        kf_count = kf_count + 1;
     end
     fprintf(fp, '%d %f %f %f\r\n', i, yaw(i), pitch(i), roll(i));
     
@@ -360,8 +368,8 @@ if 1
 figure;
 plot(acc_liner_p(:, 1), 'r');
 hold on;
-plot(acc_liner_p(:, 2), 'g');
-plot(acc_liner_p(:, 3), 'b');
+%plot(acc_liner_p(:, 2), 'g');
+%plot(acc_liner_p(:, 3), 'b');
 legend('x', 'y', 'z');
 title('liner acc');
 end

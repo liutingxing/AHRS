@@ -83,9 +83,9 @@ public class SensorKalman {
         H.set(2, 7, fCbn[2][1]);
         H.set(2, 8, fCbn[2][2]);
 
-        R.set(0, 0, 5*5);
-        R.set(1, 1, 5*5);
-        R.set(2, 2, 5*5);
+        R.set(0, 0, 15*15);
+        R.set(1, 1, 15*15);
+        R.set(2, 2, 15*15);
 
         gEstimate = Cbn.times(Acc.times(-1));
         Z = Gvector.minus(gEstimate);

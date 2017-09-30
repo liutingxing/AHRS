@@ -43,6 +43,7 @@ public class SensorFusion {
     public final static double SAMPLE_RATE = 40;
 
     private final static int STATE_NUM = 9;
+    private int uKfCount = 1;
 
     private final static int Peace = 0;
     private final static int Step1 = 1;
@@ -150,9 +151,32 @@ public class SensorFusion {
         // kalman filter fusion
         if (uKalmanFusionFlag == true)
         {
-            sensorKalman.sensorFusionKalman(dt, acc, fCbn);
-            // error correction
-            errCorrection(sensorKalman);
+        	Matrix Acc = new Matrix(acc, 3);
+        	Matrix Cbn = new Matrix(fCbn);
+            double[] G = {0, 0, SensorFusion.GRAVITY};
+            Matrix Gvector = new Matrix(G, 3);
+            Matrix gEstimate;
+            Matrix res;
+            
+        	gEstimate = Cbn.times(Acc.times(-1));
+        	res = Gvector.minus(gEstimate);
+        	
+        	// check if measurement is reasonable
+        	if (res.norm2()< SensorFusion.GRAVITY * 1.2)
+        	{
+        		sensorKalman.sensorFusionKalman(dt*uKfCount, acc, fCbn);
+                // error correction
+                errCorrection(sensorKalman);
+                uKfCount = 1;
+        	}
+        	else
+        	{
+        		uKfCount++;
+        	}
+        }
+        else
+        {
+        	uKfCount++;
         }
 
         // action detect

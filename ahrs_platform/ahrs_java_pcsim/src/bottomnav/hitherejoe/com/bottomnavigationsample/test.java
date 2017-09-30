@@ -22,7 +22,7 @@ public class test {
                 int i;
                 String[] sections = tempString.split(" ");
                 
-            	System.out.println("line " + line + ": " + tempString);
+            	//System.out.println("line " + line + ": " + tempString);
             	// parse the sensor data
             	for (i = 0; i < 3; i++)
                 {
@@ -34,6 +34,12 @@ public class test {
             	if (sAttitude != null)
             	{
             		writer.write(sAttitude + "\r\n");
+            	}
+            	if (sensorFusion.uActionComplete == true)
+            	{
+            		System.out.println("--------------------------------------------------------------------------------------------------------------------------\r\n");
+            		System.out.println(sensorFusion.trainData.sTrajectory);
+            		System.out.println("--------------------------------------------------------------------------------------------------------------------------\r\n");
             	}
                 line++;
             }
