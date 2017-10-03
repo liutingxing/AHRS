@@ -188,9 +188,9 @@ for i = 101 : N
         H(3, 9) = Cbn(3, 3);
 
         R = eye(3, 3);
-        R(1, 1) = 5^2;
-        R(2, 2) = 5^2;
-        R(3, 3) = 5^2;
+        R(1, 1) = 15^2;
+        R(2, 2) = 15^2;
+        R(3, 3) = 15^2;
         
         acc_liner_b = zeros(3, 1);
         g_estimate = Cbn*(acc_bias - Acc(i, :)' + acc_liner_b);
