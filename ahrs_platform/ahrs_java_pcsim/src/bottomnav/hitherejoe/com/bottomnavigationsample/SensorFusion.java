@@ -139,10 +139,10 @@ public class SensorFusion {
         // AHRS/INS process
         sAttitude = new StringBuffer();
 
-/*        if (uStaticFlag == true) {
+        if (uStaticFlag == true) {
             gyroCalibration(fAlignGyroArray);
             fAlignGyroArray.clear();
-        }*/
+        }
 
         sensorDataCorrection(gyro, acc);
         // quaternion integration
