@@ -408,6 +408,7 @@ xlabel('sample point');
 ylabel('roll (degree)');
 
 % position
+if 0
 figure;
 plot3(pN(action_start_index:action_end_index), pE(action_start_index:action_end_index), pD(action_start_index:action_end_index), 'r', 'linewidth', 3);
 title('position');
@@ -417,6 +418,7 @@ xlabel('X');
 ylabel('Y');
 zlabel('Z');
 axis equal;
+end
 
 % velocity
 if 0

@@ -129,6 +129,7 @@ public class SensorFusion {
                 // initial alignment
                 if (sensorAlignment(fAlignAccArray) == true) {
                     gyroCalibration(fAlignGyroArray);
+                    fAlignGyroArray.clear();
                     uAlignFlag = true;
                 }
             }
