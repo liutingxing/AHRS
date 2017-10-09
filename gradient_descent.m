@@ -39,6 +39,10 @@ step2 = 2;
 step3 = 3;
 curve_condition = 0;
 
+%% low pass filter for acc
+[b, a] = butter(2, 5/25, 'low');
+Acc = filter(b, a, Acc);
+
 %% initial alignment
 yaw_initial = 0;
 pitch_initial = 0;
