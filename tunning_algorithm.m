@@ -62,6 +62,8 @@ step2 = 2;
 step3 = 3;
 curve_condition = 0;
 
+action_count = 0;
+
 platform_omega_Zmax = 0;
 platform_omega_Zmin = 0;
 
@@ -282,6 +284,13 @@ for i = 101 : N
         end
     end
     liner_acc_x_last = liner_acc_x;
+    
+    if action_end == 1
+        action_count = action_count + 1;
+        action_array(action_count, :) = [action_start_index, action_end_index];
+        action_end = 0;
+        action_start = 0;
+    end
 
     %% ins
     acc_liner_p(i, :) = f_p - cross((2*Wiep+Wepp), [vN(i); vE(i); vD(i)]) + G_vector;
@@ -351,7 +360,7 @@ ylabel('gyro (rad/s)');
 end
 
 % platform omega
-if 1
+if 0
 figure;
 plot(platform_omega(:, 1), 'r');
 hold on;
@@ -368,13 +377,14 @@ if 1
 figure;
 plot(acc_liner_p(:, 1), 'r');
 hold on;
-%plot(acc_liner_p(:, 2), 'g');
-%plot(acc_liner_p(:, 3), 'b');
+% plot(acc_liner_p(:, 2), 'g');
+% plot(acc_liner_p(:, 3), 'b');
 legend('x', 'y', 'z');
 title('liner acc');
 end
 
 % yaw
+if 1
 figure;
 plot(yaw*180/pi, 'r');
 hold on;
@@ -406,18 +416,23 @@ grid on;
 title('roll comparison');
 xlabel('sample point');
 ylabel('roll (degree)');
+end
 
 % position
-if 0
-figure;
-plot3(pN(action_start_index:action_end_index), pE(action_start_index:action_end_index), pD(action_start_index:action_end_index), 'r', 'linewidth', 3);
-title('position');
-box on;
-grid;
-xlabel('X');
-ylabel('Y');
-zlabel('Z');
-axis equal;
+if 1
+for i = 1:action_count
+    figure;
+    action_start_index = action_array(i, 1);
+    action_end_index = action_array(i, 2);
+    plot3(pN(action_start_index:action_end_index), pE(action_start_index:action_end_index), pD(action_start_index:action_end_index), 'r', 'linewidth', 3);
+    title(['position', num2str(i)]);
+    box on;
+    grid;
+    xlabel('X');
+    ylabel('Y');
+    zlabel('Z');
+    axis equal; 
+end
 end
 
 % velocity

@@ -15,7 +15,7 @@ Acc = ahrs_data(:, 9:11) * 9.8;              % ( m/s2 )
 
 
 %% variable prepare
-G_vector = [0, 0, 1]'; % NED frame, Unit: g
+G_vector = [0, 0, 9.8]'; % NED frame, Unit: m/s2
 N = length(Time);
 gyro_bias = zeros(3, 1);
 acc_bias = zeros(3, 1);
@@ -39,9 +39,11 @@ step2 = 2;
 step3 = 3;
 curve_condition = 0;
 
+action_count = 0;
+
 %% low pass filter for acc
 [b, a] = butter(2, 5/25, 'low');
-Acc = filter(b, a, Acc);
+% Acc = filter(b, a, Acc);
 
 %% initial alignment
 yaw_initial = 0;
@@ -107,6 +109,9 @@ for i = 101 : N
     
     Cbn = q2dcm(q);
     [yaw(i), pitch(i), roll(i)] = dcm2euler(Cbn);
+
+%% platform omega
+    platform_omega(i, :) = Cbn * Wpbb;
 
 %% ins mechanization
     f_b = Acc(i, :)' - acc_bias;
@@ -175,6 +180,8 @@ for i = 101 : N
     liner_acc_x_last = liner_acc_x;
     
     if action_end == 1
+        action_count = action_count + 1;
+        action_array(action_count, :) = [action_start_index, action_end_index];
         action_end = 0;
         action_start = 0;
     end
@@ -218,18 +225,32 @@ xlabel('sample point');
 ylabel('gyro (rad/s)');
 end
 
+% platform omega
+if 0
+figure;
+plot(platform_omega(:, 1), 'r');
+hold on;
+plot(platform_omega(:, 2), 'g');
+plot(platform_omega(:, 3), 'b');
+title('platform omega');
+legend('x', 'y', 'z');
+xlabel('sample point');
+ylabel('omega (rad/s)');
+end
+
 % liner accelerate
 if 1
 figure;
 plot(acc_liner_p(:, 1), 'r');
 hold on;
-%plot(acc_liner_p(:, 2), 'g');
-%plot(acc_liner_p(:, 3), 'b');
+% plot(acc_liner_p(:, 2), 'g');
+% plot(acc_liner_p(:, 3), 'b');
 legend('x', 'y', 'z');
 title('liner acc');
 end
 
 % yaw
+if 1
 figure;
 plot(yaw*180/pi, 'r');
 hold on;
@@ -261,22 +282,45 @@ grid on;
 title('roll comparison');
 xlabel('sample point');
 ylabel('roll (degree)');
-
-% position
-if 0
-figure;
-plot3(pN(action_start_index:action_end_index), pE(action_start_index:action_end_index), pD(action_start_index:action_end_index), 'r', 'linewidth', 3);
-title('position');
-box on;
-grid;
-xlabel('X');
-ylabel('Y');
-zlabel('Z');
-axis equal;
 end
 
+% position
+if 1
+for i = 1:action_count
+    figure;
+    action_start_index = action_array(i, 1);
+    action_end_index = action_array(i, 2);
+    plot3(pN(action_start_index:action_end_index), pE(action_start_index:action_end_index), pD(action_start_index:action_end_index), 'r', 'linewidth', 3);
+    title(['position', num2str(i)]);
+    box on;
+    grid;
+    xlabel('X');
+    ylabel('Y');
+    zlabel('Z');
+    axis equal; 
+end
+end
 
+% velocity
+if 0
+figure;
+plot(vN(action_start_index:action_end_index), 'r');
+xlabel('sample point');
+ylabel('velocity (m/s)');
+title('X velocity');
 
+figure;
+plot(vE(action_start_index:action_end_index), 'r');
+xlabel('sample point');
+ylabel('velocity (m/s)');
+title('Y velocity');
+
+figure;
+plot(vD(action_start_index:action_end_index), 'r');
+xlabel('sample point');
+ylabel('velocity (m/s)');
+title('Z velocity');
+end
 
 
 
