@@ -201,7 +201,7 @@ public class SensorFusion {
             // platform omega
             for (i = 0; i < 3; i++)
             {
-                fPlatformOmega[i] = fCnb[i][0] * gyro[0] + fCnb[i][1] * gyro[1] + fCnb[i][2] * gyro[2];
+                fPlatformOmega[i] = fCbn[i][0] * gyro[0] + fCbn[i][1] * gyro[1] + fCbn[i][2] * gyro[2];
             }
 
             if (fPlatformOmega[2] > fPlatformOmegaMaxZ)
