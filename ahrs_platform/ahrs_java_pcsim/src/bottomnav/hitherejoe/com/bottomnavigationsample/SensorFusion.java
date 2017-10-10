@@ -51,6 +51,8 @@ public class SensorFusion {
     private final static int Step3 = 3;
     private int iCurveCondition = Peace;
     private double fLinerAccXLast = 0.0;
+    private double actionTime = 0.0;
+    private double downTime = 0.0;
 
     private double fPlatformOmegaMaxZ = 0.0;
     private double fPlatformOmegaMinZ = 0.0;
@@ -146,7 +148,7 @@ public class SensorFusion {
         }
 
         sensorDataCorrection(gyro, acc);
-        // quaternion integration
+        /*// quaternion integration
         quaternionIntegration(dt, gyro);
 
         // kalman filter fusion
@@ -178,10 +180,12 @@ public class SensorFusion {
         else
         {
         	uKfCount++;
-        }
+        }*/
+        // quaternion integration for attitude and heading
+        ahrsProcess(dt, gyro, acc);
 
         // action detect
-        actionDetect(gyro, acc);
+        actionDetect(dt, gyro, acc);
 
         // system condition change
         systemConditionSet();
@@ -280,6 +284,74 @@ public class SensorFusion {
         sAttitude.append("x");
 
         return String.valueOf(sAttitude);
+    }
+
+    private void ahrsProcess(double dt, double[] gyro, double[] acc)
+    {
+        int i = 0;
+        double accNorm = 0;
+        double[] qDot = new double[]{0, 0, 0, 0};
+
+        qDot[0] = -(gyro[0] * fqPl[1] + gyro[1] * fqPl[2] + gyro[2] * fqPl[3]) / 2.0;
+        qDot[1] =  (gyro[0] * fqPl[0] + gyro[2] * fqPl[2] - gyro[1] * fqPl[3]) / 2.0;
+        qDot[2] =  (gyro[1] * fqPl[0] - gyro[2] * fqPl[1] + gyro[0] * fqPl[3]) / 2.0;
+        qDot[3] =  (gyro[2] * fqPl[0] + gyro[1] * fqPl[1] - gyro[0] * fqPl[2]) / 2.0;
+
+        accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
+        if (accNorm < 12.0)
+        {
+            // execute the acc aid process
+            double gyroMeasError = 10 * Math.PI / 180; // gyroscope measurement error in rad/s (shown as 5 deg/s)
+            double beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
+            double[] gEstimate = new double[3];
+            Matrix F = new Matrix(3, 1);
+            Matrix J = new Matrix(3, 4);
+            Matrix step = new Matrix(4, 1);
+
+            gEstimate[0] = -acc[0]/accNorm;
+            gEstimate[1] = -acc[1]/accNorm;
+            gEstimate[2] = -acc[2]/accNorm;
+
+            F.set(0, 0, 2*(fqPl[1]*fqPl[3] - fqPl[0]*fqPl[2]) - gEstimate[0]);
+            F.set(1, 0, 2*(fqPl[0]*fqPl[1] - fqPl[2]*fqPl[3]) - gEstimate[1]);
+            F.set(2, 0, 2*(0.5-fqPl[1]*fqPl[1] - fqPl[2]*fqPl[2]) - gEstimate[2]);
+
+            J.set(0, 0, -2*fqPl[2]);
+            J.set(0, 1, 2*fqPl[3]);
+            J.set(0, 2, -2*fqPl[0]);
+            J.set(0, 3, 2*fqPl[1]);
+
+            J.set(1, 0, 2*fqPl[1]);
+            J.set(1, 1, 2*fqPl[0]);
+            J.set(1, 2, 2*fqPl[3]);
+            J.set(1, 3, 2*fqPl[2]);
+
+            J.set(2, 0, 0);
+            J.set(2, 1, -4*fqPl[1]);
+            J.set(2, 2, -4*fqPl[2]);
+            J.set(2, 3, 0);
+
+            step = J.transpose().times(F);
+            step = step.times(1.0/step.norm2());
+
+            qDot[0] -= beta * step.get(0, 0);
+            qDot[1] -= beta * step.get(1, 0);
+            qDot[2] -= beta * step.get(2, 0);
+            qDot[3] -= beta * step.get(3, 0);
+        }
+
+        for (i = 0; i < 4; i++)
+        {
+            fqPl[i] += qDot[i] * dt;
+        }
+        qNorm(fqPl);
+        q2dcm(fqPl, fCbn);
+        double[] euler = dcm2euler(fCbn);
+        fPsiPl = euler[0];
+        fThePl = euler[1];
+        fPhiPl = euler[2];
+        Matrix temp = new Matrix(fCbn);
+        fCnb = temp.transpose().getArray();
     }
 
     private void systemConditionSet()
@@ -394,7 +466,7 @@ public class SensorFusion {
         }
     }
 
-    private void actionDetect(double[] gyro, double[] acc)
+    private void actionDetect(double dt, double[] gyro, double[] acc)
     {
         int i;
         int slop = 0;
@@ -423,6 +495,7 @@ public class SensorFusion {
                 if (linerAccX > 10){
                     uActionStartFlag = true;
                     iCurveCondition = Step1;
+                    actionTime = 0;
 
                     // add origin point data
                     sTrajectory.append(String.valueOf(uTime));
@@ -447,6 +520,7 @@ public class SensorFusion {
                 break;
 
             case Step1:
+                actionTime += dt;
                 if (linerAccX > fLinerAccXLast){
                     slop = 1;
                 }else{
@@ -458,11 +532,19 @@ public class SensorFusion {
                         uActionStartFlag = false;
                     }else{
                         iCurveCondition = Step2;
+                        downTime = 0;
                     }
                 }
                 break;
 
             case Step2:
+                actionTime += dt;
+                downTime += dt;
+                if (downTime > 0.2)
+                {
+                    iCurveCondition = Peace;
+                    uActionStartFlag = false;
+                }
                 if (linerAccX > fLinerAccXLast){
                     slop = 1;
                     // reach the down peak
@@ -479,13 +561,21 @@ public class SensorFusion {
                 break;
 
             case Step3:
+                actionTime += dt;
                 if (linerAccX > fLinerAccXLast){
                     slop = 1;
                 }else {
                     slop = -1;
                 }
-                if (linerAccX > -30 && linerAccX < 10){
-                    uActionEndFlag = true;
+                if (linerAccX > -10 && linerAccX < 10){
+                    if (actionTime > 0.2)
+                    {
+                        uActionEndFlag = true;
+                    }
+                    else
+                    {
+                        uActionStartFlag = false;
+                    }
                     iCurveCondition = Peace;
                 }
                 break;
