@@ -12,6 +12,7 @@ Acc = ahrs_data(:, 9:11) * 9.8;              % ( m/s2 )
 % Mag = ahrs_data(:, 12:14);                   % ( count )
 
 %% variable prepare
+dt = 1/40; % 40Hz output rate
 G_vector = [0, 0, 9.8]';
 N = length(Time);
 yaw = zeros(N, 1);
@@ -95,8 +96,6 @@ gyro_bias = mean(Gyro(1:window_length, :))';
 
 for i = 101 : N
 %% attitude integration process
-    dt = 1/40; % 40Hz output rate
-    
     Cbn = q2dcm(q);
     Cnb = Cbn';
     
@@ -349,14 +348,14 @@ end
 % gyro measurement
 if 0
 figure
-plot(Gyro(:, 1), 'r');
+plot(Gyro(:, 1)*180/pi, 'r');
 hold on;
-plot(Gyro(:, 2), 'g');
-plot(Gyro(:, 3), 'b');
+plot(Gyro(:, 2)*180/pi, 'g');
+plot(Gyro(:, 3)*180/pi, 'b');
 title('gyro measurement');
 legend('x', 'y', 'z');
 xlabel('sample point');
-ylabel('gyro (rad/s)');
+ylabel('gyro (degree/s)');
 end
 
 % platform omega

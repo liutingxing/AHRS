@@ -15,6 +15,7 @@ Acc = ahrs_data(:, 9:11) * 9.8;              % ( m/s2 )
 
 
 %% variable prepare
+dt = 1/40; % 40Hz output rate
 G_vector = [0, 0, 9.8]'; % NED frame, Unit: m/s2
 N = length(Time);
 gyro_bias = zeros(3, 1);
@@ -38,6 +39,8 @@ step1 = 1;
 step2 = 2;
 step3 = 3;
 curve_condition = 0;
+down_time = 0;
+action_time = 0;
 
 action_count = 0;
 
@@ -69,8 +72,6 @@ gyro_bias = mean(Gyro(1:window_length, :))';
 
 
 for i = 101 : N
-    dt = 1/40; % 40Hz output rate
-
 %% AHRS process
     
     % Compute rate of change of quaternion
@@ -86,7 +87,9 @@ for i = 101 : N
     % Compute rate of change of quaternion
     qDot = 0.5 * quaternProd(q, [0; Wpbb])';
     
-    if action_start ~= 1
+%     if action_start ~= 1
+    acc_norm = norm(Acc(i, :));
+    if acc_norm < 12
          % Normalise accelerometer measurement
         g_measurement = -Acc(i, :)';
         g_measurement = g_measurement / norm(g_measurement);
@@ -132,9 +135,11 @@ for i = 101 : N
                 action_start = 1;
                 action_start_index = i;
                 curve_condition = step1;
+                action_time = 0;
             end
 
         case step1
+            action_time = action_time + dt;
             if liner_acc_x > liner_acc_x_last
                 slop = 1;
             else
@@ -144,20 +149,25 @@ for i = 101 : N
                     % false peak
                     curve_condition = peace;
                     action_start = 0;
-                    action_start_index = 0;
-                    platform_omega_Zmax = 0;
-                    platform_omega_Zmin = 0;
                 else
                     curve_condition = step2;
+                    down_time = 0;
                 end
             end
 
         case step2
+            down_time = down_time + dt;
+            action_time = action_time + dt;
+            if down_time > 0.2
+                % timeout for trough
+                curve_condition = peace;
+                action_start = 0;
+            end
             if liner_acc_x > liner_acc_x_last
                 slop = 1;
-                % reach the down peak
+                % reach the trough
                 if liner_acc_x_last > -20
-                    % false peak
+                    % false trough
                 else
                     curve_condition = step3;
                 end
@@ -166,14 +176,19 @@ for i = 101 : N
             end
 
         case step3
+            action_time = action_time + dt;
             if liner_acc_x > liner_acc_x_last
                 slop = 1;
             else
                 slop = -1;
             end
             if liner_acc_x > -10 && liner_acc_x < 10
-                action_end = 1;
-                action_end_index = i - 1;
+                if action_time > 0.2
+                    action_end = 1;
+                    action_end_index = i - 1;
+                else
+                    action_start = 0;
+                end
                 curve_condition = peace;
             end
     end
@@ -215,14 +230,14 @@ end
 % gyro measurement
 if 0
 figure
-plot(Gyro(:, 1), 'r');
+plot(Gyro(:, 1)*180/pi, 'r');
 hold on;
-plot(Gyro(:, 2), 'g');
-plot(Gyro(:, 3), 'b');
+plot(Gyro(:, 2)*180/pi, 'g');
+plot(Gyro(:, 3)*180/pi, 'b');
 title('gyro measurement');
 legend('x', 'y', 'z');
 xlabel('sample point');
-ylabel('gyro (rad/s)');
+ylabel('gyro (degree/s)');
 end
 
 % platform omega
