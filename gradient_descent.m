@@ -44,6 +44,9 @@ action_time = 0;
 
 action_count = 0;
 
+platform_omega_Zmax = 0;
+platform_omega_Zmin = 0;
+
 %% low pass filter for acc
 [b, a] = butter(2, 5/25, 'low');
 % Acc = filter(b, a, Acc);
@@ -204,6 +207,14 @@ for i = 101 : N
     % ins
     acc_liner_p(i, :) = f_p - cross((2*Wiep+Wepp), [vN(i); vE(i); vD(i)]) + G_vector;
     if action_start == 1 && action_end == 0;
+        if platform_omega(i, 3) > platform_omega_Zmax
+            platform_omega_Zmax = platform_omega(i, 3);
+        end
+        
+        if platform_omega(i, 3) < platform_omega_Zmin
+            platform_omega_Zmin = platform_omega(i, 3);
+        end
+        
         vN(i) = vN(i-1) + (acc_liner_p(i, 1) + acc_liner_p(i-1, 1))*dt/2;
         vE(i) = vE(i-1) + (acc_liner_p(i, 2) + acc_liner_p(i-1, 2))*dt/2;
         vD(i) = vD(i-1) + (acc_liner_p(i, 3) + acc_liner_p(i-1, 3))*dt/2;
@@ -241,11 +252,11 @@ ylabel('gyro (degree/s)');
 end
 
 % platform omega
-if 0
+if 1
 figure;
-plot(platform_omega(:, 1), 'r');
-hold on;
-plot(platform_omega(:, 2), 'g');
+% plot(platform_omega(:, 1), 'r');
+% hold on;
+% plot(platform_omega(:, 2), 'g');
 plot(platform_omega(:, 3), 'b');
 title('platform omega');
 legend('x', 'y', 'z');
@@ -254,7 +265,7 @@ ylabel('omega (rad/s)');
 end
 
 % liner accelerate
-if 1
+if 0
 figure;
 plot(acc_liner_p(:, 1), 'r');
 hold on;
@@ -265,7 +276,7 @@ title('liner acc');
 end
 
 % yaw
-if 1
+if 0
 figure;
 plot(yaw*180/pi, 'r');
 hold on;
@@ -300,7 +311,7 @@ ylabel('roll (degree)');
 end
 
 % position
-if 1
+if 0
 for i = 1:action_count
     figure;
     action_start_index = action_array(i, 1);
