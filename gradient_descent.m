@@ -1,9 +1,11 @@
 clear all;
 clc;
 
+MAG_SUPPORT = 1;
+
 addpath('.\quaternion_library');
 
-ahrs_data = load('.\data\actionData.txt');
+ahrs_data = load('.\rotate.txt');
 
 Time = ahrs_data(:, 1);                      % ( ms )
 Roll = ahrs_data(:, 3);                      % ( degree )
@@ -11,11 +13,13 @@ Pitch = ahrs_data(:, 4);                     % ( degree )
 Yaw = ahrs_data(:, 5);                       % ( degree )
 Gyro = ahrs_data(:, 6:8) * pi / 180;         % ( rad/s )
 Acc = ahrs_data(:, 9:11) * 9.8;              % ( m/s2 )
-% Mag = ahrs_data(:, 12:14);                   % ( count )
+if MAG_SUPPORT
+Mag = ahrs_data(:, 12:14);                   % ( count )
+end
 
 
 %% variable prepare
-dt = 1/40; % 40Hz output rate
+dt = 1/100; % 40Hz output rate
 G_vector = [0, 0, 9.8]'; % NED frame, Unit: m/s2
 N = length(Time);
 gyro_bias = zeros(3, 1);
@@ -52,10 +56,6 @@ platform_omega_Zmin = 0;
 % Acc = filter(b, a, Acc);
 
 %% initial alignment
-yaw_initial = 0;
-pitch_initial = 0;
-roll_initial = 0;
-
 window_length = 100;
 action_start = 0;
 action_end = 0;
@@ -66,8 +66,19 @@ action_end_index = 0;
 g_x = -mean(Acc(1:window_length,1));
 g_y = -mean(Acc(1:window_length,2));
 g_z = -mean(Acc(1:window_length,3));
-pitch_initial = -asin(g_x/9.8);
-roll_initial = atan2(g_y/9.8, g_z/9.8);
+if MAG_SUPPORT
+    m_x = mean(Mag(1:window_length,1));
+    m_y = mean(Mag(1:window_length,2));
+    m_z = mean(Mag(1:window_length,3));
+    Cnb_initial = ecompass_ned([g_x, g_y, g_z], [m_x, m_y, m_z]);
+    Cbn_initial = Cnb_initial';
+    [yaw_initial, pitch_initial, roll_initial] = dcm2euler(Cbn_initial);
+    Cnp = euler2dcm(yaw_initial, 0, 0)'; % reverse the NED frame to platform frame(yaw_initial = 0)
+else
+    yaw_initial = 0;
+    pitch_initial = -asin(g_x/9.8);
+    roll_initial = atan2(g_y/9.8, g_z/9.8);
+end
 q = euler2q(yaw_initial, pitch_initial, roll_initial);
 
 % gyro calibration
@@ -86,14 +97,14 @@ for i = 101 : N
     Wipp = Wiep + Wepp;
     Wipb = Cnb * Wipp;
     Wpbb = Gyro(i, :)' - gyro_bias - Wipb;
-    
+
     % Compute rate of change of quaternion
     qDot = 0.5 * quaternProd(q, [0; Wpbb])';
-    
+
 %     if action_start ~= 1
     acc_norm = norm(Acc(i, :));
     if acc_norm < 12
-         % Normalise accelerometer measurement
+        % Normalise accelerometer measurement
         g_measurement = -Acc(i, :)';
         g_measurement = g_measurement / norm(g_measurement);
 
@@ -106,14 +117,35 @@ for i = 101 : N
             0,         -4*q(2),    -4*q(3),	0    ];
         step = (J'*F);
         step = step / norm(step);	% normalise step magnitude
-        qDot = qDot - beta * step;   
+        qDot = qDot - beta * step;
+        if MAG_SUPPORT
+            % Normalise magnetometer measurement
+            Magnetometer = Mag(i, :) / norm(Mag(i, :));
+            
+            % Reference direction of Earth's magnetic feild
+            h = Cbn*Magnetometer';
+            b = [0, norm(h(1), h(2)), 0, h(3)];
+            F = [2*b(2)*(0.5 - q(3)^2 - q(4)^2) + 2*b(4)*(q(2)*q(4) - q(1)*q(3)) - Magnetometer(1)
+                2*b(2)*(q(2)*q(3) - q(1)*q(4)) + 2*b(4)*(q(1)*q(2) + q(3)*q(4)) - Magnetometer(2)
+                2*b(2)*(q(1)*q(3) + q(2)*q(4)) + 2*b(4)*(0.5 - q(2)^2 - q(3)^2) - Magnetometer(3)];
+            J = [-2*b(4)*q(3),               2*b(4)*q(4),               -4*b(2)*q(3)-2*b(4)*q(1),       -4*b(2)*q(4)+2*b(4)*q(2)
+                -2*b(2)*q(4)+2*b(4)*q(2),	2*b(2)*q(3)+2*b(4)*q(1),	2*b(2)*q(2)+2*b(4)*q(4),       -2*b(2)*q(1)+2*b(4)*q(3)
+                2*b(2)*q(3),                2*b(2)*q(4)-4*b(4)*q(2),	2*b(2)*q(1)-4*b(4)*q(3),        2*b(2)*q(2)];
+            step = (J'*F);
+            step = step / norm(step);	% normalise step magnitude
+            qDot = qDot - beta * step;
+        end
     end
 
     % Integrate to yield quaternion
     q = q + qDot * dt;
     q = q / norm(q); % normalise quaternion
     
+    % output euler angle respect to the plarform
     Cbn = q2dcm(q);
+    if MAG_SUPPORT
+        Cbn = Cnp*Cbn;
+    end
     [yaw(i), pitch(i), roll(i)] = dcm2euler(Cbn);
 
 %% platform omega
@@ -252,7 +284,7 @@ ylabel('gyro (degree/s)');
 end
 
 % platform omega
-if 1
+if 0
 figure;
 % plot(platform_omega(:, 1), 'r');
 % hold on;
@@ -276,7 +308,7 @@ title('liner acc');
 end
 
 % yaw
-if 0
+if 1
 figure;
 plot(yaw*180/pi, 'r');
 hold on;
