@@ -8,13 +8,60 @@ if fin == -1
     exit(-1);
 end
 
+mag_count = 1;
+mag_ready = 0;
+
 while ~feof(fin)
     line = fgets(fin);
 
     entries = regexp(line, ' ', 'split');
     
     header = char(entries(1));
-    sequence = char(entries(2));
+    switch mag_count
+        case 1
+            if strcmp(header, 'F3') == 1
+                mag_count = 2;
+                mag_x_h = char(entries(15));
+                mag_x_l = char(entries(16));
+                mag_x = strcat(mag_x_h, mag_x_l);
+                mag_x = hex2dec(mag_x);
+                if mag_x > 32767
+                    mag_x = mag_x - 65536;
+                end
+                mag_x = mag_x * 0.6;
+            end
+
+        case 2
+            if strcmp(header, 'F1') == 1
+                mag_count = 3;
+                mag_y_h = char(entries(15));
+                mag_y_l = char(entries(16));
+                mag_y = strcat(mag_y_h, mag_y_l);
+                mag_y = hex2dec(mag_y);
+                if mag_y > 32767
+                    mag_y = mag_y - 65536;
+                end
+                mag_y = mag_y * 0.6;
+            else
+                mag_count = 1;
+            end
+
+        case 3
+            if strcmp(header, 'F1') == 1
+                mag_ready = 1;
+                mag_z_h = char(entries(15));
+                mag_z_l = char(entries(16));
+                mag_z = strcat(mag_z_h, mag_z_l);
+                mag_z = hex2dec(mag_z);
+                if mag_z > 32767
+                    mag_z = mag_z - 65536;
+                end
+                mag_z = mag_z * 0.6;
+            end
+            mag_count = 1;
+
+    end
+    
     
     acc_x_h = char(entries(3));
     acc_x_l = char(entries(4));
@@ -91,7 +138,17 @@ while ~feof(fin)
     acc_z = -acc_z;
     
     % store in file
-    fprintf(fout, '%d %d %d %d %d %f %f %f %f %f %f %f\r\n', 1, 2, 3, 4, 5, gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z, audio);
+    if mag_ready == 1
+        mag_ready = 0;
+        % sensor hal: sensor frame(xyz) -> device frame(XYZ)
+        % X = -y, Y = -x, Z = -z
+        mag_x = -mag_x;
+        mag_y = -mag_y;
+        mag_z = -mag_z;
+        fprintf(fout, '%d %d %d %d %d %f %f %f %f %f %f %f %f %f %f\r\n', 1, 2, 3, 4, 5, gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z, mag_x, mag_y, mag_z, audio);
+    else
+        fprintf(fout, '%d %d %d %d %d %f %f %f %f %f %f %f %f %f %f\r\n', 1, 2, 3, 4, 5, gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z, 0, 0, 0, audio);
+    end
 end
 fclose(fin);
 fclose(fout);
