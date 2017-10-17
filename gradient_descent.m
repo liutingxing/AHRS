@@ -1,11 +1,11 @@
 clear all;
 clc;
 
-MAG_SUPPORT = 1;
+MAG_SUPPORT = 0;
 
 addpath('.\quaternion_library');
 
-ahrs_data = load('.\rotate.txt');
+ahrs_data = load('.\data\actionData.txt');
 
 Time = ahrs_data(:, 1);                      % ( ms )
 Roll = ahrs_data(:, 3);                      % ( degree )
@@ -19,7 +19,7 @@ end
 
 
 %% variable prepare
-SampleRate = 100;  % 40Hz sample rate
+SampleRate = 40;  % 40Hz sample rate
 dt = 1 / SampleRate;
 G_vector = [0, 0, 9.8]'; % NED frame, Unit: m/s2
 N = length(Time);
@@ -131,7 +131,9 @@ for i = 101 : N
     end
         
     % normalise q dot error
-    qDotError = qDotError / norm(qDotError);
+    if qDotError ~= 0
+        qDotError = qDotError / norm(qDotError);
+    end
 
     % estimate gyro bias
     if MAG_SUPPORT
@@ -167,7 +169,7 @@ for i = 101 : N
     Wiep = zeros(3, 1); % no latitude information in computing earth rate in the navigation frame
     Wipp = Wiep + Wepp;
     Wipb = Cnb * Wipp;
-    Wpbb = Gyro(i, :)' - Wipb - gyro_bias + [1, 1, 1]'*pi/180;
+    Wpbb = Gyro(i, :)' - Wipb - gyro_bias;
 
     % Compute rate of change of quaternion
     qDot = 0.5 * quaternProd(q, [0; Wpbb])' - beta * qDotError;
