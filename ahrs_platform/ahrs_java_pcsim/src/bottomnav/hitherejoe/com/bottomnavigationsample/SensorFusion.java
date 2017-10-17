@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import Jama.Matrix;
 
 public class SensorFusion {
-    public int          uTime;
+    public int           uTime;
     private double       fPsiPl;
     private double       fThePl;
     private double       fPhiPl;
@@ -301,6 +301,7 @@ public class SensorFusion {
         if (accNorm < 12.0)
         {
             // execute the acc aid process
+            double diff = 0;
             double gyroMeasError = 10 * Math.PI / 180; // gyroscope measurement error in rad/s (shown as 5 deg/s)
             double beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
             double[] gEstimate = new double[3];
@@ -333,6 +334,13 @@ public class SensorFusion {
 
             step = J.transpose().times(F);
             step = step.times(1.0/step.norm2());
+
+            diff = F.norm2();
+            if (diff < 0.1)
+            {
+                gyroMeasError = 0.1 * Math.PI / 180;
+                beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
+            }
 
             qDot[0] -= beta * step.get(0, 0);
             qDot[1] -= beta * step.get(1, 0);
