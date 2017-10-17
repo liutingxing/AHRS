@@ -112,6 +112,16 @@ for i = 101 : N
             0,         -4*q(2),    -4*q(3),	0    ];
         step = (J'*F);
         qDotError = qDotError + step;
+        
+        % adjust beta
+        diff = norm(F);
+        if diff < 0.1
+            gyroMeasError = 0.1*pi/180;
+            beta = sqrt(3.0 / 4.0) * gyroMeasError;
+        else
+            gyroMeasError = 10*pi/180;
+            beta = sqrt(3.0 / 4.0) * gyroMeasError;
+        end
     end
     if MAG_SUPPORT
         % Normalise magnetometer measurement
