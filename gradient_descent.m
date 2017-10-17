@@ -23,6 +23,7 @@ dt = 1/100; % 40Hz output rate
 G_vector = [0, 0, 9.8]'; % NED frame, Unit: m/s2
 N = length(Time);
 gyro_bias = zeros(3, 1);
+gyro_bias_array = zeros(N, 3);
 acc_bias = zeros(3, 1);
 yaw = zeros(N, 1);
 pitch = zeros(N, 1);
@@ -35,8 +36,10 @@ pE = zeros(N, 1);
 pD = zeros(N, 1);
 acc_liner_p = zeros(N, 3);
 
-gyroMeasError = 10*pi/180; % gyroscope measurement error in rad/s (shown as 5 deg/s)
+gyroMeasError = 10*pi/180; % gyroscope measurement error in rad/s (shown as 10 deg/s)
+gyroMeasDrift = 1*pi/180; % gyroscope measurement error in rad/s/s (shown as 1 deg/s/s)
 beta = sqrt(3.0 / 4.0) * gyroMeasError; % compute beta
+zeta = sqrt(3.0 / 4.0) * gyroMeasDrift; % compute zeta
 
 peace = 0;
 step1 = 1;
@@ -75,7 +78,7 @@ if MAG_SUPPORT
     [yaw_initial, pitch_initial, roll_initial] = dcm2euler(Cbn_initial);
     Cnp = euler2dcm(yaw_initial, 0, 0)'; % reverse the NED frame to platform frame(yaw_initial = 0)
 else
-    yaw_initial = 0;
+    yaw_initial = 0*pi/180;
     pitch_initial = -asin(g_x/9.8);
     roll_initial = atan2(g_y/9.8, g_z/9.8);
 end
@@ -87,21 +90,9 @@ gyro_bias = mean(Gyro(1:window_length, :))';
 
 for i = 101 : N
 %% AHRS process
-    
-    % Compute rate of change of quaternion
+    qDotError = 0;
     Cbn = q2dcm(q);
-    Cnb = Cbn';
-    
-    Wepp = zeros(3, 1); % no latitude information in computing latitude and longitude rate
-    Wiep = zeros(3, 1); % no latitude information in computing earth rate in the navigation frame
-    Wipp = Wiep + Wepp;
-    Wipb = Cnb * Wipp;
-    Wpbb = Gyro(i, :)' - gyro_bias - Wipb;
 
-    % Compute rate of change of quaternion
-    qDot = 0.5 * quaternProd(q, [0; Wpbb])';
-
-%     if action_start ~= 1
     acc_norm = norm(Acc(i, :));
     if acc_norm < 12
         % Normalise accelerometer measurement
@@ -116,8 +107,7 @@ for i = 101 : N
             2*q(2),     2*q(1),     2*q(4),	2*q(3)
             0,         -4*q(2),    -4*q(3),	0    ];
         step = (J'*F);
-        step = step / norm(step);	% normalise step magnitude
-        qDot = qDot - beta * step;
+        qDotError = qDotError + step;
         if MAG_SUPPORT
             % Normalise magnetometer measurement
             Magnetometer = Mag(i, :) / norm(Mag(i, :));
@@ -132,10 +122,33 @@ for i = 101 : N
                 -2*b(2)*q(4)+2*b(4)*q(2),	2*b(2)*q(3)+2*b(4)*q(1),	2*b(2)*q(2)+2*b(4)*q(4),       -2*b(2)*q(1)+2*b(4)*q(3)
                 2*b(2)*q(3),                2*b(2)*q(4)-4*b(4)*q(2),	2*b(2)*q(1)-4*b(4)*q(3),        2*b(2)*q(2)];
             step = (J'*F);
-            step = step / norm(step);	% normalise step magnitude
-            qDot = qDot - beta * step;
+            qDotError = qDotError + step;
+        end
+        
+        % normalise q dot error
+        qDotError = qDotError / norm(qDotError);
+        
+        % estimate gyro bias
+        if MAG_SUPPORT
+            biasDot = 2 * quaternProd([q(1), -q(2), -q(3), -q(4)],  qDotError)';
+            gyro_bias = gyro_bias + zeta * biasDot(2:4) * dt;
         end
     end
+    
+    gyro_bias_array(i, :) = gyro_bias';
+    
+    % Compute rate of change of quaternion
+    Cbn = q2dcm(q);
+    Cnb = Cbn';
+    
+    Wepp = zeros(3, 1); % no latitude information in computing latitude and longitude rate
+    Wiep = zeros(3, 1); % no latitude information in computing earth rate in the navigation frame
+    Wipp = Wiep + Wepp;
+    Wipb = Cnb * Wipp;
+    Wpbb = Gyro(i, :)' - Wipb - gyro_bias + [1, 1, 1]'*pi/180;
+
+    % Compute rate of change of quaternion
+    qDot = 0.5 * quaternProd(q, [0; Wpbb])' - beta * qDotError;
 
     % Integrate to yield quaternion
     q = q + qDot * dt;
@@ -357,6 +370,18 @@ for i = 1:action_count
     zlabel('Z');
     axis equal; 
 end
+end
+
+if 1
+figure;
+plot(gyro_bias_array(:, 1)*180/pi, 'r');
+hold on;
+plot(gyro_bias_array(:, 2)*180/pi, 'g');
+plot(gyro_bias_array(:, 3)*180/pi, 'b');
+xlabel('sample point');
+ylabel('gyro bias (degree/s)');
+legend('x', 'y', 'z');
+title('gyro bias');
 end
 
 % velocity
