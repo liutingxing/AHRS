@@ -19,7 +19,8 @@ end
 
 
 %% variable prepare
-dt = 1/100; % 40Hz output rate
+SampleRate = 100;  % 40Hz sample rate
+dt = 1 / SampleRate;
 G_vector = [0, 0, 9.8]'; % NED frame, Unit: m/s2
 N = length(Time);
 gyro_bias = zeros(3, 1);
@@ -37,7 +38,7 @@ pD = zeros(N, 1);
 acc_liner_p = zeros(N, 3);
 
 gyroMeasError = 10*pi/180; % gyroscope measurement error in rad/s (shown as 10 deg/s)
-gyroMeasDrift = 1*pi/180; % gyroscope measurement error in rad/s/s (shown as 1 deg/s/s)
+gyroMeasDrift = 0.2*pi/180; % gyroscope measurement error in rad/s/s (shown as 0.2 deg/s/s)
 beta = sqrt(3.0 / 4.0) * gyroMeasError; % compute beta
 zeta = sqrt(3.0 / 4.0) * gyroMeasDrift; % compute zeta
 
@@ -86,7 +87,10 @@ q = euler2q(yaw_initial, pitch_initial, roll_initial);
 
 % gyro calibration
 gyro_bias = mean(Gyro(1:window_length, :))';
-
+gyro_bias_error = 0;
+validation_count = 0;
+validation_num = SampleRate * 10; % 10s data size
+gyro_bias_error_array = zeros(validation_num, 3);
 
 for i = 101 : N
 %% AHRS process
@@ -108,31 +112,49 @@ for i = 101 : N
             0,         -4*q(2),    -4*q(3),	0    ];
         step = (J'*F);
         qDotError = qDotError + step;
-        if MAG_SUPPORT
-            % Normalise magnetometer measurement
-            Magnetometer = Mag(i, :) / norm(Mag(i, :));
-            
-            % Reference direction of Earth's magnetic feild
-            h = Cbn*Magnetometer';
-            b = [0, norm(h(1), h(2)), 0, h(3)];
-            F = [2*b(2)*(0.5 - q(3)^2 - q(4)^2) + 2*b(4)*(q(2)*q(4) - q(1)*q(3)) - Magnetometer(1)
-                2*b(2)*(q(2)*q(3) - q(1)*q(4)) + 2*b(4)*(q(1)*q(2) + q(3)*q(4)) - Magnetometer(2)
-                2*b(2)*(q(1)*q(3) + q(2)*q(4)) + 2*b(4)*(0.5 - q(2)^2 - q(3)^2) - Magnetometer(3)];
-            J = [-2*b(4)*q(3),               2*b(4)*q(4),               -4*b(2)*q(3)-2*b(4)*q(1),       -4*b(2)*q(4)+2*b(4)*q(2)
-                -2*b(2)*q(4)+2*b(4)*q(2),	2*b(2)*q(3)+2*b(4)*q(1),	2*b(2)*q(2)+2*b(4)*q(4),       -2*b(2)*q(1)+2*b(4)*q(3)
-                2*b(2)*q(3),                2*b(2)*q(4)-4*b(4)*q(2),	2*b(2)*q(1)-4*b(4)*q(3),        2*b(2)*q(2)];
-            step = (J'*F);
-            qDotError = qDotError + step;
-        end
+    end
+    if MAG_SUPPORT
+        % Normalise magnetometer measurement
+        Magnetometer = Mag(i, :) / norm(Mag(i, :));
+
+        % Reference direction of Earth's magnetic feild
+        h = Cbn*Magnetometer';
+        b = [0, norm(h(1), h(2)), 0, h(3)];
+        F = [2*b(2)*(0.5 - q(3)^2 - q(4)^2) + 2*b(4)*(q(2)*q(4) - q(1)*q(3)) - Magnetometer(1)
+            2*b(2)*(q(2)*q(3) - q(1)*q(4)) + 2*b(4)*(q(1)*q(2) + q(3)*q(4)) - Magnetometer(2)
+            2*b(2)*(q(1)*q(3) + q(2)*q(4)) + 2*b(4)*(0.5 - q(2)^2 - q(3)^2) - Magnetometer(3)];
+        J = [-2*b(4)*q(3),               2*b(4)*q(4),               -4*b(2)*q(3)-2*b(4)*q(1),       -4*b(2)*q(4)+2*b(4)*q(2)
+            -2*b(2)*q(4)+2*b(4)*q(2),	2*b(2)*q(3)+2*b(4)*q(1),	2*b(2)*q(2)+2*b(4)*q(4),       -2*b(2)*q(1)+2*b(4)*q(3)
+            2*b(2)*q(3),                2*b(2)*q(4)-4*b(4)*q(2),	2*b(2)*q(1)-4*b(4)*q(3),        2*b(2)*q(2)];
+        step = (J'*F);
+        qDotError = qDotError + step;
+    end
         
-        % normalise q dot error
-        qDotError = qDotError / norm(qDotError);
-        
-        % estimate gyro bias
-        if MAG_SUPPORT
-            biasDot = 2 * quaternProd([q(1), -q(2), -q(3), -q(4)],  qDotError)';
-            gyro_bias = gyro_bias + zeta * biasDot(2:4) * dt;
+    % normalise q dot error
+    qDotError = qDotError / norm(qDotError);
+
+    % estimate gyro bias
+    if MAG_SUPPORT
+        biasDot = 2 * quaternProd([q(1), -q(2), -q(3), -q(4)],  qDotError)';
+        gyro_bias_error = zeta * biasDot(2:4) * dt;
+
+        % gyro bias validation (Time Interval > 30s, Standard Deviation / Mean < 10%)
+        validation_count = validation_count + 1;
+        if validation_count <= validation_num
+            gyro_bias_error_array(validation_count, :) = gyro_bias_error;
+        else
+            for j = 2:validation_num
+                gyro_bias_error_array(j - 1, :) = gyro_bias_error_array(j, :);
+            end
+            gyro_bias_error_array(validation_num, :) = gyro_bias_error;
+            gyro_bias_error_mean = mean(gyro_bias_error_array);
+            gyro_bias_error_std = std(gyro_bias_error_array);
+            if gyro_bias_error_std < 0.2*pi/180
+                gyro_bias = gyro_bias + gyro_bias_error_mean';
+                validation_count = 0;
+            end
         end
+
     end
     
     gyro_bias_array(i, :) = gyro_bias';
