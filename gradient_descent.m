@@ -213,7 +213,7 @@ for i = 101 : N
     liner_acc_x = f_p(1);
     switch curve_condition
         case peace
-            if liner_acc_x > 10
+            if liner_acc_x > 8
                 action_start = 1;
                 action_start_index = i;
                 curve_condition = step1;
@@ -227,7 +227,7 @@ for i = 101 : N
             else
                 slop = -1;
                 % reach the up peak
-                if liner_acc_x_last < 20
+                if liner_acc_x_last < 17
                     % false peak
                     curve_condition = peace;
                     action_start = 0;
@@ -248,7 +248,7 @@ for i = 101 : N
             if liner_acc_x > liner_acc_x_last
                 slop = 1;
                 % reach the trough
-                if liner_acc_x_last > -20
+                if liner_acc_x_last > -17
                     % false trough
                 else
                     curve_condition = step3;
@@ -344,7 +344,7 @@ ylabel('omega (rad/s)');
 end
 
 % liner accelerate
-if 0
+if 1
 figure;
 plot(acc_liner_p(:, 1), 'r');
 hold on;
@@ -406,7 +406,7 @@ for i = 1:action_count
 end
 end
 
-if 1
+if 0
 figure;
 plot(gyro_bias_array(:, 1)*180/pi, 'r');
 hold on;

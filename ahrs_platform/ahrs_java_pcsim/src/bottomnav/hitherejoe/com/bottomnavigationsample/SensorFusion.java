@@ -304,7 +304,7 @@ public class SensorFusion {
         {
             // execute the acc aid process
             double diff = 0;
-            double gyroMeasError = 10 * Math.PI / 180; // gyroscope measurement error in rad/s (shown as 5 deg/s)
+            double gyroMeasError = 10 * Math.PI / 180; // gyroscope measurement error in rad/s (shown as 10 deg/s)
             double beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
             double[] gEstimate = new double[3];
             Matrix F = new Matrix(3, 1);
@@ -338,7 +338,7 @@ public class SensorFusion {
             step = step.times(1.0/step.norm2());
 
             diff = F.norm2();
-            if (diff < 0.1)
+            if (diff < 1)
             {
                 gyroMeasError = 0.1 * Math.PI / 180;
                 beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
@@ -502,7 +502,7 @@ public class SensorFusion {
         switch(iCurveCondition)
         {
             case Peace:
-                if (linerAccX > 10){
+                if (linerAccX > 5){
                     uActionStartFlag = true;
                     iCurveCondition = Step1;
                     actionTime = 0;
@@ -536,7 +536,7 @@ public class SensorFusion {
                 }else{
                     slop = -1;
                     // reach the up peak
-                    if (fLinerAccXLast < 20){
+                    if (fLinerAccXLast < 12){
                         // false peak
                         iCurveCondition = Peace;
                         uActionStartFlag = false;
@@ -558,7 +558,7 @@ public class SensorFusion {
                 if (linerAccX > fLinerAccXLast){
                     slop = 1;
                     // reach the down peak
-                    if (fLinerAccXLast > -20){
+                    if (fLinerAccXLast > -12){
                         // false peak
                         iCurveCondition = Peace;
                         uActionStartFlag = false;
