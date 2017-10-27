@@ -577,7 +577,7 @@ public class SensorFusion {
                     slop = -1;
                 }
                 if (linerAccX > -10 && linerAccX < 10){
-                    if (actionTime > 0.2)
+                    if (actionTime > 0.1 && actionTime < 0.4)
                     {
                         uActionEndFlag = true;
                     }

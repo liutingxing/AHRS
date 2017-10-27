@@ -265,7 +265,7 @@ for i = 101 : N
                 slop = -1;
             end
             if liner_acc_x > -10 && liner_acc_x < 10
-                if action_time > 0.2
+                if action_time > 0.1 && action_time < 0.4
                     action_end = 1;
                     action_end_index = i - 1;
                 else
