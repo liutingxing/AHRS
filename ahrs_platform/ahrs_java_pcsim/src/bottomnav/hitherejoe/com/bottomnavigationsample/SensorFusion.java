@@ -66,7 +66,6 @@ public class SensorFusion {
 
 	private SensorKalman sensorKalman;
     private StringBuffer sAttitude;
-    private StringBuffer sTrajectory;
     public TrainData trainData;
 
     SensorFusion()
@@ -98,7 +97,6 @@ public class SensorFusion {
         uActionEndFlag = false;
         uActionComplete = false;
         sAttitude = new StringBuffer();
-        sTrajectory = new StringBuffer();
         sensorKalman = new SensorKalman(STATE_NUM);
         trainData = new TrainData();
     }
@@ -112,7 +110,6 @@ public class SensorFusion {
         if (uActionComplete == true)
         {
             uActionComplete = false;
-            sTrajectory = new StringBuffer();
             fLinerAccXLast = 0;
             fPlatformOmegaMaxZ = 0;
             fPlatformOmegaMinZ = 0;
@@ -201,9 +198,7 @@ public class SensorFusion {
 
         if (uMechanizationFlag == true)
         {
-            int i = 0;
             SampleData sampleData = new SampleData();
-            double[] fPlatformOmega = new double[]{0.0, 0.0, 0.0};
 
             // ins mechanization
             insStrapdownMechanization(dt, acc);
@@ -211,72 +206,12 @@ public class SensorFusion {
             // copy sample data into array list
             copyInSampleData(this, sampleData);
             cSampleDataArray.add(sampleData);
-
-            // platform omega
-            for (i = 0; i < 3; i++)
-            {
-                fPlatformOmega[i] = fCbn[i][0] * gyro[0] + fCbn[i][1] * gyro[1] + fCbn[i][2] * gyro[2];
-            }
-
-            if (fPlatformOmega[2] > fPlatformOmegaMaxZ)
-            {
-                fPlatformOmegaMaxZ = fPlatformOmega[2];
-            }
-
-            if (fPlatformOmega[2] < fPlatformOmegaMinZ)
-            {
-                fPlatformOmegaMinZ = fPlatformOmega[2];
-            }
-
-            sTrajectory.append(String.valueOf(uTime));
-            sTrajectory.append(" ");
-            sTrajectory.append(String.valueOf(fPosN));
-            sTrajectory.append(" ");
-            sTrajectory.append(String.valueOf(-fPosD));
-            sTrajectory.append(" ");
-            sTrajectory.append(String.valueOf(-fPosE));
-            sTrajectory.append(" ");
-            sTrajectory.append(String.valueOf(fqPl[0]));
-            sTrajectory.append(" ");
-            sTrajectory.append(String.valueOf(-fqPl[1]));
-            sTrajectory.append(" ");
-            sTrajectory.append(String.valueOf(-fqPl[2]));
-            sTrajectory.append(" ");
-            sTrajectory.append(String.valueOf(fqPl[3]));
-            sTrajectory.append(" ");
-            sTrajectory.append("x");
-            sTrajectory.append("\n");
         }
 
         // record the attitude and trajectory
         if (uActionComplete == true)
         {
-            int typeIndex = -1;
-
-            // delete the last enter characcter
-            sTrajectory.deleteCharAt(sTrajectory.length() - 1);
-
-            // update train data
-            trainData.bValid = true;
-            trainData.uActionCount ++;
-            trainData.fRangeMax = fRangeMax;
-            trainData.fVelocityMax = fVelocityMax;
-
-            if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
-            {
-                trainData.sActionType = "backhand";
-            }
-            else
-            {
-                trainData.sActionType = "forehand";
-            }
-
-            // replace the type character in trajectory
-            while ((typeIndex = sTrajectory.indexOf("x")) != -1)
-            {
-                sTrajectory.replace(typeIndex, typeIndex + 1, trainData.sActionType.substring(0,1));
-            }
-            trainData.sTrajectory = String.valueOf(sTrajectory);
+            processSampleData(cSampleDataArray, trainData);
         }
 
         sAttitude.append(String.valueOf(uTime));
@@ -300,6 +235,103 @@ public class SensorFusion {
         sAttitude.append("x");
 
         return String.valueOf(sAttitude);
+    }
+
+    private int processSampleData(ArrayList<SampleData> sampleDataArray, TrainData data)
+    {
+        int typeIndex = -1;
+        StringBuffer trajectory = new StringBuffer();
+
+        for(SampleData val:sampleDataArray)
+        {
+            int i = 0;
+            double velCurrent = 0;
+            double deltaN = 0;
+            double deltaE = 0;
+            double deltaD = 0;
+            double[] fPlatformOmega = new double[]{0.0, 0.0, 0.0};
+            SampleData valLast;
+
+            // trajectory
+            trajectory.append(String.valueOf(val.uTime));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(val.fPosN));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(-val.fPosD));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(-val.fPosE));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(val.fqPl[0]));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(-val.fqPl[1]));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(-val.fqPl[2]));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(val.fqPl[3]));
+            trajectory.append(" ");
+            trajectory.append("x");
+            trajectory.append("\n");
+
+            // platform omega
+            for (i = 0; i < 3; i++)
+            {
+                fPlatformOmega[i] = val.fCbn[i][0] * val.fOmegaB[0] + val.fCbn[i][1] * val.fOmegaB[1] + val.fCbn[i][2] * val.fOmegaB[2];
+            }
+
+            if (fPlatformOmega[2] > fPlatformOmegaMaxZ)
+            {
+                fPlatformOmegaMaxZ = fPlatformOmega[2];
+            }
+
+            if (fPlatformOmega[2] < fPlatformOmegaMinZ)
+            {
+                fPlatformOmegaMinZ = fPlatformOmega[2];
+            }
+
+            // max velocity
+            velCurrent = Math.sqrt(val.fVelN*val.fVelN + val.fVelE*val.fVelE + val.fVelD*val.fVelD);
+            if (velCurrent > trainData.fVelocityMax)
+            {
+                fVelocityMax = velCurrent;
+            }
+
+            // range
+            i = sampleDataArray.indexOf(val);
+            if (i > 0)
+            {
+                valLast = sampleDataArray.get(i - 1);
+                deltaN = val.fPosN - valLast.fPosN;
+                deltaE = val.fPosE - valLast.fPosE;
+                deltaD = val.fPosD - valLast.fPosD;
+            }
+            fRangeMax += Math.sqrt(deltaN*deltaN + deltaE*deltaE + deltaD*deltaD);
+        }
+        // delete the last enter characcter
+        trajectory.deleteCharAt(trajectory.length() - 1);
+
+        // update train data
+        data.bValid = true;
+        data.uActionCount ++;
+        data.fRangeMax = fRangeMax;
+        data.fVelocityMax = fVelocityMax;
+
+        if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
+        {
+            data.sActionType = "backhand";
+        }
+        else
+        {
+            data.sActionType = "forehand";
+        }
+
+        // replace the type character in trajectory
+        while ((typeIndex = trajectory.indexOf("x")) != -1)
+        {
+            trajectory.replace(typeIndex, typeIndex + 1, data.sActionType.substring(0,1));
+        }
+        data.sTrajectory = String.valueOf(trajectory);
+
+        return 0;
     }
 
     private int copyInSampleData(SensorFusion src, SampleData dst)
@@ -434,7 +466,6 @@ public class SensorFusion {
             fPosD = 0;
 
             // clear Trajectory
-            sTrajectory = new StringBuffer();
             cSampleDataArray.clear();
             trainData.fVelocityMax = 0;
             trainData.fRangeMax = 0;
@@ -514,13 +545,6 @@ public class SensorFusion {
         fPosN += deltaN;
         fPosE += deltaE;
         fPosD += deltaD;
-
-        fRangeMax += Math.sqrt(deltaN*deltaN + deltaE*deltaE + deltaD*deltaD);
-        velCurrent = Math.sqrt(fVelN*fVelN + fVelE*fVelE + fVelD*fVelD);
-        if (velCurrent > trainData.fVelocityMax)
-        {
-            fVelocityMax = velCurrent;
-        }
     }
 
     private void actionDetect(double dt, double[] gyro, double[] acc)
@@ -550,7 +574,7 @@ public class SensorFusion {
         {
             case Peace:
                 if (linerAccX > 5){
-                    SampleData sampleData = new SampleData();;
+                    SampleData sampleData = new SampleData();
 
                     uActionStartFlag = true;
                     iCurveCondition = Step1;
@@ -559,26 +583,6 @@ public class SensorFusion {
                     // copy sample data into array list
                     copyInSampleData(this, sampleData);
                     cSampleDataArray.add(sampleData);
-
-                    // add origin point data
-                    sTrajectory.append(String.valueOf(uTime));
-                    sTrajectory.append(" ");
-                    sTrajectory.append(String.valueOf(fPosN));
-                    sTrajectory.append(" ");
-                    sTrajectory.append(String.valueOf(-fPosD));
-                    sTrajectory.append(" ");
-                    sTrajectory.append(String.valueOf(-fPosE));
-                    sTrajectory.append(" ");
-                    sTrajectory.append(String.valueOf(fqPl[0]));
-                    sTrajectory.append(" ");
-                    sTrajectory.append(String.valueOf(-fqPl[1]));
-                    sTrajectory.append(" ");
-                    sTrajectory.append(String.valueOf(-fqPl[2]));
-                    sTrajectory.append(" ");
-                    sTrajectory.append(String.valueOf(fqPl[3]));
-                    sTrajectory.append(" ");
-                    sTrajectory.append("x");
-                    sTrajectory.append("\n");
                 }
                 break;
 
