@@ -5,6 +5,8 @@ package bottomnav.hitherejoe.com.bottomnavigationsample;
  */
 
 import java.util.ArrayList;
+import java.util.Arrays;
+
 import Jama.Matrix;
 
 public class SensorFusion {
@@ -26,6 +28,8 @@ public class SensorFusion {
     private double       fPosN;
     private double       fPosE;
     private double       fPosD;
+    private double[]     fOmegaB;
+    private double       fAudio;
 
     private boolean     uStaticFlag;
     private boolean     uAlignFlag;
@@ -38,6 +42,7 @@ public class SensorFusion {
     private final static int ALIGN_NUM = 100;
     private ArrayList<double[]> fAlignGyroArray = new ArrayList<double[]>(100);
     private ArrayList<double[]> fAlignAccArray = new ArrayList<double[]>(100);
+    private ArrayList<SampleData> cSampleDataArray = new ArrayList<SampleData>(20);
 
     public final static double GRAVITY = 9.80665;
     public final static double SAMPLE_RATE = 40;
@@ -101,6 +106,8 @@ public class SensorFusion {
     public String sensorFusionExec(int time, double[] gyro, double[] acc)
     {
         double dt = 1.0 / SAMPLE_RATE;
+        uTime = time;
+        fOmegaB = gyro;
 
         if (uActionComplete == true)
         {
@@ -121,6 +128,8 @@ public class SensorFusion {
             trainData.sStrikeSweet = "perfect";
             trainData.uStrikePower = 0;
             trainData.uPlayLoad = 0;
+
+            cSampleDataArray.clear();
         }
 
         // static detection
@@ -193,10 +202,15 @@ public class SensorFusion {
         if (uMechanizationFlag == true)
         {
             int i = 0;
+            SampleData sampleData = new SampleData();
             double[] fPlatformOmega = new double[]{0.0, 0.0, 0.0};
 
             // ins mechanization
             insStrapdownMechanization(dt, acc);
+
+            // copy sample data into array list
+            copyInSampleData(this, sampleData);
+            cSampleDataArray.add(sampleData);
 
             // platform omega
             for (i = 0; i < 3; i++)
@@ -286,6 +300,38 @@ public class SensorFusion {
         sAttitude.append("x");
 
         return String.valueOf(sAttitude);
+    }
+
+    private int copyInSampleData(SensorFusion src, SampleData dst)
+    {
+        int i;
+
+        dst.uTime = src.uTime;
+        dst.fPsiPl = src.fPsiPl;
+        dst.fThePl = src.fThePl;
+        dst.fPhiPl = src.fPhiPl;
+        for (i = 0; i < src.fCnb.length; i++)
+        {
+            dst.fCnb[i] = Arrays.copyOf(src.fCnb[i], src.fCnb[i].length);
+        }
+        for (i = 0; i < src.fCbn.length; i++)
+        {
+            dst.fCbn[i] = Arrays.copyOf(src.fCbn[i], src.fCbn[i].length);
+        }
+        dst.fqPl = Arrays.copyOf(src.fqPl, src.fqPl.length);
+        dst.fLinerAccN = src.fLinerAccN;
+        dst.fLinerAccE = src.fLinerAccE;
+        dst.fLinerAccD = src.fLinerAccD;
+        dst.fVelN = src.fVelN;
+        dst.fVelE = src.fVelE;
+        dst.fVelD = src.fVelD;
+        dst.fPosN = src.fPosN;
+        dst.fPosE = src.fPosE;
+        dst.fPosD = src.fPosD;
+        dst.fOmegaB = Arrays.copyOf(src.fOmegaB, src.fOmegaB.length);
+        dst.fAudio = src.fAudio;
+
+        return 0;
     }
 
     private void ahrsProcess(double dt, double[] gyro, double[] acc)
@@ -389,6 +435,7 @@ public class SensorFusion {
 
             // clear Trajectory
             sTrajectory = new StringBuffer();
+            cSampleDataArray.clear();
             trainData.fVelocityMax = 0;
             trainData.fRangeMax = 0;
             fPlatformOmegaMaxZ = 0;
@@ -503,9 +550,15 @@ public class SensorFusion {
         {
             case Peace:
                 if (linerAccX > 5){
+                    SampleData sampleData = new SampleData();;
+
                     uActionStartFlag = true;
                     iCurveCondition = Step1;
                     actionTime = 0;
+
+                    // copy sample data into array list
+                    copyInSampleData(this, sampleData);
+                    cSampleDataArray.add(sampleData);
 
                     // add origin point data
                     sTrajectory.append(String.valueOf(uTime));
