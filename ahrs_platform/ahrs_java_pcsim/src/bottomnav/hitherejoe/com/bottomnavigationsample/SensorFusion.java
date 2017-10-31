@@ -29,6 +29,8 @@ public class SensorFusion {
     private double       fPosE;
     private double       fPosD;
     private double[]     fOmegaB;
+    private double[]     fAccelerate;
+    private double[]     fMagnetic;
     private double       fAudio;
 
     private boolean     uStaticFlag;
@@ -63,6 +65,8 @@ public class SensorFusion {
     private double fPlatformOmegaMinZ = 0.0;
     private double fRangeMax = 0.0;
     private double fVelocityMax = 0.0;
+    private double fAudioMax = 0.0;
+    private int strikeIndex = 0;
 
 	private SensorKalman sensorKalman;
     private StringBuffer sAttitude;
@@ -106,6 +110,9 @@ public class SensorFusion {
         double dt = 1.0 / SAMPLE_RATE;
         uTime = time;
         fOmegaB = gyro;
+        fAccelerate = acc;
+        fMagnetic = mag;
+        fAudio = audio;
 
         if (uActionComplete == true)
         {
@@ -241,15 +248,14 @@ public class SensorFusion {
     {
         int typeIndex = -1;
         StringBuffer trajectory = new StringBuffer();
+        SampleData value;
 
         for(SampleData val:sampleDataArray)
         {
             int i = 0;
-            double velCurrent = 0;
             double deltaN = 0;
             double deltaE = 0;
             double deltaD = 0;
-            double[] fPlatformOmega = new double[]{0.0, 0.0, 0.0};
             SampleData valLast;
 
             // trajectory
@@ -273,26 +279,20 @@ public class SensorFusion {
             trajectory.append("\n");
 
             // platform omega
-            for (i = 0; i < 3; i++)
+            if (val.fOmegaN[2] > fPlatformOmegaMaxZ)
             {
-                fPlatformOmega[i] = val.fCbn[i][0] * val.fOmegaB[0] + val.fCbn[i][1] * val.fOmegaB[1] + val.fCbn[i][2] * val.fOmegaB[2];
+                fPlatformOmegaMaxZ = val.fOmegaN[2];
             }
 
-            if (fPlatformOmega[2] > fPlatformOmegaMaxZ)
+            if (val.fOmegaN[2]  < fPlatformOmegaMinZ)
             {
-                fPlatformOmegaMaxZ = fPlatformOmega[2];
-            }
-
-            if (fPlatformOmega[2] < fPlatformOmegaMinZ)
-            {
-                fPlatformOmegaMinZ = fPlatformOmega[2];
+                fPlatformOmegaMinZ = val.fOmegaN[2];
             }
 
             // max velocity
-            velCurrent = Math.sqrt(val.fVelN*val.fVelN + val.fVelE*val.fVelE + val.fVelD*val.fVelD);
-            if (velCurrent > trainData.fVelocityMax)
+            if (val.fVel > fVelocityMax)
             {
-                fVelocityMax = velCurrent;
+                fVelocityMax = val.fVel;
             }
 
             // range
@@ -305,6 +305,13 @@ public class SensorFusion {
                 deltaD = val.fPosD - valLast.fPosD;
             }
             fRangeMax += Math.sqrt(deltaN*deltaN + deltaE*deltaE + deltaD*deltaD);
+
+            // max audio for strike timing
+            if (val.fAudio > fAudioMax)
+            {
+                fAudioMax = val.fAudio;
+                strikeIndex = sampleDataArray.indexOf(val);
+            }
         }
         // delete the last enter characcter
         trajectory.deleteCharAt(trajectory.length() - 1);
@@ -314,6 +321,9 @@ public class SensorFusion {
         data.uActionCount ++;
         data.fRangeMax = fRangeMax;
         data.fVelocityMax = fVelocityMax;
+        data.fStrikeAudio = fAudioMax;
+        value = sampleDataArray.get(strikeIndex);
+        data.fVelocityStrike = Math.sqrt(value.fVelN*value.fVelN + value.fVelE*value.fVelE + value.fVelD*value.fVelD);
 
         if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
         {
@@ -361,7 +371,14 @@ public class SensorFusion {
         dst.fPosE = src.fPosE;
         dst.fPosD = src.fPosD;
         dst.fOmegaB = Arrays.copyOf(src.fOmegaB, src.fOmegaB.length);
+        dst.fAccelerate = Arrays.copyOf(src.fAccelerate, src.fAccelerate.length);
+        dst.fMagnetic = Arrays.copyOf(src.fMagnetic, src.fMagnetic.length);
         dst.fAudio = src.fAudio;
+        for (i = 0; i < 3; i++)
+        {
+            dst.fOmegaN[i] = src.fCbn[i][0] * src.fOmegaB[0] + src.fCbn[i][1] * src.fOmegaB[1] + src.fCbn[i][2] * src.fOmegaB[2];
+        }
+        dst.fVel = Math.sqrt(src.fVelN*src.fVelN +  src.fVelE*src.fVelE + src.fVelD*src.fVelD);
 
         return 0;
     }

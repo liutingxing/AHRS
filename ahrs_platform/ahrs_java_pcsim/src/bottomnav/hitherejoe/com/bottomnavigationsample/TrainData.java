@@ -11,6 +11,8 @@ public class TrainData {
     public String sActionType;
     public double fRangeMax;
     public double fVelocityMax;
+    public double fVelocityStrike;
+    public double fStrikeAudio;
     public String sTrajectorySweet;
     public String sStrikeSweet;
     public int uStrikePower;
