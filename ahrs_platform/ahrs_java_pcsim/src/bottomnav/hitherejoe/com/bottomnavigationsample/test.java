@@ -19,6 +19,8 @@ public class test {
             while ((tempString = reader.readLine()) != null) {
             	double[] fAcc = new double[3];
                 double[] fGyro = new double[3];
+                double[] fMag = new double[3];
+                double fAudio;
                 int i;
                 String[] sections = tempString.split(" ");
                 
@@ -26,11 +28,13 @@ public class test {
             	// parse the sensor data
             	for (i = 0; i < 3; i++)
                 {
-                    fGyro[i] = Math.toRadians(Double.valueOf(sections[5+i]));
-                    fAcc[i] = Double.valueOf(sections[8+i]) * sensorFusion.GRAVITY;
+                    fGyro[i] = Math.toRadians(Double.valueOf(sections[5+i]));        // rad/s
+                    fAcc[i] = Double.valueOf(sections[8+i]) * sensorFusion.GRAVITY; // m/s2
+                    fMag[i] = Double.valueOf(sections[11+i]);                        // uT
                 }
+                fAudio = Double.valueOf(sections[14]);
             	sensorFusion.uTime++;
-            	sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc);
+            	sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
             	if (sAttitude != null)
             	{
             		writer.write(sAttitude + "\r\n");

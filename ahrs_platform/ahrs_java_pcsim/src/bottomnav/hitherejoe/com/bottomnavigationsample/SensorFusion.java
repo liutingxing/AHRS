@@ -101,7 +101,7 @@ public class SensorFusion {
         trainData = new TrainData();
     }
 
-    public String sensorFusionExec(int time, double[] gyro, double[] acc)
+    public String sensorFusionExec(int time, double[] gyro, double[] acc, double[] mag, double audio)
     {
         double dt = 1.0 / SAMPLE_RATE;
         uTime = time;
