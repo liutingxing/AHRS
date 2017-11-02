@@ -482,12 +482,8 @@ public class SensorFusion {
             fPosE = 0;
             fPosD = 0;
 
-            // clear Trajectory
+            // clear sample data
             cSampleDataArray.clear();
-            trainData.fVelocityMax = 0;
-            trainData.fRangeMax = 0;
-            fPlatformOmegaMaxZ = 0;
-            fPlatformOmegaMinZ = 0;
         }
 
         if (uActionEndFlag == true)
