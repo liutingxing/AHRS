@@ -313,7 +313,7 @@ public class SensorFusion {
                 strikeIndex = sampleDataArray.indexOf(val);
             }
         }
-        // delete the last enter characcter
+        // delete the last enter character
         trajectory.deleteCharAt(trajectory.length() - 1);
 
         // update train data
