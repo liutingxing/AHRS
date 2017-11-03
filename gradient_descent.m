@@ -1,7 +1,7 @@
 clear all;
 clc;
 
-MAG_SUPPORT = 0;
+MAG_SUPPORT = 1;
 
 addpath('.\quaternion_library');
 
@@ -71,9 +71,21 @@ g_x = -mean(Acc(1:window_length,1));
 g_y = -mean(Acc(1:window_length,2));
 g_z = -mean(Acc(1:window_length,3));
 if MAG_SUPPORT
-    m_x = mean(Mag(1:window_length,1));
-    m_y = mean(Mag(1:window_length,2));
-    m_z = mean(Mag(1:window_length,3));
+    m_x = 0;
+    m_y = 0;
+    m_z = 0;
+    m_count = 0;
+    for i = 1:window_length
+        if Mag(i, 1) ~= 0 && Mag(i, 2) ~= 0 && Mag(i, 3) ~= 0
+            m_count = m_count + 1;
+            m_x = m_x + Mag(i, 1);
+            m_y = m_y + Mag(i, 2);
+            m_z = m_z + Mag(i, 3);
+        end
+    end
+    m_x = m_x / m_count;
+    m_y = m_y / m_count;
+    m_z = m_z / m_count;
     Cnb_initial = ecompass_ned([g_x, g_y, g_z], [m_x, m_y, m_z]);
     Cbn_initial = Cnb_initial';
     [yaw_initial, pitch_initial, roll_initial] = dcm2euler(Cbn_initial);
@@ -124,20 +136,24 @@ for i = 101 : N
         end
     end
     if MAG_SUPPORT
-        % Normalise magnetometer measurement
-        Magnetometer = Mag(i, :) / norm(Mag(i, :));
+        mag_norm = norm(Mag(i, :));
+        if mag_norm ~= 0
+            % Normalise magnetometer measurement
+            Magnetometer = Mag(i, :) / mag_norm;
 
-        % Reference direction of Earth's magnetic feild
-        h = Cbn*Magnetometer';
-        b = [0, norm(h(1), h(2)), 0, h(3)];
-        F = [2*b(2)*(0.5 - q(3)^2 - q(4)^2) + 2*b(4)*(q(2)*q(4) - q(1)*q(3)) - Magnetometer(1)
-            2*b(2)*(q(2)*q(3) - q(1)*q(4)) + 2*b(4)*(q(1)*q(2) + q(3)*q(4)) - Magnetometer(2)
-            2*b(2)*(q(1)*q(3) + q(2)*q(4)) + 2*b(4)*(0.5 - q(2)^2 - q(3)^2) - Magnetometer(3)];
-        J = [-2*b(4)*q(3),               2*b(4)*q(4),               -4*b(2)*q(3)-2*b(4)*q(1),       -4*b(2)*q(4)+2*b(4)*q(2)
-            -2*b(2)*q(4)+2*b(4)*q(2),	2*b(2)*q(3)+2*b(4)*q(1),	2*b(2)*q(2)+2*b(4)*q(4),       -2*b(2)*q(1)+2*b(4)*q(3)
-            2*b(2)*q(3),                2*b(2)*q(4)-4*b(4)*q(2),	2*b(2)*q(1)-4*b(4)*q(3),        2*b(2)*q(2)];
-        step = (J'*F);
-        qDotError = qDotError + step;
+            % Reference direction of Earth's magnetic feild
+            h = Cbn*Magnetometer';
+            b = [0, norm(h(1), h(2)), 0, h(3)];
+            F = [2*b(2)*(0.5 - q(3)^2 - q(4)^2) + 2*b(4)*(q(2)*q(4) - q(1)*q(3)) - Magnetometer(1)
+                2*b(2)*(q(2)*q(3) - q(1)*q(4)) + 2*b(4)*(q(1)*q(2) + q(3)*q(4)) - Magnetometer(2)
+                2*b(2)*(q(1)*q(3) + q(2)*q(4)) + 2*b(4)*(0.5 - q(2)^2 - q(3)^2) - Magnetometer(3)];
+            J = [-2*b(4)*q(3),               2*b(4)*q(4),               -4*b(2)*q(3)-2*b(4)*q(1),       -4*b(2)*q(4)+2*b(4)*q(2)
+                -2*b(2)*q(4)+2*b(4)*q(2),	2*b(2)*q(3)+2*b(4)*q(1),	2*b(2)*q(2)+2*b(4)*q(4),       -2*b(2)*q(1)+2*b(4)*q(3)
+                2*b(2)*q(3),                2*b(2)*q(4)-4*b(4)*q(2),	2*b(2)*q(1)-4*b(4)*q(3),        2*b(2)*q(2)];
+            diff = norm(F);
+            step = (J'*F);
+            qDotError = qDotError + step;
+        end
     end
         
     % normalise q dot error
@@ -147,25 +163,25 @@ for i = 101 : N
 
     % estimate gyro bias
     if MAG_SUPPORT
-        biasDot = 2 * quaternProd([q(1), -q(2), -q(3), -q(4)],  qDotError)';
-        gyro_bias_error = zeta * biasDot(2:4) * dt;
-
-        % gyro bias validation (Time Interval > 30s, Standard Deviation / Mean < 10%)
-        validation_count = validation_count + 1;
-        if validation_count <= validation_num
-            gyro_bias_error_array(validation_count, :) = gyro_bias_error;
-        else
-            for j = 2:validation_num
-                gyro_bias_error_array(j - 1, :) = gyro_bias_error_array(j, :);
-            end
-            gyro_bias_error_array(validation_num, :) = gyro_bias_error;
-            gyro_bias_error_mean = mean(gyro_bias_error_array);
-            gyro_bias_error_std = std(gyro_bias_error_array);
-            if gyro_bias_error_std < 0.2*pi/180
-                gyro_bias = gyro_bias + gyro_bias_error_mean';
-                validation_count = 0;
-            end
-        end
+%         biasDot = 2 * quaternProd([q(1), -q(2), -q(3), -q(4)],  qDotError)';
+%         gyro_bias_error = zeta * biasDot(2:4) * dt;
+% 
+%         % gyro bias validation (Time Interval > 30s, Standard Deviation / Mean < 10%)
+%         validation_count = validation_count + 1;
+%         if validation_count <= validation_num
+%             gyro_bias_error_array(validation_count, :) = gyro_bias_error;
+%         else
+%             for j = 2:validation_num
+%                 gyro_bias_error_array(j - 1, :) = gyro_bias_error_array(j, :);
+%             end
+%             gyro_bias_error_array(validation_num, :) = gyro_bias_error;
+%             gyro_bias_error_mean = mean(gyro_bias_error_array);
+%             gyro_bias_error_std = std(gyro_bias_error_array);
+%             if gyro_bias_error_std < 0.2*pi/180
+%                 gyro_bias = gyro_bias + gyro_bias_error_mean';
+%                 validation_count = 0;
+%             end
+%         end
 
     end
     
