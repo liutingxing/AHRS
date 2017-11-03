@@ -411,7 +411,7 @@ public class SensorFusion {
             gEstimate[2] = -acc[2]/accNorm;
 
             F.set(0, 0, 2*(fqPl[1]*fqPl[3] - fqPl[0]*fqPl[2]) - gEstimate[0]);
-            F.set(1, 0, 2*(fqPl[0]*fqPl[1] - fqPl[2]*fqPl[3]) - gEstimate[1]);
+            F.set(1, 0, 2*(fqPl[0]*fqPl[1] + fqPl[2]*fqPl[3]) - gEstimate[1]);
             F.set(2, 0, 2*(0.5-fqPl[1]*fqPl[1] - fqPl[2]*fqPl[2]) - gEstimate[2]);
 
             J.set(0, 0, -2*fqPl[2]);
