@@ -127,7 +127,7 @@ for i = 101 : N
         
         % adjust beta
         diff = norm(F);
-        if diff < 0.1
+        if diff < 1
             gyroMeasError = 0.1*pi/180;
             beta = sqrt(3.0 / 4.0) * gyroMeasError;
         else
@@ -229,7 +229,7 @@ for i = 101 : N
     liner_acc_x = f_p(1);
     switch curve_condition
         case peace
-            if liner_acc_x > 8
+            if liner_acc_x > 5
                 action_start = 1;
                 action_start_index = i;
                 curve_condition = step1;
@@ -243,7 +243,7 @@ for i = 101 : N
             else
                 slop = -1;
                 % reach the up peak
-                if liner_acc_x_last < 17
+                if liner_acc_x_last < 12
                     % false peak
                     curve_condition = peace;
                     action_start = 0;
@@ -264,7 +264,7 @@ for i = 101 : N
             if liner_acc_x > liner_acc_x_last
                 slop = 1;
                 % reach the trough
-                if liner_acc_x_last > -17
+                if liner_acc_x_last > -12
                     % false trough
                 else
                     curve_condition = step3;
