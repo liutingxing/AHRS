@@ -2,12 +2,11 @@ package bottomnav.hitherejoe.com.bottomnavigationsample;
 
 public class SampleData {
     public int          uTime;
-    public double       fPsiPl;
-    public double       fThePl;
-    public double       fPhiPl;
-    public double[][]   fCnb = new double[3][3];
-    public double[][]   fCbn = new double[3][3];
-    public double[]     fqPl;
+    public double       fPsiPlPlat;
+    public double       fThePlPlat;
+    public double       fPhiPlPlat;
+    public double[][]   fCbnPlat = new double[3][3];
+    public double[]     fqPlPlat;
     public double       fLinerAccN;
     public double       fLinerAccE;
     public double       fLinerAccD;

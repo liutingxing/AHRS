@@ -14,9 +14,15 @@ public class SensorFusion {
     private double       fPsiPl;
     private double       fThePl;
     private double       fPhiPl;
+    private double       fPsiPlPlat;
+    private double       fThePlPlat;
+    private double       fPhiPlPlat;
     private double[][]   fCnb = new double[3][3];
     private double[][]   fCbn = new double[3][3];
+    private double[][]   fCnp = new double[3][3];
     private double[]     fqPl = new double[4];
+    private double[]     fqPlPlat = new double[4];       // MAG_SUPPORT = 0: fqPlPlat = fqPl
+    private double[][]   fCbnPlat = new double[3][3];    // MAG_SUPPORT = 0: fCbnPlat = fCbn
     private double[]    fGyroBias = new double[3];
     private double[]    fAccBias = new double[3];
     private double      fLinerAccN;
@@ -41,9 +47,11 @@ public class SensorFusion {
     private boolean     uActionEndFlag;
     public  boolean     uActionComplete;
 
+    private final static int MAG_SUPPORT = 0;
     private final static int ALIGN_NUM = 100;
     private ArrayList<double[]> fAlignGyroArray = new ArrayList<double[]>(100);
     private ArrayList<double[]> fAlignAccArray = new ArrayList<double[]>(100);
+    private ArrayList<double[]> fAlignMagArray = new ArrayList<double[]>(100);
     private ArrayList<SampleData> cSampleDataArray = new ArrayList<SampleData>(20);
 
     public final static double GRAVITY = 9.80665;
@@ -137,12 +145,12 @@ public class SensorFusion {
         }
 
         // static detection
-        uStaticFlag = staticDetect(gyro, acc);
+        uStaticFlag = staticDetect(gyro, acc, mag);
 
         if (uAlignFlag == false) {
             if (uStaticFlag == true) {
                 // initial alignment
-                if (sensorAlignment(fAlignAccArray) == true) {
+                if (sensorAlignment(fAlignAccArray, fAlignMagArray) == true) {
                     gyroCalibration(fAlignGyroArray);
                     fAlignGyroArray.clear();
                     uAlignFlag = true;
@@ -195,7 +203,10 @@ public class SensorFusion {
         	uKfCount++;
         }*/
         // quaternion integration for attitude and heading
-        ahrsProcess(dt, gyro, acc);
+        ahrsProcess(dt, gyro, acc, mag);
+
+        // convert the ahrs data for MAG_SUPPORT == 0 and MAG_SUPPORT == 1
+        platformDataProcess();
 
         // action detect
         actionDetect(dt, gyro, acc);
@@ -229,19 +240,54 @@ public class SensorFusion {
         sAttitude.append(" ");
         sAttitude.append(String.valueOf(0));
         sAttitude.append(" ");
-        sAttitude.append(String.valueOf(fqPl[0]));
+        sAttitude.append(String.valueOf(fqPlPlat[0]));
         sAttitude.append(" ");
-        sAttitude.append(String.valueOf(-fqPl[1]));
+        sAttitude.append(String.valueOf(-fqPlPlat[1]));
         sAttitude.append(" ");
-        sAttitude.append(String.valueOf(-fqPl[2]));
+        sAttitude.append(String.valueOf(-fqPlPlat[2]));
         sAttitude.append(" ");
-        sAttitude.append(String.valueOf(fqPl[3]));
+        sAttitude.append(String.valueOf(fqPlPlat[3]));
         sAttitude.append(" ");
         sAttitude.append(String.valueOf(fLinerAccXLast));
         sAttitude.append(" ");
         sAttitude.append("x");
 
         return String.valueOf(sAttitude);
+    }
+
+    private void platformDataProcess()
+    {
+        int i = 0;
+        int j = 0;
+
+        if (MAG_SUPPORT == 0)
+        {
+            for (i = 0; i < 4; i++)
+            {
+                fqPlPlat[i] = fqPl[i];
+            }
+
+            for (i = 0; i < 3; i++)
+            {
+                for (j = 0; j < 3; j++)
+                {
+                    fCbnPlat[i][j] = fCbn[i][j];
+                }
+            }
+        }
+        else
+        {
+            Matrix cbn = new Matrix(fCbn);
+            Matrix cnp = new Matrix(fCnp);
+            Matrix cbnPlatform = cnp.times(cbn);
+            fCbnPlat = cbnPlatform.getArray();
+
+            double[] euler = dcm2euler(fCbnPlat);
+            fPsiPlPlat = euler[0];
+            fThePlPlat = euler[1];
+            fPhiPlPlat = euler[2];
+            euler2q(fqPlPlat, fPsiPlPlat, fThePlPlat, fPhiPlPlat);
+        }
     }
 
     private int processSampleData(ArrayList<SampleData> sampleDataArray, TrainData data)
@@ -267,13 +313,13 @@ public class SensorFusion {
             trajectory.append(" ");
             trajectory.append(String.valueOf(-val.fPosE));
             trajectory.append(" ");
-            trajectory.append(String.valueOf(val.fqPl[0]));
+            trajectory.append(String.valueOf(val.fqPlPlat[0]));
             trajectory.append(" ");
-            trajectory.append(String.valueOf(-val.fqPl[1]));
+            trajectory.append(String.valueOf(-val.fqPlPlat[1]));
             trajectory.append(" ");
-            trajectory.append(String.valueOf(-val.fqPl[2]));
+            trajectory.append(String.valueOf(-val.fqPlPlat[2]));
             trajectory.append(" ");
-            trajectory.append(String.valueOf(val.fqPl[3]));
+            trajectory.append(String.valueOf(val.fqPlPlat[3]));
             trajectory.append(" ");
             trajectory.append("x");
             trajectory.append("\n");
@@ -349,18 +395,14 @@ public class SensorFusion {
         int i;
 
         dst.uTime = src.uTime;
-        dst.fPsiPl = src.fPsiPl;
-        dst.fThePl = src.fThePl;
-        dst.fPhiPl = src.fPhiPl;
-        for (i = 0; i < src.fCnb.length; i++)
+        dst.fPsiPlPlat = src.fPsiPlPlat;
+        dst.fThePlPlat = src.fThePlPlat;
+        dst.fPhiPlPlat = src.fPhiPlPlat;
+        for (i = 0; i < src.fCbnPlat.length; i++)
         {
-            dst.fCnb[i] = Arrays.copyOf(src.fCnb[i], src.fCnb[i].length);
+            dst.fCbnPlat[i] = Arrays.copyOf(src.fCbnPlat[i], src.fCbnPlat[i].length);
         }
-        for (i = 0; i < src.fCbn.length; i++)
-        {
-            dst.fCbn[i] = Arrays.copyOf(src.fCbn[i], src.fCbn[i].length);
-        }
-        dst.fqPl = Arrays.copyOf(src.fqPl, src.fqPl.length);
+        dst.fqPlPlat = Arrays.copyOf(src.fqPlPlat, src.fqPlPlat.length);
         dst.fLinerAccN = src.fLinerAccN;
         dst.fLinerAccE = src.fLinerAccE;
         dst.fLinerAccD = src.fLinerAccD;
@@ -376,18 +418,21 @@ public class SensorFusion {
         dst.fAudio = src.fAudio;
         for (i = 0; i < 3; i++)
         {
-            dst.fOmegaN[i] = src.fCbn[i][0] * src.fOmegaB[0] + src.fCbn[i][1] * src.fOmegaB[1] + src.fCbn[i][2] * src.fOmegaB[2];
+            dst.fOmegaN[i] = src.fCbnPlat[i][0] * src.fOmegaB[0] + src.fCbnPlat[i][1] * src.fOmegaB[1] + src.fCbnPlat[i][2] * src.fOmegaB[2];
         }
         dst.fVel = Math.sqrt(src.fVelN*src.fVelN +  src.fVelE*src.fVelE + src.fVelD*src.fVelD);
 
         return 0;
     }
 
-    private void ahrsProcess(double dt, double[] gyro, double[] acc)
+    private void ahrsProcess(double dt, double[] gyro, double[] acc, double[] mag)
     {
         int i = 0;
         double accNorm = 0;
         double[] qDot = new double[]{0, 0, 0, 0};
+        double[] qDotError = new double[]{0, 0, 0, 0};
+        double gyroMeasError = 10 * Math.PI / 180; // gyroscope measurement error in rad/s (shown as 10 deg/s)
+        double beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
 
         qDot[0] = -(gyro[0] * fqPl[1] + gyro[1] * fqPl[2] + gyro[2] * fqPl[3]) / 2.0;
         qDot[1] =  (gyro[0] * fqPl[0] + gyro[2] * fqPl[2] - gyro[1] * fqPl[3]) / 2.0;
@@ -395,55 +440,121 @@ public class SensorFusion {
         qDot[3] =  (gyro[2] * fqPl[0] + gyro[1] * fqPl[1] - gyro[0] * fqPl[2]) / 2.0;
 
         accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
-        if (accNorm < 12.0)
-        {
+        if (accNorm < 12.0) {
             // execute the acc aid process
             double diff = 0;
-            double gyroMeasError = 10 * Math.PI / 180; // gyroscope measurement error in rad/s (shown as 10 deg/s)
-            double beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
             double[] gEstimate = new double[3];
             Matrix F = new Matrix(3, 1);
             Matrix J = new Matrix(3, 4);
             Matrix step = new Matrix(4, 1);
 
-            gEstimate[0] = -acc[0]/accNorm;
-            gEstimate[1] = -acc[1]/accNorm;
-            gEstimate[2] = -acc[2]/accNorm;
+            gEstimate[0] = -acc[0] / accNorm;
+            gEstimate[1] = -acc[1] / accNorm;
+            gEstimate[2] = -acc[2] / accNorm;
 
-            F.set(0, 0, 2*(fqPl[1]*fqPl[3] - fqPl[0]*fqPl[2]) - gEstimate[0]);
-            F.set(1, 0, 2*(fqPl[0]*fqPl[1] + fqPl[2]*fqPl[3]) - gEstimate[1]);
-            F.set(2, 0, 2*(0.5-fqPl[1]*fqPl[1] - fqPl[2]*fqPl[2]) - gEstimate[2]);
+            F.set(0, 0, 2 * (fqPl[1] * fqPl[3] - fqPl[0] * fqPl[2]) - gEstimate[0]);
+            F.set(1, 0, 2 * (fqPl[0] * fqPl[1] + fqPl[2] * fqPl[3]) - gEstimate[1]);
+            F.set(2, 0, 2 * (0.5 - fqPl[1] * fqPl[1] - fqPl[2] * fqPl[2]) - gEstimate[2]);
 
-            J.set(0, 0, -2*fqPl[2]);
-            J.set(0, 1, 2*fqPl[3]);
-            J.set(0, 2, -2*fqPl[0]);
-            J.set(0, 3, 2*fqPl[1]);
+            J.set(0, 0, -2 * fqPl[2]);
+            J.set(0, 1, 2 * fqPl[3]);
+            J.set(0, 2, -2 * fqPl[0]);
+            J.set(0, 3, 2 * fqPl[1]);
 
-            J.set(1, 0, 2*fqPl[1]);
-            J.set(1, 1, 2*fqPl[0]);
-            J.set(1, 2, 2*fqPl[3]);
-            J.set(1, 3, 2*fqPl[2]);
+            J.set(1, 0, 2 * fqPl[1]);
+            J.set(1, 1, 2 * fqPl[0]);
+            J.set(1, 2, 2 * fqPl[3]);
+            J.set(1, 3, 2 * fqPl[2]);
 
             J.set(2, 0, 0);
-            J.set(2, 1, -4*fqPl[1]);
-            J.set(2, 2, -4*fqPl[2]);
+            J.set(2, 1, -4 * fqPl[1]);
+            J.set(2, 2, -4 * fqPl[2]);
             J.set(2, 3, 0);
 
             step = J.transpose().times(F);
-            step = step.times(1.0/step.norm2());
+            qDotError[0] += step.get(0, 0);
+            qDotError[1] += step.get(1, 0);
+            qDotError[2] += step.get(2, 0);
+            qDotError[3] += step.get(3, 0);
 
             diff = F.norm2();
-            if (diff < 1)
-            {
+            if (diff < 1) {
                 gyroMeasError = 0.1 * Math.PI / 180;
                 beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
             }
-
-            qDot[0] -= beta * step.get(0, 0);
-            qDot[1] -= beta * step.get(1, 0);
-            qDot[2] -= beta * step.get(2, 0);
-            qDot[3] -= beta * step.get(3, 0);
         }
+
+        if (MAG_SUPPORT == 1)
+        {
+            double magNorm = Math.sqrt(mag[0]*mag[0] + mag[1]*mag[1] + mag[2]*mag[2]);
+            if (magNorm != 0)
+            {
+                // execute the acc aid process
+                double diff = 0;
+                double[] mEstimate = new double[3];
+                double[] b = new double[4];
+                Matrix F = new Matrix(3, 1);
+                Matrix J = new Matrix(3, 4);
+                Matrix h = new Matrix(3, 1);
+                Matrix cbn = new Matrix(fCbn);
+                Matrix m = new Matrix(3, 1);
+                Matrix step = new Matrix(4, 1);
+
+                mEstimate[0] = mag[0] / magNorm;
+                mEstimate[1] = mag[1] / magNorm;
+                mEstimate[2] = mag[2] / magNorm;
+
+                m.set(0, 0, mEstimate[0]);
+                m.set(1, 0, mEstimate[1]);
+                m.set(2, 0, mEstimate[2]);
+
+                h = cbn.times(m);
+                b[0] = 0;
+                b[1] = Math.sqrt(h.get(0, 0)*h.get(0, 0) + h.get(1, 0)*h.get(1, 0));
+                b[2] = 0;
+                b[3] = h.get(2, 0);
+
+                F.set(0, 0, 2*b[1]*(0.5 - fqPl[2]*fqPl[2] - fqPl[3]*fqPl[3]) + 2*b[3]*(fqPl[1]*fqPl[3] - fqPl[0]*fqPl[2]) - mEstimate[0]);
+                F.set(1, 0, 2*b[1]*(fqPl[1]*fqPl[2] - fqPl[0]*fqPl[3]) + 2*b[3]*(fqPl[0]*fqPl[1] + fqPl[2]*fqPl[3]) - mEstimate[1]);
+                F.set(2, 0, 2*b[1]*(fqPl[0]*fqPl[2] + fqPl[1]*fqPl[3]) + 2*b[3]*(0.5 - fqPl[1]*fqPl[1] - fqPl[2]*fqPl[2]) - mEstimate[2]);
+
+                J.set(0, 0, -2 * b[3] * fqPl[2]);
+                J.set(0, 1, 2 * b[3] * fqPl[3]);
+                J.set(0, 2, -4 * b[1] * fqPl[2] - 2 * b[3] * fqPl[0]);
+                J.set(0, 3, -4 * b[1] * fqPl[3] + 2 * b[3] * fqPl[1]);
+
+                J.set(1, 0, -2 * b[1] * fqPl[3] + 2 * b[3] * fqPl[1]);
+                J.set(1, 1, 2 * b[1] * fqPl[2] + 2 * b[3] * fqPl[0]);
+                J.set(1, 2, 2 * b[1] * fqPl[1] + 2 * b[3] * fqPl[3]);
+                J.set(1, 3, -2 * b[1] * fqPl[0] + 2 * b[3] * fqPl[2]);
+
+                J.set(2, 0, 2 * b[1] * fqPl[2]);
+                J.set(2, 1, 2 * b[1] * fqPl[3] - 4 * b[3] * fqPl[1]);
+                J.set(2, 2, 2 * b[1] * fqPl[0] - 4 * b[3] * fqPl[2]);
+                J.set(2, 3, 2 * b[1] * fqPl[1]);
+
+                diff = F.norm2();
+                step = J.transpose().times(F);
+                qDotError[0] += step.get(0, 0);
+                qDotError[1] += step.get(1, 0);
+                qDotError[2] += step.get(2, 0);
+                qDotError[3] += step.get(3, 0);
+            }
+        }
+
+        double qDotErrorNorm = Math.sqrt(qDotError[0] * qDotError[0] + qDotError[1] * qDotError[1] + qDotError[2] * qDotError[2] + qDotError[3] * qDotError[3]);
+        if (qDotErrorNorm > 0)
+        {
+            qDotError[0] /= qDotErrorNorm;
+            qDotError[1] /= qDotErrorNorm;
+            qDotError[2] /= qDotErrorNorm;
+            qDotError[3] /= qDotErrorNorm;
+        }
+
+        qDot[0] -= beta * qDotError[0];
+        qDot[1] -= beta * qDotError[1];
+        qDot[2] -= beta * qDotError[2];
+        qDot[3] -= beta * qDotError[3];
 
         for (i = 0; i < 4; i++)
         {
@@ -523,7 +634,7 @@ public class SensorFusion {
 
         for (i = 0; i < 3; i++)
         {
-            linerAccIBP[i] = acc[0]*fCbn[i][0] + acc[1]*fCbn[i][1] + acc[2]*fCbn[i][2];
+            linerAccIBP[i] = acc[0]*fCbnPlat[i][0] + acc[1]*fCbnPlat[i][1] + acc[2]*fCbnPlat[i][2];
         }
         linerAccIBP[2] += GRAVITY;
 
@@ -570,7 +681,7 @@ public class SensorFusion {
         // calculate the liner accelerate along the x axis
         for (i = 0; i < 3; i++)
         {
-            linerAccIBP[i] = acc[0]*fCbn[i][0] + acc[1]*fCbn[i][1] + acc[2]*fCbn[i][2];
+            linerAccIBP[i] = acc[0]*fCbnPlat[i][0] + acc[1]*fCbnPlat[i][1] + acc[2]*fCbnPlat[i][2];
         }
         linerAccIBP[2] += GRAVITY;
 
@@ -712,77 +823,170 @@ public class SensorFusion {
         fCnb = temp.transpose().getArray();
     }
 
-    private boolean sensorAlignment(ArrayList<double[]> accArray)
+    private boolean sensorAlignment(ArrayList<double[]> accArray, ArrayList<double[]> magArray)
     {
-        int i = 0;
-        double fmodGxyz = 0;
-        double fmodGyz = 0;
-        double frecipmodGxyz = 0;
-        double ftmp = 0;
-        double[] fg = new double[]{0,0,0};
+        if (MAG_SUPPORT == 1)
+        {
+            int i = 0;
+            int j = 0;
+            int X = 0;
+            int Y = 1;
+            int Z = 2;
+            double ftmp = 0;
+            double[] fg = new double[]{0,0,0};
+            double[] fm = new double[]{0,0,0};
+            double[] fmod = new double[]{0,0,0};
+            double[][] fR = new double[3][3];
 
-        // tilt alignment
-        for(double[] value:accArray)
-        {
-            fg[0] -= value[0];
-            fg[1] -= value[1];
-            fg[2] -= value[2];
+            for(double[] value:accArray)
+            {
+                fg[0] -= value[0];
+                fg[1] -= value[1];
+                fg[2] -= value[2];
+            }
+            for (i = 0; i < 3; i++)
+            {
+                fg[i] = fg[i] / accArray.size();
+                fR[i][Z] = fg[i];;
+            }
+
+            for(double[] value:magArray)
+            {
+                fm[0] += value[0];
+                fm[1] += value[1];
+                fm[2] += value[2];
+            }
+            for (i = 0; i < 3; i++)
+            {
+                fm[i] = fm[i] / magArray.size();
+                fR[i][X] = fm[i];
+            }
+
+            // set y vector to vector product of z and x vectors
+            fR[X][Y] = fR[Y][Z] * fR[Z][X] - fR[Z][Z] * fR[Y][X];
+            fR[Y][Y] = fR[Z][Z] * fR[X][X] - fR[X][Z] * fR[Z][X];
+            fR[Z][Y] = fR[X][Z] * fR[Y][X] - fR[Y][Z] * fR[X][X];
+
+            // set x vector to vector product of y and z vectors
+            fR[X][X] = fR[Y][Y] * fR[Z][Z] - fR[Z][Y] * fR[Y][Z];
+            fR[Y][X] = fR[Z][Y] * fR[X][Z] - fR[X][Y] * fR[Z][Z];
+            fR[Z][X] = fR[X][Y] * fR[Y][Z] - fR[Y][Y] * fR[X][Z];
+
+            for (i = X; i <= Z; i++)
+            {
+                fmod[i] = Math.sqrt(fR[X][i] * fR[X][i] + fR[Y][i] * fR[Y][i] + fR[Z][i] * fR[Z][i]);
+            }
+
+            if (!((fmod[X] == 0.0F) || (fmod[Y] == 0.0F) || (fmod[Z] == 0.0F)))
+            {
+                for (j = X; j <= Z; j++)
+                {
+                    ftmp = 1.0F / fmod[j];
+                    for (i = X; i <= Z; i++)
+                    {
+                        fR[i][j] *= ftmp;
+                    }
+                }
+            }
+            else
+            {
+                // no solution is possible so set rotation to identity matrix
+                return false;
+            }
+
+            for (i = 0; i < 3; i++)
+            {
+                for (j = 0; j < 3; j++)
+                {
+                    fCnb[i][j] = fR[i][j];
+                }
+            }
+
+            Matrix temp = new Matrix(fCnb);
+            fCbn = temp.transpose().getArray();
+            double[] euler = dcm2euler(fCbn);
+            fPsiPl = euler[0];
+            fThePl = euler[1];
+            fPhiPl = euler[2];
+            euler2q(fqPl, fPsiPl, fThePl, fPhiPl);
+            euler2dcm(fCnp, fPsiPl, 0, 0);
+            temp = new Matrix(fCnp);
+            fCnp = temp.transpose().getArray();
+
+            return true;
         }
-        for (i = 0; i < 3; i++)
+        else
         {
-            fg[i] = fg[i] / accArray.size();
-        }
+            int i = 0;
+            double fmodGxyz = 0;
+            double fmodGyz = 0;
+            double frecipmodGxyz = 0;
+            double ftmp = 0;
+            double[] fg = new double[]{0,0,0};
+
+            // tilt alignment
+            for(double[] value:accArray)
+            {
+                fg[0] -= value[0];
+                fg[1] -= value[1];
+                fg[2] -= value[2];
+            }
+            for (i = 0; i < 3; i++)
+            {
+                fg[i] = fg[i] / accArray.size();
+            }
 
 /*        fPsiPl = 0;
         fThePl = -Math.asin(fg[0] / SensorFusion.GRAVITY);
         fPhiPl = Math.atan2(fg[1] / SensorFusion.GRAVITY, fg[2] / SensorFusion.GRAVITY);*/
 
-        fmodGyz = fg[1] * fg[1] + fg[2] * fg[2];
-        fmodGxyz = fmodGyz + fg[0] * fg[0];
+            fmodGyz = fg[1] * fg[1] + fg[2] * fg[2];
+            fmodGxyz = fmodGyz + fg[0] * fg[0];
 
-        // check for free fall special case where no solution is possible
-        if (fmodGxyz == 0.0F)
-        {
-            return false;
+            // check for free fall special case where no solution is possible
+            if (fmodGxyz == 0.0F)
+            {
+                return false;
+            }
+
+            // check for vertical up or down gimbal lock case
+            if (fmodGyz == 0.0F)
+            {
+                return false;
+            }
+
+            // compute moduli for the general case
+            fmodGyz = Math.sqrt(fmodGyz);
+            fmodGxyz = Math.sqrt(fmodGxyz);
+            frecipmodGxyz = 1.0 / fmodGxyz;
+            ftmp = fmodGxyz / fmodGyz;
+
+            // normalize the accelerometer reading into the z column
+            for (i = 0; i < 3; i++)
+            {
+                fCnb[i][2] = fg[i] * frecipmodGxyz;
+            }
+
+            // construct x column of orientation matrix
+            fCnb[0][0] = fmodGyz * frecipmodGxyz;
+            fCnb[1][0] = -fCnb[0][2] * fCnb[1][2] * ftmp;
+            fCnb[2][0] = -fCnb[0][2] * fCnb[2][2] * ftmp;
+
+            // construct y column of orientation matrix
+            fCnb[0][1] = 0;
+            fCnb[1][1] = fCnb[2][2] * ftmp;
+            fCnb[2][1] = -fCnb[1][2] * ftmp;
+
+            Matrix temp = new Matrix(fCnb);
+            fCbn = temp.transpose().getArray();
+            double[] euler = dcm2euler(fCbn);
+            fPsiPl = euler[0];
+            fThePl = euler[1];
+            fPhiPl = euler[2];
+            euler2q(fqPl, fPsiPl, fThePl, fPhiPl);
+
+            return true;
         }
-
-        // check for vertical up or down gimbal lock case
-        if (fmodGyz == 0.0F)
-        {
-            return false;
-        }
-
-        // compute moduli for the general case
-        fmodGyz = Math.sqrt(fmodGyz);
-        fmodGxyz = Math.sqrt(fmodGxyz);
-        frecipmodGxyz = 1.0 / fmodGxyz;
-        ftmp = fmodGxyz / fmodGyz;
-
-        // normalize the accelerometer reading into the z column
-        for (i = 0; i < 3; i++)
-        {
-            fCnb[i][2] = fg[i] * frecipmodGxyz;
-        }
-
-        // construct x column of orientation matrix
-        fCnb[0][0] = fmodGyz * frecipmodGxyz;
-        fCnb[1][0] = -fCnb[0][2] * fCnb[1][2] * ftmp;
-        fCnb[2][0] = -fCnb[0][2] * fCnb[2][2] * ftmp;
-
-        // construct y column of orientation matrix
-        fCnb[0][1] = 0;
-        fCnb[1][1] = fCnb[2][2] * ftmp;
-        fCnb[2][1] = -fCnb[1][2] * ftmp;
-
-        Matrix temp = new Matrix(fCnb);
-        fCbn = temp.transpose().getArray();
-        double[] euler = dcm2euler(fCbn);
-        fPsiPl = euler[0];
-        fThePl = euler[1];
-        fPhiPl = euler[2];
-        euler2q(fqPl, fPsiPl, fThePl, fPhiPl);
-
-        return true;
     }
 
     private void gyroCalibration(ArrayList<double[]> gyroArray)
@@ -803,7 +1007,7 @@ public class SensorFusion {
         }
     }
 
-    private boolean staticDetect(double[] gyro, double[] acc)
+    private boolean staticDetect(double[] gyro, double[] acc, double[] mag)
     {
         double gyro_det = 0;
         double acc_det = 0;
@@ -814,13 +1018,22 @@ public class SensorFusion {
         {
             fAlignAccArray.add(acc);
             fAlignGyroArray.add(gyro);
-        }
+            if (MAG_SUPPORT == 1  && mag[0] != 0 && mag[1] != 0 && mag[2] != 0)
+            {
+                fAlignMagArray.add(mag);
+            }
+         }
         else
         {
             fAlignAccArray.remove(0);
             fAlignGyroArray.remove(0);
             fAlignAccArray.add(acc);
             fAlignGyroArray.add(gyro);
+            if (MAG_SUPPORT == 1  && mag[0] != 0 && mag[1] != 0 && mag[2] != 0)
+            {
+                fAlignMagArray.remove(0);
+                fAlignMagArray.add(mag);
+            }
         }
 
         if (fAlignGyroArray.size() == ALIGN_NUM)
