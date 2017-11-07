@@ -130,6 +130,8 @@ public class SensorFusion {
             fPlatformOmegaMinZ = 0;
             fRangeMax = 0.0;
             fVelocityMax = 0.0;
+            fAudioMax = 0.0;
+            strikeIndex = 0;
 
             trainData.bValid = false;
             trainData.sTrajectory = null;
