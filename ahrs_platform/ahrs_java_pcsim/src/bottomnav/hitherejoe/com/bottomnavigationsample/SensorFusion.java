@@ -738,17 +738,20 @@ public class SensorFusion {
                     iCurveCondition = Peace;
                     uActionStartFlag = false;
                 }
-                if (linerAccX > fLinerAccXLast){
-                    slop = 1;
-                    // reach the trough
-                    if (fLinerAccXLast > -12){
-                        // false trough
-                        // no action, because it is normal
+                else
+                {
+                    if (linerAccX > fLinerAccXLast){
+                        slop = 1;
+                        // reach the trough
+                        if (fLinerAccXLast > -12){
+                            // false trough
+                            // no action, because it is normal
+                        }else{
+                            iCurveCondition = Step3;
+                        }
                     }else{
-                        iCurveCondition = Step3;
+                        slop = -1;
                     }
-                }else{
-                    slop = -1;
                 }
                 break;
 
