@@ -6,6 +6,7 @@ package bottomnav.hitherejoe.com.bottomnavigationsample;
 
 public class TrainData {
     public Boolean bValid;
+    public int iScore;
     public String sTrajectory;
     public int uActionCount;
     public String sActionType;
@@ -21,6 +22,7 @@ public class TrainData {
     public TrainData()
     {
         bValid = false;
+        iScore = 88;
         sTrajectory = null;
         uActionCount = 0;
         sActionType = null;
@@ -35,6 +37,7 @@ public class TrainData {
     public void resetTrainData()
     {
         bValid = false;
+        iScore = 0;
         sTrajectory = null;
         uActionCount = 0;
         sActionType = null;
