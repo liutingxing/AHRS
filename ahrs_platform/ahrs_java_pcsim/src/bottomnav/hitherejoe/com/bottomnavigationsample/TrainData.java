@@ -14,10 +14,17 @@ public class TrainData {
     public double fVelocityMax;
     public double fVelocityStrike;
     public double fStrikeAudio;
-    public String sTrajectorySweet;
-    public String sStrikeSweet;
+    public int iTrajectorySweet;
+    public int iStrikeSweet;
     public int uStrikePower;
     public int uPlayLoad;
+
+    //start chart
+    public int iTrajectorySweetScore;
+    public int iStrikeSweetScore;
+    public int iStrikePowerScore;
+    public int iRangeScore;
+    public int iStrikeVelocityScore;
 
     public TrainData()
     {
@@ -28,24 +35,22 @@ public class TrainData {
         sActionType = null;
         fRangeMax = 0;
         fVelocityMax = 0;
-        sTrajectorySweet = "perfect";
-        sStrikeSweet = "perfect";
-        uStrikePower = 0;
-        uPlayLoad = 0;
+        fVelocityStrike = 0;
+        iTrajectorySweet = 1;
+        iStrikeSweet = 1;
+        uStrikePower = 100;
+        uPlayLoad = 20;
+
+        //start chart
+        iTrajectorySweetScore = iTrajectorySweet*20;
+        iStrikeSweetScore = iTrajectorySweet*20;
+        iStrikePowerScore = 80;
+        iRangeScore = 70;
+        iStrikeVelocityScore = 60;
     }
 
     public void resetTrainData()
     {
-        bValid = false;
-        iScore = 0;
-        sTrajectory = null;
         uActionCount = 0;
-        sActionType = null;
-        fRangeMax = 0;
-        fVelocityMax = 0;
-        sTrajectorySweet = "perfect";
-        sStrikeSweet = "perfect";
-        uStrikePower = 0;
-        uPlayLoad = 0;
     }
 }
