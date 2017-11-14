@@ -133,16 +133,6 @@ public class SensorFusion {
             fAudioMax = 0.0;
             strikeIndex = 0;
 
-            trainData.bValid = false;
-            trainData.sTrajectory = null;
-            trainData.sActionType = null;
-            trainData.fRangeMax = 0;
-            trainData.fVelocityMax = 0;
-            trainData.sTrajectorySweet = "perfect";
-            trainData.sStrikeSweet = "perfect";
-            trainData.uStrikePower = 0;
-            trainData.uPlayLoad = 0;
-
             cSampleDataArray.clear();
         }
 
