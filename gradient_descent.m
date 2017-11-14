@@ -1,7 +1,7 @@
 clear all;
 clc;
 
-MAG_SUPPORT = 1;
+MAG_SUPPORT = 0;
 
 addpath('.\quaternion_library');
 
@@ -122,18 +122,18 @@ for i = 101 : N
         J = [-2*q(3),	2*q(4),    -2*q(1),	2*q(2)
             2*q(2),     2*q(1),     2*q(4),	2*q(3)
             0,         -4*q(2),    -4*q(3),	0    ];
-        step = (J'*F);
-        qDotError = qDotError + step;
         
         % adjust beta
         diff = norm(F);
-        if diff < 1
-            gyroMeasError = 0.1*pi/180;
+        if diff < 0.1
+            gyroMeasError = 3*pi/180;
             beta = sqrt(3.0 / 4.0) * gyroMeasError;
         else
             gyroMeasError = 10*pi/180;
             beta = sqrt(3.0 / 4.0) * gyroMeasError;
         end
+        step = (J'*F);
+        qDotError = qDotError + step;
     end
     if MAG_SUPPORT
         mag_norm = norm(Mag(i, :));
@@ -151,6 +151,13 @@ for i = 101 : N
                 -2*b(2)*q(4)+2*b(4)*q(2),	2*b(2)*q(3)+2*b(4)*q(1),	2*b(2)*q(2)+2*b(4)*q(4),       -2*b(2)*q(1)+2*b(4)*q(3)
                 2*b(2)*q(3),                2*b(2)*q(4)-4*b(4)*q(2),	2*b(2)*q(1)-4*b(4)*q(3),        2*b(2)*q(2)];
             diff = norm(F);
+            if diff < 0.1
+                gyroMeasError = 20*pi/180;
+                beta = sqrt(3.0 / 4.0) * gyroMeasError;
+            else
+                gyroMeasError = 100*pi/180;
+                beta = sqrt(3.0 / 4.0) * gyroMeasError;
+            end
             step = (J'*F);
             qDotError = qDotError + step;
         end
