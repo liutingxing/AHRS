@@ -470,8 +470,8 @@ public class SensorFusion {
             qDotError[3] += step.get(3, 0);
 
             diff = F.norm2();
-            if (diff < 1) {
-                gyroMeasError = 0.1 * Math.PI / 180;
+            if (diff < 0.1) {
+                gyroMeasError = 3 * Math.PI / 180;
                 beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
             }
         }
@@ -531,6 +531,15 @@ public class SensorFusion {
                 qDotError[1] += step.get(1, 0);
                 qDotError[2] += step.get(2, 0);
                 qDotError[3] += step.get(3, 0);
+                if (diff < 0.1) {
+                    gyroMeasError = 20 * Math.PI / 180;
+                    beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
+                }
+                else
+                {
+                    gyroMeasError = 100 * Math.PI / 180;
+                    beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
+                }
             }
         }
 
