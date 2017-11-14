@@ -1031,7 +1031,7 @@ public class SensorFusion {
             }
         }
 
-        if (fAlignGyroArray.size() == ALIGN_NUM)
+        if (fAlignGyroArray.size() == ALIGN_NUM && fAlignAccArray.size() == ALIGN_NUM)
         {
             gyro_std = stdCal(fAlignGyroArray);
             acc_std = stdCal(fAlignAccArray);
