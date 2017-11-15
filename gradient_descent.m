@@ -1,7 +1,7 @@
 clear all;
 clc;
 
-MAG_SUPPORT = 0;
+MAG_SUPPORT = 1;
 
 addpath('.\quaternion_library');
 
