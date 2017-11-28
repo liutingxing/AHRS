@@ -195,7 +195,14 @@ public class SensorFusion {
         	uKfCount++;
         }*/
         // quaternion integration for attitude and heading
-        ahrsProcess(dt, gyro, acc, mag);
+        if (uKalmanFusionFlag == true)
+        {
+            ahrsProcess(dt, gyro, acc, mag);
+        }
+        else
+        {
+            quaternionIntegration(dt, gyro);
+        }
 
         // convert the ahrs data for MAG_SUPPORT == 0 and MAG_SUPPORT == 1
         platformDataProcess();
@@ -474,6 +481,11 @@ public class SensorFusion {
                 gyroMeasError = 3 * Math.PI / 180;
                 beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
             }
+            else
+            {
+                gyroMeasError = 10 * Math.PI / 180;
+                beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
+            }
         }
 
         if (MAG_SUPPORT == 1)
@@ -532,7 +544,7 @@ public class SensorFusion {
                 qDotError[2] += step.get(2, 0);
                 qDotError[3] += step.get(3, 0);
                 if (diff < 0.1) {
-                    gyroMeasError = 20 * Math.PI / 180;
+                    gyroMeasError = 10 * Math.PI / 180;
                     beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
                 }
                 else
