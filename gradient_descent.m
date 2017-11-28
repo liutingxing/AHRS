@@ -109,107 +109,126 @@ for i = 101 : N
     qDotError = 0;
     Cbn = q2dcm(q);
 
-    acc_norm = norm(Acc(i, :));
-    if acc_norm < 12
-        % Normalise accelerometer measurement
-        g_measurement = -Acc(i, :)';
-        g_measurement = g_measurement / norm(g_measurement);
+    if action_start ~= 1 % acc mag aiding
+        acc_norm = norm(Acc(i, :));
+        if acc_norm < 12
+            % Normalise accelerometer measurement
+            g_measurement = -Acc(i, :)';
+            g_measurement = g_measurement / norm(g_measurement);
 
-        % Gradient decent algorithm corrective step
-        F = [2*(q(2)*q(4) - q(1)*q(3)) - g_measurement(1)
-            2*(q(1)*q(2) + q(3)*q(4)) - g_measurement(2)
-            2*(0.5 - q(2)^2 - q(3)^2) - g_measurement(3)];
-        J = [-2*q(3),	2*q(4),    -2*q(1),	2*q(2)
-            2*q(2),     2*q(1),     2*q(4),	2*q(3)
-            0,         -4*q(2),    -4*q(3),	0    ];
-        
-        % adjust beta
-        diff = norm(F);
-        if diff < 0.1
-            gyroMeasError = 3*pi/180;
-            beta = sqrt(3.0 / 4.0) * gyroMeasError;
-        else
-            gyroMeasError = 10*pi/180;
-            beta = sqrt(3.0 / 4.0) * gyroMeasError;
-        end
-        step = (J'*F);
-        qDotError = qDotError + step;
-    end
-    if MAG_SUPPORT
-        mag_norm = norm(Mag(i, :));
-        if mag_norm ~= 0
-            % Normalise magnetometer measurement
-            Magnetometer = Mag(i, :) / mag_norm;
+            % Gradient decent algorithm corrective step
+            F = [2*(q(2)*q(4) - q(1)*q(3)) - g_measurement(1)
+                2*(q(1)*q(2) + q(3)*q(4)) - g_measurement(2)
+                2*(0.5 - q(2)^2 - q(3)^2) - g_measurement(3)];
+            J = [-2*q(3),	2*q(4),    -2*q(1),	2*q(2)
+                2*q(2),     2*q(1),     2*q(4),	2*q(3)
+                0,         -4*q(2),    -4*q(3),	0    ];
 
-            % Reference direction of Earth's magnetic feild
-            h = Cbn*Magnetometer';
-            b = [0, norm(h(1), h(2)), 0, h(3)];
-            F = [2*b(2)*(0.5 - q(3)^2 - q(4)^2) + 2*b(4)*(q(2)*q(4) - q(1)*q(3)) - Magnetometer(1)
-                2*b(2)*(q(2)*q(3) - q(1)*q(4)) + 2*b(4)*(q(1)*q(2) + q(3)*q(4)) - Magnetometer(2)
-                2*b(2)*(q(1)*q(3) + q(2)*q(4)) + 2*b(4)*(0.5 - q(2)^2 - q(3)^2) - Magnetometer(3)];
-            J = [-2*b(4)*q(3),               2*b(4)*q(4),               -4*b(2)*q(3)-2*b(4)*q(1),       -4*b(2)*q(4)+2*b(4)*q(2)
-                -2*b(2)*q(4)+2*b(4)*q(2),	2*b(2)*q(3)+2*b(4)*q(1),	2*b(2)*q(2)+2*b(4)*q(4),       -2*b(2)*q(1)+2*b(4)*q(3)
-                2*b(2)*q(3),                2*b(2)*q(4)-4*b(4)*q(2),	2*b(2)*q(1)-4*b(4)*q(3),        2*b(2)*q(2)];
+            % adjust beta
             diff = norm(F);
             if diff < 0.1
-                gyroMeasError = 20*pi/180;
+                gyroMeasError = 3*pi/180;
                 beta = sqrt(3.0 / 4.0) * gyroMeasError;
             else
-                gyroMeasError = 100*pi/180;
+                gyroMeasError = 10*pi/180;
                 beta = sqrt(3.0 / 4.0) * gyroMeasError;
             end
             step = (J'*F);
             qDotError = qDotError + step;
         end
+        if MAG_SUPPORT
+            mag_norm = norm(Mag(i, :));
+            if mag_norm ~= 0
+                % Normalise magnetometer measurement
+                Magnetometer = Mag(i, :) / mag_norm;
+
+                % Reference direction of Earth's magnetic feild
+                h = Cbn*Magnetometer';
+                b = [0, norm(h(1), h(2)), 0, h(3)];
+                F = [2*b(2)*(0.5 - q(3)^2 - q(4)^2) + 2*b(4)*(q(2)*q(4) - q(1)*q(3)) - Magnetometer(1)
+                    2*b(2)*(q(2)*q(3) - q(1)*q(4)) + 2*b(4)*(q(1)*q(2) + q(3)*q(4)) - Magnetometer(2)
+                    2*b(2)*(q(1)*q(3) + q(2)*q(4)) + 2*b(4)*(0.5 - q(2)^2 - q(3)^2) - Magnetometer(3)];
+                J = [-2*b(4)*q(3),               2*b(4)*q(4),               -4*b(2)*q(3)-2*b(4)*q(1),       -4*b(2)*q(4)+2*b(4)*q(2)
+                    -2*b(2)*q(4)+2*b(4)*q(2),	2*b(2)*q(3)+2*b(4)*q(1),	2*b(2)*q(2)+2*b(4)*q(4),       -2*b(2)*q(1)+2*b(4)*q(3)
+                    2*b(2)*q(3),                2*b(2)*q(4)-4*b(4)*q(2),	2*b(2)*q(1)-4*b(4)*q(3),        2*b(2)*q(2)];
+                diff = norm(F);
+                if diff < 0.1
+                    gyroMeasError = 10*pi/180;
+                    beta = sqrt(3.0 / 4.0) * gyroMeasError;
+                else
+                    gyroMeasError = 100*pi/180;
+                    beta = sqrt(3.0 / 4.0) * gyroMeasError;
+                end
+                step = (J'*F);
+                qDotError = qDotError + step;
+            end
+        end
+
+        % normalise q dot error
+        if qDotError ~= 0
+            qDotError = qDotError / norm(qDotError);
+        end
+
+        % estimate gyro bias
+        if MAG_SUPPORT
+    %         biasDot = 2 * quaternProd([q(1), -q(2), -q(3), -q(4)],  qDotError)';
+    %         gyro_bias_error = zeta * biasDot(2:4) * dt;
+    % 
+    %         % gyro bias validation (Time Interval > 30s, Standard Deviation / Mean < 10%)
+    %         validation_count = validation_count + 1;
+    %         if validation_count <= validation_num
+    %             gyro_bias_error_array(validation_count, :) = gyro_bias_error;
+    %         else
+    %             for j = 2:validation_num
+    %                 gyro_bias_error_array(j - 1, :) = gyro_bias_error_array(j, :);
+    %             end
+    %             gyro_bias_error_array(validation_num, :) = gyro_bias_error;
+    %             gyro_bias_error_mean = mean(gyro_bias_error_array);
+    %             gyro_bias_error_std = std(gyro_bias_error_array);
+    %             if gyro_bias_error_std < 0.2*pi/180
+    %                 gyro_bias = gyro_bias + gyro_bias_error_mean';
+    %                 validation_count = 0;
+    %             end
+    %         end
+
+        end
+
+        gyro_bias_array(i, :) = gyro_bias';
+
+        % Compute rate of change of quaternion
+        Cbn = q2dcm(q);
+        Cnb = Cbn';
+
+        Wepp = zeros(3, 1); % no latitude information in computing latitude and longitude rate
+        Wiep = zeros(3, 1); % no latitude information in computing earth rate in the navigation frame
+        Wipp = Wiep + Wepp;
+        Wipb = Cnb * Wipp;
+        Wpbb = Gyro(i, :)' - Wipb - gyro_bias;
+
+        % Compute rate of change of quaternion
+        qDot = 0.5 * quaternProd(q, [0; Wpbb])' - beta * qDotError;
+
+        % Integrate to yield quaternion
+        q = q + qDot * dt;
+        q = q / norm(q); % normalise quaternion
+    else % gyro integrate
+        Cnb = Cbn';
+
+        Wepp = zeros(3, 1); % no latitude information in computing latitude and longitude rate
+        Wiep = zeros(3, 1); % no latitude information in computing earth rate in the navigation frame
+        Wipp = Wiep + Wepp;
+        Wipb = Cnb * Wipp;
+        Wpbb = Gyro(i, :)' - gyro_bias - Wipb;
+
+        dq = zeros(4, 1);
+        dq(1) = -(Wpbb(1)*q(2) + Wpbb(2)*q(3) + Wpbb(3)*q(4))/2;
+        dq(2) = (Wpbb(1)*q(1) + Wpbb(3)*q(3) - Wpbb(2)*q(4))/2;
+        dq(3) = (Wpbb(2)*q(1) - Wpbb(3)*q(2) + Wpbb(1)*q(4))/2;
+        dq(4) = (Wpbb(3)*q(1) + Wpbb(2)*q(2) - Wpbb(1)*q(3))/2;
+
+        q = q + dq*dt;
+        q = q_norm(q); 
     end
-        
-    % normalise q dot error
-    if qDotError ~= 0
-        qDotError = qDotError / norm(qDotError);
-    end
-
-    % estimate gyro bias
-    if MAG_SUPPORT
-%         biasDot = 2 * quaternProd([q(1), -q(2), -q(3), -q(4)],  qDotError)';
-%         gyro_bias_error = zeta * biasDot(2:4) * dt;
-% 
-%         % gyro bias validation (Time Interval > 30s, Standard Deviation / Mean < 10%)
-%         validation_count = validation_count + 1;
-%         if validation_count <= validation_num
-%             gyro_bias_error_array(validation_count, :) = gyro_bias_error;
-%         else
-%             for j = 2:validation_num
-%                 gyro_bias_error_array(j - 1, :) = gyro_bias_error_array(j, :);
-%             end
-%             gyro_bias_error_array(validation_num, :) = gyro_bias_error;
-%             gyro_bias_error_mean = mean(gyro_bias_error_array);
-%             gyro_bias_error_std = std(gyro_bias_error_array);
-%             if gyro_bias_error_std < 0.2*pi/180
-%                 gyro_bias = gyro_bias + gyro_bias_error_mean';
-%                 validation_count = 0;
-%             end
-%         end
-
-    end
-    
-    gyro_bias_array(i, :) = gyro_bias';
-    
-    % Compute rate of change of quaternion
-    Cbn = q2dcm(q);
-    Cnb = Cbn';
-    
-    Wepp = zeros(3, 1); % no latitude information in computing latitude and longitude rate
-    Wiep = zeros(3, 1); % no latitude information in computing earth rate in the navigation frame
-    Wipp = Wiep + Wepp;
-    Wipb = Cnb * Wipp;
-    Wpbb = Gyro(i, :)' - Wipb - gyro_bias;
-
-    % Compute rate of change of quaternion
-    qDot = 0.5 * quaternProd(q, [0; Wpbb])' - beta * qDotError;
-
-    % Integrate to yield quaternion
-    q = q + qDot * dt;
-    q = q / norm(q); % normalise quaternion
     
     % output euler angle respect to the plarform
     Cbn = q2dcm(q);
