@@ -710,7 +710,7 @@ public class SensorFusion {
         switch(iCurveCondition)
         {
             case Peace:
-                if (linerAccX > 5){
+                if (linerAccX > 1.5){
                     SampleData sampleData = new SampleData();
 
                     uActionStartFlag = true;
@@ -730,7 +730,7 @@ public class SensorFusion {
                 }else{
                     slop = -1;
                     // reach the up peak
-                    if (fLinerAccXLast < 12){
+                    if (fLinerAccXLast < 5){
                         // false peak
                         iCurveCondition = Peace;
                         uActionStartFlag = false;
@@ -744,7 +744,7 @@ public class SensorFusion {
             case Step2:
                 actionTime += dt;
                 downTime += dt;
-                if (downTime > 0.2)
+                if (downTime > 0.3)
                 {
                     iCurveCondition = Peace;
                     uActionStartFlag = false;
@@ -754,7 +754,7 @@ public class SensorFusion {
                     if (linerAccX > fLinerAccXLast){
                         slop = 1;
                         // reach the trough
-                        if (fLinerAccXLast > -12){
+                        if (fLinerAccXLast > -5){
                             // false trough
                             // no action, because it is normal
                         }else{
@@ -774,7 +774,7 @@ public class SensorFusion {
                     slop = -1;
                 }
                 if (linerAccX > -10 && linerAccX < 10){
-                    if (actionTime > 0.1 && actionTime < 0.4)
+                    if (actionTime > 0.1 && actionTime < 0.6)
                     {
                         uActionEndFlag = true;
                     }

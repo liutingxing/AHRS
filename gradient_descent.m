@@ -56,7 +56,7 @@ platform_omega_Zmax = 0;
 platform_omega_Zmin = 0;
 
 %% low pass filter for acc
-[b, a] = butter(2, 5/25, 'low');
+% [b, a] = butter(2, 5/25, 'low');
 % Acc = filter(b, a, Acc);
 
 %% initial alignment
@@ -255,7 +255,7 @@ for i = 101 : N
     liner_acc_x = f_p(1);
     switch curve_condition
         case peace
-            if liner_acc_x > 5
+            if liner_acc_x > 1.5
                 action_start = 1;
                 action_start_index = i;
                 curve_condition = step1;
@@ -269,7 +269,7 @@ for i = 101 : N
             else
                 slop = -1;
                 % reach the up peak
-                if liner_acc_x_last < 12
+                if liner_acc_x_last < 5
                     % false peak
                     curve_condition = peace;
                     action_start = 0;
@@ -282,7 +282,7 @@ for i = 101 : N
         case step2
             down_time = down_time + dt;
             action_time = action_time + dt;
-            if down_time > 0.2
+            if down_time > 0.3
                 % timeout for trough
                 curve_condition = peace;
                 action_start = 0;
@@ -290,7 +290,7 @@ for i = 101 : N
             if liner_acc_x > liner_acc_x_last
                 slop = 1;
                 % reach the trough
-                if liner_acc_x_last > -12
+                if liner_acc_x_last > -5
                     % false trough
                 else
                     curve_condition = step3;
@@ -307,7 +307,7 @@ for i = 101 : N
                 slop = -1;
             end
             if liner_acc_x > -10 && liner_acc_x < 10
-                if action_time > 0.1 && action_time < 0.4
+                if action_time > 0.1 && action_time < 0.6
                     action_end = 1;
                     action_end_index = i - 1;
                 else
