@@ -28,8 +28,10 @@ public class test {
             	// parse the sensor data
             	for (i = 0; i < 3; i++)
                 {
-                    fGyro[i] = Math.toRadians(Double.valueOf(sections[5+i]));        // rad/s
-                    fAcc[i] = Double.valueOf(sections[8+i]) * sensorFusion.GRAVITY; // m/s2
+                    //fGyro[i] = Math.toRadians(Double.valueOf(sections[5+i]));        // rad/s
+                    fGyro[i] = Double.valueOf(sections[5+i]);        // rad/s
+                    //fAcc[i] = Double.valueOf(sections[8+i]) * sensorFusion.GRAVITY; // m/s2
+                    fAcc[i] = Double.valueOf(sections[8+i]);        // m/s2
                     fMag[i] = Double.valueOf(sections[11+i]);                        // uT
                 }
                 fAudio = Double.valueOf(sections[14]);

@@ -70,7 +70,7 @@ while ~feof(fin)
     if acc_x > 32767
         acc_x = acc_x - 65536;
     end
-    acc_x = acc_x / 2048; % g
+    acc_x = acc_x * 9.80665 / 2048; % m/s2
     
     acc_y_h = char(entries(5));
     acc_y_l = char(entries(6));
@@ -79,7 +79,7 @@ while ~feof(fin)
     if acc_y > 32767
         acc_y = acc_y - 65536;
     end
-    acc_y = acc_y / 2048; % g
+    acc_y = acc_y * 9.80665 / 2048; % m/s2
     
     acc_z_h = char(entries(7));
     acc_z_l = char(entries(8));
@@ -88,7 +88,7 @@ while ~feof(fin)
     if acc_z > 32767
         acc_z = acc_z - 65536;
     end
-    acc_z = acc_z / 2048; % g
+    acc_z = acc_z * 9.80665 / 2048; % m/s2
     
     gyro_x_h = char(entries(9));
     gyro_x_l = char(entries(10));
@@ -97,7 +97,7 @@ while ~feof(fin)
     if gyro_x > 32767
         gyro_x = gyro_x - 65536;
     end
-    gyro_x = gyro_x / 16.4; % degree/s
+    gyro_x = gyro_x*pi/180 / 16.4; % rad/s
     
     gyro_y_h = char(entries(11));
     gyro_y_l = char(entries(12));
@@ -106,7 +106,7 @@ while ~feof(fin)
     if gyro_y > 32767
         gyro_y = gyro_y - 65536;
     end
-    gyro_y = gyro_y / 16.4; % degree/s
+    gyro_y = gyro_y*pi/180 / 16.4; % rad/s
     
     gyro_z_h = char(entries(13));
     gyro_z_l = char(entries(14));
@@ -115,7 +115,7 @@ while ~feof(fin)
     if gyro_z > 32767
         gyro_z = gyro_z - 65536;
     end
-    gyro_z = gyro_z / 16.4; % degree/s
+    gyro_z = gyro_z*pi/180 / 16.4; % rad/s
     
     audio_h = char(entries(17));
     audio_l = char(entries(18));
@@ -145,9 +145,9 @@ while ~feof(fin)
         mag_x = -mag_x;
         mag_y = -mag_y;
         mag_z = -mag_z;
-        fprintf(fout, '%d %d %d %d %d %f %f %f %f %f %f %f %f %f %f\r\n', 1, 2, 3, 4, 5, gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z, mag_x, mag_y, mag_z, audio);
+        fprintf(fout, '%d %d %d %d %d %6f %6f %6f %6f %6f %6f %6f %6f %6f %6f\r\n', 1, 2, 3, 4, 5, gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z, mag_x, mag_y, mag_z, audio);
     else
-        fprintf(fout, '%d %d %d %d %d %f %f %f %f %f %f %f %f %f %f\r\n', 1, 2, 3, 4, 5, gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z, 0, 0, 0, audio);
+        fprintf(fout, '%d %d %d %d %d %6f %6f %6f %6f %6f %6f %6f %6f %6f %6f\r\n', 1, 2, 3, 4, 5, gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z, 0, 0, 0, audio);
     end
 end
 fclose(fin);
