@@ -1032,23 +1032,23 @@ public class SensorFusion {
 
         if (fAlignGyroArray.size() < ALIGN_NUM)
         {
-            fAlignAccArray.add(acc);
-            fAlignGyroArray.add(gyro);
+            fAlignAccArray.add(new double[]{acc[0], acc[1], acc[2]});
+            fAlignGyroArray.add(new double[]{gyro[0], gyro[1], gyro[2]});
             if (MAG_SUPPORT == 1  && mag[0] != 0 && mag[1] != 0 && mag[2] != 0)
             {
-                fAlignMagArray.add(mag);
+                fAlignMagArray.add(new double[]{mag[0],mag[1],mag[2]});
             }
          }
         else
         {
             fAlignAccArray.remove(0);
             fAlignGyroArray.remove(0);
-            fAlignAccArray.add(acc);
-            fAlignGyroArray.add(gyro);
+            fAlignAccArray.add(new double[]{acc[0], acc[1], acc[2]});
+            fAlignGyroArray.add(new double[]{gyro[0], gyro[1], gyro[2]});
             if (MAG_SUPPORT == 1  && mag[0] != 0 && mag[1] != 0 && mag[2] != 0)
             {
                 fAlignMagArray.remove(0);
-                fAlignMagArray.add(mag);
+                fAlignMagArray.add(new double[]{mag[0],mag[1],mag[2]});
             }
         }
 
