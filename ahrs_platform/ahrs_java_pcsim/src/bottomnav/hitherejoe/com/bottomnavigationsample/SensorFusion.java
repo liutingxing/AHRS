@@ -737,6 +737,7 @@ public class SensorFusion {
                     }else{
                         iCurveCondition = Step2;
                         downTime = 0;
+                        // maybe is a false peak since the prepare action
                     }
                 }
                 break;
@@ -754,10 +755,16 @@ public class SensorFusion {
                     if (linerAccX > fLinerAccXLast){
                         slop = 1;
                         // reach the trough
-                        if (fLinerAccXLast > -5){
+                        if (fLinerAccXLast > 0){
+                            // there is false peak in the step1
+                            iCurveCondition = Peace;
+                            uActionStartFlag = false;
+                        }
+                        else if(fLinerAccXLast > -5){
                             // false trough
                             // no action, because it is normal
-                        }else{
+                        }
+                        else{
                             iCurveCondition = Step3;
                         }
                     }else{
