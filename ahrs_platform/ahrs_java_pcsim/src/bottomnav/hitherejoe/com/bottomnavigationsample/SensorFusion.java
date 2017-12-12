@@ -292,6 +292,7 @@ public class SensorFusion {
     private int processSampleData(ArrayList<SampleData> sampleDataArray, TrainData data)
     {
         int typeIndex = -1;
+        int count = 0;
         StringBuffer trajectory = new StringBuffer();
         SampleData value;
 
@@ -302,26 +303,6 @@ public class SensorFusion {
             double deltaE = 0;
             double deltaD = 0;
             SampleData valLast;
-
-            // trajectory
-            trajectory.append(String.valueOf(val.uTime));
-            trajectory.append(" ");
-            trajectory.append(String.valueOf(val.fPosN));
-            trajectory.append(" ");
-            trajectory.append(String.valueOf(-val.fPosD));
-            trajectory.append(" ");
-            trajectory.append(String.valueOf(-val.fPosE));
-            trajectory.append(" ");
-            trajectory.append(String.valueOf(val.fqPlPlat[0]));
-            trajectory.append(" ");
-            trajectory.append(String.valueOf(-val.fqPlPlat[1]));
-            trajectory.append(" ");
-            trajectory.append(String.valueOf(-val.fqPlPlat[2]));
-            trajectory.append(" ");
-            trajectory.append(String.valueOf(val.fqPlPlat[3]));
-            trajectory.append(" ");
-            trajectory.append("x");
-            trajectory.append("\n");
 
             // platform omega
             if (val.fOmegaN[2] > fPlatformOmegaMaxZ)
@@ -357,6 +338,38 @@ public class SensorFusion {
                 fAudioMax = val.fAudio;
                 strikeIndex = sampleDataArray.indexOf(val);
             }
+        }
+
+        for(SampleData val:sampleDataArray)
+        {
+            // trajectory
+            trajectory.append(String.valueOf(val.uTime));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(val.fPosN));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(-val.fPosD));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(-val.fPosE));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(val.fqPlPlat[0]));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(-val.fqPlPlat[1]));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(-val.fqPlPlat[2]));
+            trajectory.append(" ");
+            trajectory.append(String.valueOf(val.fqPlPlat[3]));
+            trajectory.append(" ");
+            if (count == strikeIndex)
+            {
+                trajectory.append("s");
+            }
+            else
+            {
+                trajectory.append("x");
+            }
+            trajectory.append("\n");
+
+            count++;
         }
         // delete the last enter character
         trajectory.deleteCharAt(trajectory.length() - 1);
