@@ -276,6 +276,7 @@ for i = 101 : N
                 else
                     curve_condition = step2;
                     down_time = 0;
+                    % maybe is a false peak since the prepare action
                 end
             end
 
@@ -290,7 +291,11 @@ for i = 101 : N
                 if liner_acc_x > liner_acc_x_last
                     slop = 1;
                     % reach the trough
-                    if liner_acc_x_last > -5
+                    if liner_acc_x_last > 0
+                        % there is false peak in the step1
+                        curve_condition = peace;
+                        action_start = 0;
+                    elseif liner_acc_x_last > -5
                         % false trough
                     else
                         curve_condition = step3;
