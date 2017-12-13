@@ -255,7 +255,7 @@ for i = 101 : N
     liner_acc_x = f_p(1);
     switch curve_condition
         case peace
-            if liner_acc_x > 1.5
+            if liner_acc_x > 5
                 action_start = 1;
                 action_start_index = i;
                 curve_condition = step1;
@@ -269,13 +269,14 @@ for i = 101 : N
             else
                 slop = -1;
                 % reach the up peak
-                if liner_acc_x_last < 5
+                if liner_acc_x_last < 10
                     % false peak
                     curve_condition = peace;
                     action_start = 0;
                 else
                     curve_condition = step2;
                     down_time = 0;
+                    peak_value = liner_acc_x_last;
                     % maybe is a false peak since the prepare action
                 end
             end
@@ -295,7 +296,7 @@ for i = 101 : N
                         % there is false peak in the step1
                         curve_condition = peace;
                         action_start = 0;
-                    elseif liner_acc_x_last > -5
+                    elseif liner_acc_x_last > -10
                         % false trough
                     else
                         curve_condition = step3;
