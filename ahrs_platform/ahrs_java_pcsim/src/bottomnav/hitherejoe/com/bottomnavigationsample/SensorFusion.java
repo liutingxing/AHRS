@@ -68,6 +68,7 @@ public class SensorFusion {
     private double fLinerAccXLast = 0.0;
     private double actionTime = 0.0;
     private double downTime = 0.0;
+    private double peakValue = 0.0;
 
     private double fPlatformOmegaMaxZ = 0.0;
     private double fPlatformOmegaMinZ = 0.0;
@@ -723,7 +724,7 @@ public class SensorFusion {
         switch(iCurveCondition)
         {
             case Peace:
-                if (linerAccX > 1.5){
+                if (linerAccX > 5){
                     SampleData sampleData = new SampleData();
 
                     uActionStartFlag = true;
@@ -743,13 +744,14 @@ public class SensorFusion {
                 }else{
                     slop = -1;
                     // reach the up peak
-                    if (fLinerAccXLast < 5){
+                    if (fLinerAccXLast < 10){
                         // false peak
                         iCurveCondition = Peace;
                         uActionStartFlag = false;
                     }else{
                         iCurveCondition = Step2;
                         downTime = 0;
+                        peakValue = fLinerAccXLast;
                         // maybe is a false peak since the prepare action
                     }
                 }
@@ -768,12 +770,20 @@ public class SensorFusion {
                     if (linerAccX > fLinerAccXLast){
                         slop = 1;
                         // reach the trough
-                        if (fLinerAccXLast > 0){
-                            // there is false peak in the step1
-                            iCurveCondition = Peace;
-                            uActionStartFlag = false;
+                        if (fLinerAccXLast > 0.5 * peakValue && peakValue < 30){
+                            // maybe there is false peak in the step1
+                            if (downTime > 0.05)
+                            {
+                                // there is a false peak in the step1
+                                iCurveCondition = Peace;
+                                uActionStartFlag = false;
+                            }
+                            else
+                            {
+                                //the following peak is false peak
+                            }
                         }
-                        else if(fLinerAccXLast > -5){
+                        else if(fLinerAccXLast > -10){
                             // false trough
                             // no action, because it is normal
                         }

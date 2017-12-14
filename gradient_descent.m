@@ -295,7 +295,7 @@ for i = 101 : N
                     if liner_acc_x_last > 0.5*peak_value && peak_value < 30
                         % maybe there is false peak in the step1
                         if down_time > 0.05 
-                            % there is false peak in the step1
+                            % there is a false peak in the step1
                             curve_condition = peace;
                             action_start = 0;
                         else
