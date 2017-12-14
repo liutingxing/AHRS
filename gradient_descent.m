@@ -292,10 +292,15 @@ for i = 101 : N
                 if liner_acc_x > liner_acc_x_last
                     slop = 1;
                     % reach the trough
-                    if liner_acc_x_last > 0
-                        % there is false peak in the step1
-                        curve_condition = peace;
-                        action_start = 0;
+                    if liner_acc_x_last > 0.5*peak_value && peak_value < 30
+                        % maybe there is false peak in the step1
+                        if down_time > 0.05 
+                            % there is false peak in the step1
+                            curve_condition = peace;
+                            action_start = 0;
+                        else
+                            % the following peak is false peak
+                        end
                     elseif liner_acc_x_last > -10
                         % false trough
                     else
