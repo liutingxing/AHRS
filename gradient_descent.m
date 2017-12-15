@@ -255,7 +255,7 @@ for i = 101 : N
     liner_acc_x = f_p(1);
     switch curve_condition
         case peace
-            if liner_acc_x > 5
+            if liner_acc_x > 3
                 action_start = 1;
                 action_start_index = i;
                 curve_condition = step1;
@@ -269,7 +269,7 @@ for i = 101 : N
             else
                 slop = -1;
                 % reach the up peak
-                if liner_acc_x_last < 10
+                if liner_acc_x_last < 8
                     % false peak
                     curve_condition = peace;
                     action_start = 0;
@@ -301,7 +301,7 @@ for i = 101 : N
                         else
                             % the following peak is false peak
                         end
-                    elseif liner_acc_x_last > -10
+                    elseif liner_acc_x_last > -5
                         % false trough
                     else
                         curve_condition = step3;
