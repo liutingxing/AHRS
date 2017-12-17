@@ -15,6 +15,13 @@ Gyro = ahrs_data(:, 6:8);                    % ( rad/s )
 Acc = ahrs_data(:, 9:11);                    % ( m/s2 )
 if MAG_SUPPORT
 Mag = ahrs_data(:, 12:14);                   % ( count )
+% remove mag bias
+mag_bias = [0, 0, 0];
+for i = 1 : length(Mag)
+    if Mag(i, 1) ~= 0 && Mag(i, 2) ~= 0 && Mag(i, 3) ~= 0
+        Mag(i, :) = Mag(i, :) - mag_bias;
+    end
+end
 end
 
 
@@ -137,8 +144,8 @@ for i = 101 : N
             qDotError = qDotError + step;
         end
         if MAG_SUPPORT
-            mag_norm = norm(Mag(i, :));
-            if mag_norm ~= 0
+            if Mag(i, 1) ~= 0 && Mag(i, 2) ~= 0 && Mag(i, 3) ~= 0
+                mag_norm = norm(Mag(i, :));
                 % Normalise magnetometer measurement
                 Magnetometer = Mag(i, :) / mag_norm;
 
