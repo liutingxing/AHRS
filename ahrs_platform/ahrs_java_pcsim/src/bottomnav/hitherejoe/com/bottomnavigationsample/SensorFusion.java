@@ -146,6 +146,8 @@ public class SensorFusion {
                 if (sensorAlignment(fAlignAccArray, fAlignMagArray) == true) {
                     gyroCalibration(fAlignGyroArray);
                     fAlignGyroArray.clear();
+                    fAlignAccArray.clear();
+                    fAlignMagArray.clear();
                     uAlignFlag = true;
                 }
             }
@@ -159,6 +161,8 @@ public class SensorFusion {
         if (uStaticFlag == true) {
             gyroCalibration(fAlignGyroArray);
             fAlignGyroArray.clear();
+            fAlignAccArray.clear();
+            fAlignMagArray.clear();
         }
 
         sensorDataCorrection(gyro, acc);
