@@ -1053,7 +1053,7 @@ public class SensorFusion {
         }
         for (i = 0; i < 3; i++)
         {
-            fGyroBias[i] += bias[i] / gyroArray.size();
+            fGyroBias[i] = bias[i] / gyroArray.size();
         }
     }
 
