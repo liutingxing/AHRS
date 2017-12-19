@@ -104,6 +104,7 @@ public class SensorFusion {
         fCnb = temp.transpose().getArray();
         java.util.Arrays.fill(fGyroBias, 0);
         java.util.Arrays.fill(fAccBias, 0);
+        java.util.Arrays.fill(fMagBias, 0);
         fLinerAccN = 0;
         fLinerAccE = 0;
         fLinerAccD = 0;
