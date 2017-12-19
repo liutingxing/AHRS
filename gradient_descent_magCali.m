@@ -73,16 +73,6 @@ action_end_index = 0;
 platform_omega_Zmax = 0;
 platform_omega_Zmin = 0;
 
-%% low pass filter for acc
-% [b, a] = butter(2, 5/25, 'low');
-% Acc = filter(b, a, Acc);
-
-% gyro calibration
-gyro_bias_error = 0;
-validation_count = 0;
-validation_num = SampleRate * 10; % 10s data size
-gyro_bias_error_array = zeros(validation_num, 3);
-
 %% calibration and alignment
 for i = 1:N
     %% context detect
@@ -261,32 +251,6 @@ for i = 1 : N
         if qDotError ~= 0
             qDotError = qDotError / norm(qDotError);
         end
-
-        % estimate gyro bias
-        if MAG_SUPPORT
-    %         biasDot = 2 * quaternProd([q(1), -q(2), -q(3), -q(4)],  qDotError)';
-    %         gyro_bias_error = zeta * biasDot(2:4) * dt;
-    % 
-    %         % gyro bias validation (Time Interval > 30s, Standard Deviation / Mean < 10%)
-    %         validation_count = validation_count + 1;
-    %         if validation_count <= validation_num
-    %             gyro_bias_error_array(validation_count, :) = gyro_bias_error;
-    %         else
-    %             for j = 2:validation_num
-    %                 gyro_bias_error_array(j - 1, :) = gyro_bias_error_array(j, :);
-    %             end
-    %             gyro_bias_error_array(validation_num, :) = gyro_bias_error;
-    %             gyro_bias_error_mean = mean(gyro_bias_error_array);
-    %             gyro_bias_error_std = std(gyro_bias_error_array);
-    %             if gyro_bias_error_std < 0.2*pi/180
-    %                 gyro_bias = gyro_bias + gyro_bias_error_mean';
-    %                 validation_count = 0;
-    %             end
-    %         end
-
-        end
-
-        gyro_bias_array(i, :) = gyro_bias';
 
         % Compute rate of change of quaternion
         Cbn = q2dcm(q);
