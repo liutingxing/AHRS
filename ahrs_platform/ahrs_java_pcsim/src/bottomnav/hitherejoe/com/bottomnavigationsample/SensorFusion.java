@@ -25,6 +25,7 @@ public class SensorFusion {
     private double[][]   fCbnPlat = new double[3][3];    // MAG_SUPPORT = 0: fCbnPlat = fCbn
     private double[]    fGyroBias = new double[3];
     private double[]    fAccBias = new double[3];
+    private double[]    fMagBias = new double[3];
     private double      fLinerAccN;
     private double      fLinerAccE;
     private double      fLinerAccD;
@@ -39,7 +40,10 @@ public class SensorFusion {
     private double[]     fMagnetic;
     private double       fAudio;
 
-    private boolean     uStaticFlag;
+    private double       fGeoB;
+    private double       fResidual; // unit:%
+
+    private int         uStaticFlag;
     private boolean     uAlignFlag;
     private boolean     uKalmanFusionFlag;
     private boolean     uMechanizationFlag;
@@ -49,9 +53,11 @@ public class SensorFusion {
 
     private final static int MAG_SUPPORT = 1;
     private final static int ALIGN_NUM = 100;
-    private ArrayList<double[]> fAlignGyroArray = new ArrayList<double[]>(100);
-    private ArrayList<double[]> fAlignAccArray = new ArrayList<double[]>(100);
-    private ArrayList<double[]> fAlignMagArray = new ArrayList<double[]>(100);
+    private final static int CALIBRATION_NUM = 300;
+    private ArrayList<double[]> fAlignGyroArray = new ArrayList<double[]>(ALIGN_NUM);
+    private ArrayList<double[]> fAlignAccArray = new ArrayList<double[]>(ALIGN_NUM);
+    private ArrayList<double[]> fAlignMagArray = new ArrayList<double[]>(ALIGN_NUM);
+    private ArrayList<double[]> fCalibrationMagArray = new ArrayList<double[]>(CALIBRATION_NUM);
     private ArrayList<SampleData> cSampleDataArray = new ArrayList<SampleData>(20);
 
     public final static double GRAVITY = 9.80665;
@@ -59,6 +65,11 @@ public class SensorFusion {
 
     private final static int STATE_NUM = 9;
     private int uKfCount = 1;
+
+    private final static int Calibration = 0;
+    private final static int Alignment = 1;
+    private final static int Fusion = 2;
+    private int iStatus = Calibration;
 
     private final static int Peace = 0;
     private final static int Step1 = 1;
@@ -102,7 +113,7 @@ public class SensorFusion {
         fPosN = 0;
         fPosE = 0;
         fPosD = 0;
-        uStaticFlag = false;
+        uStaticFlag = -1;
         uAlignFlag = false;
         uKalmanFusionFlag = true;
         uMechanizationFlag = false;
@@ -140,8 +151,33 @@ public class SensorFusion {
         // static detection
         uStaticFlag = staticDetect(gyro, acc, mag);
 
+        // mag calibration
+        if (MAG_SUPPORT == 1)
+        {
+            if (uStaticFlag == 0 && iStatus == Calibration && mag[0] != 0 && mag[1] != 0 && mag[2] != 0)
+            {
+                if (magCalibration(mag) == true)
+                {
+                    // mag calibration process complete
+                    if (fGeoB > 10 && fGeoB < 200 && fResidual < 20)
+                    {
+                        iStatus = Alignment;
+                    }
+                }
+                else
+                {
+                    // mag calibration process not execute
+                }
+            }
+        }
+        else
+        {
+            iStatus = Alignment;
+        }
+
         if (uAlignFlag == false) {
-            if (uStaticFlag == true) {
+            if (uStaticFlag == 1 && iStatus == Alignment)
+            {
                 // initial alignment
                 if (sensorAlignment(fAlignAccArray, fAlignMagArray) == true) {
                     gyroCalibration(fAlignGyroArray);
@@ -149,6 +185,7 @@ public class SensorFusion {
                     fAlignAccArray.clear();
                     fAlignMagArray.clear();
                     uAlignFlag = true;
+                    iStatus = Fusion;
                 }
             }
 
@@ -158,14 +195,14 @@ public class SensorFusion {
         // AHRS/INS process
         sAttitude = new StringBuffer();
 
-        if (uStaticFlag == true) {
+        if (uStaticFlag == 1) {
             gyroCalibration(fAlignGyroArray);
             fAlignGyroArray.clear();
             fAlignAccArray.clear();
             fAlignMagArray.clear();
         }
 
-        sensorDataCorrection(gyro, acc);
+        sensorDataCorrection(gyro, acc, mag);
         /*// quaternion integration
         quaternionIntegration(dt, gyro);
 
@@ -257,6 +294,28 @@ public class SensorFusion {
         sAttitude.append("x");
 
         return String.valueOf(sAttitude);
+    }
+
+    private boolean magCalibration(double[] mag)
+    {
+        if (fCalibrationMagArray.size() < CALIBRATION_NUM)
+        {
+            fCalibrationMagArray.add(new double[]{mag[0], mag[1], mag[2]});
+        }
+        else
+        {
+            fCalibrationMagArray.remove(0);
+            fCalibrationMagArray.add(new double[]{mag[0], mag[1], mag[2]});
+        }
+
+        if (fCalibrationMagArray.size() == CALIBRATION_NUM)
+        {
+            calibration4INV(fCalibrationMagArray);
+
+            return true;
+        }
+
+        return false;
     }
 
     private void platformDataProcess()
@@ -908,7 +967,7 @@ public class SensorFusion {
             }
             for (i = 0; i < 3; i++)
             {
-                fm[i] = fm[i] / magArray.size();
+                fm[i] = fm[i] / magArray.size() - fMagBias[i];
                 fR[i][X] = fm[i];
             }
 
@@ -1057,7 +1116,7 @@ public class SensorFusion {
         }
     }
 
-    private boolean staticDetect(double[] gyro, double[] acc, double[] mag)
+    private int staticDetect(double[] gyro, double[] acc, double[] mag)
     {
         double gyro_det = 0;
         double acc_det = 0;
@@ -1093,14 +1152,18 @@ public class SensorFusion {
 
             if (gyro_std < 0.01 && acc_std < 0.1)
             {
-                return true;
+                return 1;
+            }
+            else
+            {
+                return 0;
             }
         }
 
-        return false;
+        return -1;
     }
 
-    private void sensorDataCorrection(double[] gyro, double[] acc)
+    private void sensorDataCorrection(double[] gyro, double[] acc, double[] mag)
     {
         int i = 0;
 
@@ -1108,6 +1171,10 @@ public class SensorFusion {
         {
             gyro[i] = gyro[i] - fGyroBias[i];
             acc[i] = acc[i] - fAccBias[i];
+            if (MAG_SUPPORT == 1 && mag[0] != 0 && mag[1] != 0 && mag[2] != 0)
+            {
+                mag[i] = mag[i] - fMagBias[i];
+            }
         }
     }
 
@@ -1190,4 +1257,164 @@ public class SensorFusion {
         fq[2] *= fnorm;
         fq[3] *= fnorm;
     }
+
+    private void calibration4INV(ArrayList<double[]> magArray)
+    {
+        // local variables
+        double fBs2;							// fBs[CHX]^2+fBs[CHY]^2+fBs[CHZ]^2
+        double fSumBs4;							// sum of fBs2
+        double fscaling;						// set to FUTPERCOUNT * FMATRIXSCALING
+        double fE;								// error function = r^T.r
+        double[] fOffset = new double[3];		// offset to remove large DC hard iron bias in matrix
+        int iCount;							    // number of measurements counted
+        int ierror;							    // matrix inversion error flag
+        int i, j, k, l;						    // loop counters
+
+        double ftrB;
+        double ftrFitErrorpc;
+        double DEFAULTB = 50.0;
+        double[] fvecB = new double[4];
+        double[] fvecA = new double[6];
+        double[][] fmatA = new double[4][4];
+        double[][] fmatB = new double[4][4];
+        double[] ftrV = new double[3];
+
+        // compute fscaling to reduce multiplications later
+        fscaling = 1.0 / DEFAULTB;
+
+        // zero fSumBs4=Y^T.Y, fvecB=X^T.Y (4x1) and on and above diagonal elements of fmatA=X^T*X (4x4)
+        fSumBs4 = 0.0;
+        for (i = 0; i < 4; i++)
+        {
+            fvecB[i] = 0.0;
+            for (j = i; j < 4; j++)
+            {
+                fmatA[i][j] = 0.0;
+            }
+        }
+
+        // the offsets are guaranteed to be set from the first element but to avoid compiler error
+        fOffset[0] = fOffset[1] = fOffset[2] = 0;
+
+        // use entries from magnetic buffer to compute matrices
+        iCount = 0;
+        for(double[] mag:magArray)
+        {
+            // use first valid magnetic buffer entry as estimate (in counts) for offset
+            if (iCount == 0)
+            {
+                for (l = 0; l <= 2; l++)
+                {
+                    fOffset[l] = mag[l];
+                }
+            }
+            // store scaled and offset fBs[XYZ] in fvecA[0-2] and fBs[XYZ]^2 in fvecA[3-5]
+            for (l = 0; l <= 2; l++)
+            {
+                fvecA[l] = (mag[l] - fOffset[l]) * fscaling;
+                fvecA[l + 3] = fvecA[l] * fvecA[l];
+            }
+            // calculate fBs2 = fBs[CHX]^2 + fBs[CHY]^2 + fBs[CHZ]^2 (scaled uT^2)
+            fBs2 = fvecA[3] + fvecA[4] + fvecA[5];
+            // accumulate fBs^4 over all measurements into fSumBs4=Y^T.Y
+            fSumBs4 += fBs2 * fBs2;
+            // now we have fBs2, accumulate fvecB[0-2] = X^T.Y =sum(fBs2.fBs[XYZ])
+            for (l = 0; l <= 2; l++)
+            {
+                fvecB[l] += fvecA[l] * fBs2;
+            }
+            //accumulate fvecB[3] = X^T.Y =sum(fBs2)
+            fvecB[3] += fBs2;
+            // accumulate on and above-diagonal terms of fmatA = X^T.X ignoring fmatA[3][3]
+            fmatA[0][0] += fvecA[0 + 3];
+            fmatA[0][1] += fvecA[0] * fvecA[1];
+            fmatA[0][2] += fvecA[0] * fvecA[2];
+            fmatA[0][3] += fvecA[0];
+            fmatA[1][1] += fvecA[1 + 3];
+            fmatA[1][2] += fvecA[1] * fvecA[2];
+            fmatA[1][3] += fvecA[1];
+            fmatA[2][2] += fvecA[2 + 3];
+            fmatA[2][3] += fvecA[2];
+            // increment the counter for next iteration
+            iCount++;
+        }
+        // set the last element of the measurement matrix to the number of buffer elements used
+        fmatA[3][3] = (double) iCount;
+        // use above diagonal elements of symmetric fmatA to set both fmatB and fmatA to X^T.X
+        for (i = 0; i < 4; i++)
+        {
+            for (j = i; j < 4; j++)
+            {
+                fmatB[i][j] = fmatB[j][i] = fmatA[j][i] = fmatA[i][j];
+            }
+        }
+        // calculate in situ inverse of fmatB = inv(X^T.X) (4x4) while fmatA still holds X^T.X
+        Matrix temp = new Matrix(fmatB, 4, 4);
+        fmatB = temp.inverse().getArray();
+        // calculate fvecA = solution beta (4x1) = inv(X^T.X).X^T.Y = fmatB * fvecB
+        for (i = 0; i < 4; i++)
+        {
+            fvecA[i] = 0.0F;
+            for (k = 0; k < 4; k++)
+            {
+                fvecA[i] += fmatB[i][k] * fvecB[k];
+            }
+        }
+        // calculate P = r^T.r = Y^T.Y - 2 * beta^T.(X^T.Y) + beta^T.(X^T.X).beta
+        // = fSumBs4 - 2 * fvecA^T.fvecB + fvecA^T.fmatA.fvecA
+        // first set P = Y^T.Y - 2 * beta^T.(X^T.Y) = fSumBs4 - 2 * fvecA^T.fvecB
+        fE = 0.0F;
+        for (i = 0; i < 4; i++)
+        {
+            fE += fvecA[i] * fvecB[i];
+        }
+        fE = fSumBs4 - 2.0F * fE;
+        // set fvecB = (X^T.X).beta = fmatA.fvecA
+        for (i = 0; i < 4; i++)
+        {
+            fvecB[i] = 0.0F;
+            for (k = 0; k < 4; k++)
+            {
+                fvecB[i] += fmatA[i][k] * fvecA[k];
+            }
+        }
+        // complete calculation of P by adding beta^T.(X^T.X).beta = fvecA^T * fvecB
+        for (i = 0; i < 4; i++)
+        {
+            fE += fvecB[i] * fvecA[i];
+        }
+        // compute the hard iron vector (in uT but offset and scaled by FMATRIXSCALING)
+        for (l = 0; l <= 2; l++)
+        {
+            ftrV[l] = 0.5F * fvecA[l];
+        }
+        // compute the scaled geomagnetic field strength B (in uT but scaled by FMATRIXSCALING)
+        ftrB = Math.sqrt(fvecA[3] + ftrV[0] * ftrV[0] + ftrV[1] * ftrV[1] + ftrV[2] * ftrV[2]);
+        // calculate the trial fit error (percent) normalized to number of measurements and scaled geomagnetic field strength
+        ftrFitErrorpc = Math.sqrt(fE / 300) * 100.0F / (2.0F * ftrB * ftrB);
+        // correct the hard iron estimate for FMATRIXSCALING and the offsets applied (result in uT)
+        for (l = 0; l <= 2; l++)
+        {
+            ftrV[l] = ftrV[l] * DEFAULTB + fOffset[l];
+        }
+        // correct the geomagnetic field strength B to correct scaling (result in uT)
+        ftrB *= DEFAULTB;
+
+        // assignment
+        fGeoB = ftrB;
+        fResidual = ftrFitErrorpc;
+        for (l = 0; l <= 2; l++)
+        {
+            fMagBias[l] = ftrV[l];
+        }
+    }
+
+
+
+
+
+
+
 }
+
+
