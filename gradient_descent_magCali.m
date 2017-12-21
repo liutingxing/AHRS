@@ -186,7 +186,7 @@ end
 end
 
 %% main loop
-for i = 1 : N
+for i = M : N
 %% AHRS process
     qDotError = 0;
     Cbn = q2dcm(q);
