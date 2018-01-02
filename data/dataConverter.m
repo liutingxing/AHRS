@@ -126,25 +126,21 @@ while ~feof(fin)
     end
     
     % sensor hal: sensor frame(xyz) -> device frame(XYZ)
-    % X = -y, Y = -x, Z = -z
-    temp = -gyro_x;
-    gyro_x = -gyro_y;
-    gyro_y = temp;
+    % X = x, Y = -y, Z = -z
+    gyro_y = -gyro_y;
     gyro_z = -gyro_z;
     
-    temp = -acc_x;
-    acc_x = -acc_y;
-    acc_y = temp;
+    acc_y = -acc_y;
     acc_z = -acc_z;
     
     % store in file
     if mag_ready == 1
         mag_ready = 0;
         % sensor hal: sensor frame(xyz) -> device frame(XYZ)
-        % X = -y, Y = -x, Z = -z
-        mag_x = -mag_x;
-        mag_y = -mag_y;
-        mag_z = mag_z;
+        % X = y, Y = -x, Z = z
+        temp = -mag_x;
+        mag_x = -mag_y;
+        mag_y = temp;
         fprintf(fout, '%d %d %d %d %d %6f %6f %6f %6f %6f %6f %6f %6f %6f %6f\r\n', 1, 2, 3, 4, 5, gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z, mag_x, mag_y, mag_z, audio);
     else
         fprintf(fout, '%d %d %d %d %d %6f %6f %6f %6f %6f %6f %6f %6f %6f %6f\r\n', 1, 2, 3, 4, 5, gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z, 0, 0, 0, audio);
