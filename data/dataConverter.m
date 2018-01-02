@@ -121,9 +121,6 @@ while ~feof(fin)
     audio_l = char(entries(18));
     audio = strcat(audio_h, audio_l);
     audio = hex2dec(audio);
-    if audio > 32767
-        audio = audio - 65536;
-    end
     
     % sensor hal: sensor frame(xyz) -> device frame(XYZ)
     % X = x, Y = -y, Z = -z
