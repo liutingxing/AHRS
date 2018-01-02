@@ -405,6 +405,17 @@ public class SensorFusion {
             }
         }
 
+        // no ping pong ball training
+        if (fAudioMax < 10000)
+        {
+            fAudioMax = 0;
+            strikeIndex = -1;
+        }
+        else if (fAudioMax > 70000)
+        {
+            fAudioMax = 70000;
+        }
+
         for(SampleData val:sampleDataArray)
         {
             // trajectory
@@ -447,6 +458,7 @@ public class SensorFusion {
         data.fStrikeAudio = fAudioMax;
         value = sampleDataArray.get(strikeIndex);
         data.fVelocityStrike = Math.sqrt(value.fVelN*value.fVelN + value.fVelE*value.fVelE + value.fVelD*value.fVelD);
+        data.uStrikePower = (int)(fAudioMax / 70000 * 100);
 
         if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
         {
