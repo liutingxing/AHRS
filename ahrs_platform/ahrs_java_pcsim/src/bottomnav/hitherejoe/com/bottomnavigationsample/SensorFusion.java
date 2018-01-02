@@ -456,8 +456,15 @@ public class SensorFusion {
         data.fRangeMax = fRangeMax;
         data.fVelocityMax = fVelocityMax;
         data.fStrikeAudio = fAudioMax;
-        value = sampleDataArray.get(strikeIndex);
-        data.fVelocityStrike = Math.sqrt(value.fVelN*value.fVelN + value.fVelE*value.fVelE + value.fVelD*value.fVelD);
+        if (strikeIndex != -1)
+        {
+            value = sampleDataArray.get(strikeIndex);
+            data.fVelocityStrike = Math.sqrt(value.fVelN*value.fVelN + value.fVelE*value.fVelE + value.fVelD*value.fVelD);
+        }
+        else
+        {
+            data.fVelocityStrike = fVelocityMax;
+        }
         data.uStrikePower = (int)(fAudioMax / 70000 * 100);
 
         if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
