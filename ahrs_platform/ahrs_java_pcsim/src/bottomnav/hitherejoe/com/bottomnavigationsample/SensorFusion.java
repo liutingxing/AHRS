@@ -88,11 +88,11 @@ public class SensorFusion {
     private double fAudioMax = 0.0;
     private int strikeIndex = 0;
 
-	private SensorKalman sensorKalman;
+    private SensorKalman sensorKalman;
     private StringBuffer sAttitude;
     public TrainData trainData;
 
-    SensorFusion()
+    public SensorFusion()
     {
         uTime = 0;
         fPsiPl = 0;
@@ -102,9 +102,9 @@ public class SensorFusion {
         euler2dcm(fCbn, fPsiPl, fThePl, fPhiPl);
         Matrix temp = new Matrix(fCbn);
         fCnb = temp.transpose().getArray();
-        java.util.Arrays.fill(fGyroBias, 0);
-        java.util.Arrays.fill(fAccBias, 0);
-        java.util.Arrays.fill(fMagBias, 0);
+        Arrays.fill(fGyroBias, 0);
+        Arrays.fill(fAccBias, 0);
+        Arrays.fill(fMagBias, 0);
         fLinerAccN = 0;
         fLinerAccE = 0;
         fLinerAccD = 0;
@@ -216,10 +216,10 @@ public class SensorFusion {
             Matrix Gvector = new Matrix(G, 3);
             Matrix gEstimate;
             Matrix res;
-            
+
         	gEstimate = Cbn.times(Acc.times(-1));
         	res = Gvector.minus(gEstimate);
-        	
+
         	// check if measurement is reasonable
         	if (res.norm2()< SensorFusion.GRAVITY * 1.2)
         	{
@@ -402,18 +402,23 @@ public class SensorFusion {
             {
                 fAudioMax = val.fAudio;
                 strikeIndex = sampleDataArray.indexOf(val);
+
+                // compensate the audio delay
+                if (strikeIndex > 4 && strikeIndex < 6)
+                {
+                    strikeIndex = strikeIndex - 4;
+                }
             }
         }
 
-        // no ping pong ball training
-        if (fAudioMax < 10000)
+        if (fAudioMax < 250) // no ping pong ball training
         {
             fAudioMax = 0;
             strikeIndex = -1;
         }
-        else if (fAudioMax > 70000)
+        else if (fAudioMax > 1000)
         {
-            fAudioMax = 70000;
+            fAudioMax = 1000;
         }
 
         for(SampleData val:sampleDataArray)
@@ -460,12 +465,41 @@ public class SensorFusion {
         {
             value = sampleDataArray.get(strikeIndex);
             data.fVelocityStrike = Math.sqrt(value.fVelN*value.fVelN + value.fVelE*value.fVelE + value.fVelD*value.fVelD);
+            if (data.fVelocityStrike > 9)
+            {
+                data.uStrikePower = 100;
+            }
+            else if (data.fVelocityStrike > 8)
+            {
+                data.uStrikePower = (int) ((data.fVelocityStrike - 8) * 10.0 + 90);
+            }
+            else if (data.fVelocityStrike > 7)
+            {
+                data.uStrikePower = (int) ((data.fVelocityStrike - 7) * 5.0 + 85);
+            }
+            else if (data.fVelocityStrike > 6)
+            {
+                data.uStrikePower = (int) ((data.fVelocityStrike - 6) * 5.0 + 80);
+            }
+            else if (data.fVelocityStrike > 5)
+            {
+                data.uStrikePower = (int) ((data.fVelocityStrike - 5) * 15.0 + 65);
+            }
+            else if (data.fVelocityStrike > 4)
+            {
+                data.uStrikePower = (int) ((data.fVelocityStrike - 4) * 25.0 + 40);
+            }
+            else
+            {
+                data.uStrikePower = (int) (data.fVelocityStrike * 10);
+            }
         }
         else
         {
             data.fVelocityStrike = fVelocityMax;
+            data.uStrikePower = 0;
         }
-        data.uStrikePower = (int)(fAudioMax / 70000 * 100);
+
 
         if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
         {
@@ -1151,7 +1185,7 @@ public class SensorFusion {
             {
                 fAlignMagArray.add(new double[]{mag[0],mag[1],mag[2]});
             }
-         }
+        }
         else
         {
             fAlignAccArray.remove(0);
