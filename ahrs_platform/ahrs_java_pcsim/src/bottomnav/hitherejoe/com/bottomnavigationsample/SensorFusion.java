@@ -272,6 +272,24 @@ public class SensorFusion {
         if (uActionComplete == true)
         {
             processSampleData(cSampleDataArray, trainData);
+
+            // filter the invalid action
+            if (trainData.fVelocityMax < 1.0 && trainData.fRangeMax < 0.05)
+            {
+                trainData.bValid = false;
+                trainData.uActionCount--;
+
+                uActionComplete = false;
+                fLinerAccXLast = 0;
+                fPlatformOmegaMaxZ = 0;
+                fPlatformOmegaMinZ = 0;
+                fRangeMax = 0.0;
+                fVelocityMax = 0.0;
+                fAudioMax = 0.0;
+                strikeIndex = 0;
+
+                cSampleDataArray.clear();
+            }
         }
 
         sAttitude.append(String.valueOf(uTime));
