@@ -19,6 +19,9 @@ public class TrainData {
     public int uStrikePower;
     public int uPlayLoad;
 
+    // audio
+    public int uAudioType;
+
     //start chart
     public int iTrajectorySweetScore;
     public int iStrikeSweetScore;

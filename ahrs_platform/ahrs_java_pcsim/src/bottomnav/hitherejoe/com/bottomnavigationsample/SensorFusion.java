@@ -535,6 +535,35 @@ public class SensorFusion {
         }
         data.sTrajectory = String.valueOf(trajectory);
 
+        // update audio index
+        updateAudioInfo(data);
+
+        return 0;
+    }
+
+    private int updateAudioInfo(TrainData data)
+    {
+        if (data.fVelocityMax > 8)
+        {
+            data.uAudioType = 1;
+        }
+        else if (data.uStrikePower > 90)
+        {
+            data.uAudioType = 2;
+        }
+        else if (data.fRangeMax > 2.0)
+        {
+            data.uAudioType = 3;
+        }
+        else if ((data.fVelocityMax - data.fVelocityStrike) < 1)
+        {
+            data.uAudioType = 4;
+        }
+        else
+        {
+            data.uAudioType = 0;
+        }
+
         return 0;
     }
 
