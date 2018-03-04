@@ -53,7 +53,7 @@ public class SensorFusion {
 
     private final static int MAG_SUPPORT = 1;
     private final static int ALIGN_NUM = 100;
-    private final static int CALIBRATION_NUM = 300;
+    private final static int CALIBRATION_NUM = 100;
     private ArrayList<double[]> fAlignGyroArray = new ArrayList<double[]>(ALIGN_NUM);
     private ArrayList<double[]> fAlignAccArray = new ArrayList<double[]>(ALIGN_NUM);
     private ArrayList<double[]> fAlignMagArray = new ArrayList<double[]>(ALIGN_NUM);
