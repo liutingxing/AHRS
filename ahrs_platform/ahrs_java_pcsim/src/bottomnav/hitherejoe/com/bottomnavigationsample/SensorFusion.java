@@ -514,7 +514,7 @@ public class SensorFusion {
         }
         else
         {
-//            data.fVelocityStrike = fVelocityMax;
+            data.fVelocityStrike = 0;
             data.uStrikePower = 0;
         }
 
@@ -545,17 +545,17 @@ public class SensorFusion {
     {
         if (data.uStrikePower > 80)
         {
-            data.uAudioType = 1;
-        }
-        else if (data.fVelocityMax > 6)
-        {
             data.uAudioType = 2;
+        }
+        else if (data.fVelocityMax > 7)
+        {
+            data.uAudioType = 1;
         }
         else if (data.fRangeMax > 1.0)
         {
             data.uAudioType = 3;
         }
-        else if ((data.fVelocityMax - data.fVelocityStrike) < 1)
+        else if ((data.fVelocityMax - data.fVelocityStrike) < 0.5)
         {
             data.uAudioType = 4;
         }
