@@ -543,19 +543,19 @@ public class SensorFusion {
 
     private int updateAudioInfo(TrainData data)
     {
-        if (data.uStrikePower > 80)
+        if (data.uStrikePower > 70)
         {
             data.uAudioType = 2;
         }
-        else if (data.fVelocityMax > 7)
-        {
-            data.uAudioType = 1;
-        }
-        else if (data.fRangeMax > 1.0)
+        else if (data.fRangeMax > 1.5)
         {
             data.uAudioType = 3;
         }
-        else if ((data.fVelocityMax - data.fVelocityStrike) < 0.5)
+        else if (data.fVelocityMax > 6)
+        {
+            data.uAudioType = 1;
+        }
+        else if ((data.fVelocityMax - data.fVelocityStrike) < data.fVelocityMax*0.08)
         {
             data.uAudioType = 4;
         }
