@@ -54,6 +54,7 @@ public class SensorFusion {
     private final static int MAG_SUPPORT = 1;
     private final static int ALIGN_NUM = 100;
     private final static int CALIBRATION_NUM = 100;
+    private int CalibrationProgress = 0;
     private ArrayList<double[]> fAlignGyroArray = new ArrayList<double[]>(ALIGN_NUM);
     private ArrayList<double[]> fAlignAccArray = new ArrayList<double[]>(ALIGN_NUM);
     private ArrayList<double[]> fAlignMagArray = new ArrayList<double[]>(ALIGN_NUM);
@@ -163,11 +164,17 @@ public class SensorFusion {
                     if (fGeoB > 10 && fGeoB < 200 && fResidual < 20)
                     {
                         iStatus = Alignment;
+                        CalibrationProgress = 100;
                     }
                 }
                 else
                 {
                     // mag calibration process not execute
+                    CalibrationProgress = (int)(fCalibrationMagArray.size() * 100.0 / CALIBRATION_NUM );
+                    if (CalibrationProgress == 100)
+                    {
+                        CalibrationProgress--;
+                    }
                 }
             }
         }
@@ -1510,12 +1517,10 @@ public class SensorFusion {
         }
     }
 
-
-
-
-
-
-
+    public int getCalibrationProgress()
+    {
+        return CalibrationProgress;
+    }
 }
 
 

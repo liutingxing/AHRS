@@ -44,7 +44,7 @@ public class TrainData {
         uStrikePower = 100;
         uPlayLoad = 20;
 
-        //start chart
+        //star chart
         iTrajectorySweetScore = iTrajectorySweet*20;
         iStrikeSweetScore = iTrajectorySweet*20;
         iStrikePowerScore = 80;
