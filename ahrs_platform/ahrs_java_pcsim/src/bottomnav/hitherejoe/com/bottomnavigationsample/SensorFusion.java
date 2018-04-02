@@ -1521,6 +1521,13 @@ public class SensorFusion {
     {
         return CalibrationProgress;
     }
+
+    public int resetCalibrationProgress()
+    {
+        fCalibrationMagArray.clear();
+
+        return 0;
+    }
 }
 
 
