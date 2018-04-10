@@ -1522,9 +1522,41 @@ public class SensorFusion {
         return CalibrationProgress;
     }
 
-    public int resetCalibrationProgress()
+    public int resetSensorFusion()
     {
         fCalibrationMagArray.clear();
+        CalibrationProgress = 0;
+        uTime = 0;
+        fPsiPl = 0;
+        fThePl = 0;
+        fPhiPl = 0;
+        euler2q(fqPl, fPsiPl, fThePl, fPhiPl);
+        euler2dcm(fCbn, fPsiPl, fThePl, fPhiPl);
+        Matrix temp = new Matrix(fCbn);
+        fCnb = temp.transpose().getArray();
+        Arrays.fill(fGyroBias, 0);
+        Arrays.fill(fAccBias, 0);
+        Arrays.fill(fMagBias, 0);
+        fLinerAccN = 0;
+        fLinerAccE = 0;
+        fLinerAccD = 0;
+        fVelN = 0;
+        fVelE = 0;
+        fVelD = 0;
+        fPosN = 0;
+        fPosE = 0;
+        fPosD = 0;
+        uStaticFlag = -1;
+        uAlignFlag = false;
+        uKalmanFusionFlag = true;
+        uMechanizationFlag = false;
+        uActionStartFlag = false;
+        uActionEndFlag = false;
+        uActionComplete = false;
+        sAttitude = new StringBuffer();
+        sensorKalman = new SensorKalman(STATE_NUM);
+        trainData = new TrainData();
+        iStatus = Calibration;
 
         return 0;
     }
