@@ -3,13 +3,8 @@ clc;
 
 %% load SENSOR data
 
-% format:
-% TimeTag(ms) AccX(m/s2) AccY(m/s2) AccZ(m/s2) GyroX(rad) GyroY(rad) GyroZ(rad) MagX(uT) MagY(uT) MagZ(uT)
-
-data = load('.\rawMagData.txt');
-Mag = data(:, 1:3); % for Ecan
-% Mag = data(:, 12:14); % for Daoyuan
-
+data = load('.\actionData.txt');
+Mag = data(:, 12:14);
 
 %% least square
 
