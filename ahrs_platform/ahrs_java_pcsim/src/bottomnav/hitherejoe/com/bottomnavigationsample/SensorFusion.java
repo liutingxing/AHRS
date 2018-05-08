@@ -1220,7 +1220,15 @@ public class SensorFusion {
         }
         for (i = 0; i < 3; i++)
         {
-            fGyroBias[i] = bias[i] / gyroArray.size();
+            bias[i] /= gyroArray.size();
+        }
+
+        if (Math.abs(bias[0]) < 0.01 && Math.abs(bias[1]) < 0.01 && Math.abs(bias[2]) < 0.01)
+        {
+            for (i = 0; i < 3; i++)
+            {
+                fGyroBias[i] = bias[i] / gyroArray.size();
+            }
         }
     }
 
