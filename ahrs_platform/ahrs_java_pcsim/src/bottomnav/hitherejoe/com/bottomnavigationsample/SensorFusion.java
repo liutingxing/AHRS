@@ -53,7 +53,7 @@ public class SensorFusion {
 
     private final static int MAG_SUPPORT = 1;
     private final static int ALIGN_NUM = 100;
-    private final static int CALIBRATION_NUM = 100;
+    private final static int CALIBRATION_NUM = 600;
     private int CalibrationProgress = 0;
     private ArrayList<double[]> fAlignGyroArray = new ArrayList<double[]>(ALIGN_NUM);
     private ArrayList<double[]> fAlignAccArray = new ArrayList<double[]>(ALIGN_NUM);
@@ -62,7 +62,7 @@ public class SensorFusion {
     private ArrayList<SampleData> cSampleDataArray = new ArrayList<SampleData>(20);
 
     public final static double GRAVITY = 9.80665;
-    public final static double SAMPLE_RATE = 40;
+    public final static double SAMPLE_RATE = 100;
 
     private final static int STATE_NUM = 9;
     private int uKfCount = 1;
@@ -125,6 +125,8 @@ public class SensorFusion {
         sAttitude = new StringBuffer();
         sensorKalman = new SensorKalman(STATE_NUM);
         trainData = new TrainData();
+        iStatus = Calibration;
+        CalibrationProgress = 0;
     }
 
     public String sensorFusionExec(int time, double[] gyro, double[] acc, double[] mag, double audio)
@@ -734,7 +736,7 @@ public class SensorFusion {
                 }
                 else
                 {
-                    gyroMeasError = 100 * Math.PI / 180;
+                    gyroMeasError = 20 * Math.PI / 180;
                     beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
                 }
             }
