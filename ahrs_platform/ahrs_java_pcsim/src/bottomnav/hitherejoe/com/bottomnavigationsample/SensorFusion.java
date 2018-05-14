@@ -429,12 +429,6 @@ public class SensorFusion {
             {
                 fAudioMax = val.fAudio;
                 strikeIndex = sampleDataArray.indexOf(val);
-
-                // compensate the audio delay
-                if (strikeIndex > 4 && strikeIndex < 6)
-                {
-                    strikeIndex = strikeIndex - 4;
-                }
             }
         }
 
