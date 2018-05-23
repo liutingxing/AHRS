@@ -163,7 +163,7 @@ public class SensorFusion {
                 if (magCalibration(mag) == true)
                 {
                     // mag calibration process complete
-                    if (fGeoB > 10 && fGeoB < 200 && fResidual < 20)
+                    if (fGeoB > 10 && fGeoB < 200 && fResidual < 5)
                     {
                         iStatus = Alignment;
                         CalibrationProgress = 100;
@@ -172,11 +172,7 @@ public class SensorFusion {
                 else
                 {
                     // mag calibration process not execute
-                    CalibrationProgress = (int)(fCalibrationMagArray.size() * 100.0 / CALIBRATION_NUM );
-                    if (CalibrationProgress == 100)
-                    {
-                        CalibrationProgress--;
-                    }
+                    CalibrationProgress = (int)(fCalibrationMagArray.size() * 90 / CALIBRATION_NUM );
                 }
             }
         }
@@ -672,7 +668,7 @@ public class SensorFusion {
         if (MAG_SUPPORT == 1)
         {
             double magNorm = Math.sqrt(mag[0]*mag[0] + mag[1]*mag[1] + mag[2]*mag[2]);
-            if (magNorm != 0)
+            if (magNorm > fGeoB * 0.8 && magNorm < fGeoB * 1.2)
             {
                 // execute the acc aid process
                 double diff = 0;
