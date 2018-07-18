@@ -40,8 +40,13 @@ public class SensorFusion {
     private double[]     fMagnetic;
     private double       fAudio;
 
-    private double       fGeoB;
-    private double       fResidual; // unit:%
+    private double       fB;
+    private double       ftrB;
+    private double       ftrFitErrorpc;
+    private double       fFitErrorpc;
+    private boolean      iValidMagCal;
+    private double[]     ftrV = new double[3];
+    private double[]     fV = new double[3];
 
     private int         uStaticFlag;
     private boolean     uAlignFlag;
@@ -53,13 +58,26 @@ public class SensorFusion {
 
     private final static int MAG_SUPPORT = 1;
     private final static int ALIGN_NUM = 100;
-    private final static int CALIBRATION_NUM = 600;
     private int CalibrationProgress = 0;
     private ArrayList<double[]> fAlignGyroArray = new ArrayList<double[]>(ALIGN_NUM);
     private ArrayList<double[]> fAlignAccArray = new ArrayList<double[]>(ALIGN_NUM);
     private ArrayList<double[]> fAlignMagArray = new ArrayList<double[]>(ALIGN_NUM);
-    private ArrayList<double[]> fCalibrationMagArray = new ArrayList<double[]>(CALIBRATION_NUM);
     private ArrayList<SampleData> cSampleDataArray = new ArrayList<SampleData>(20);
+    private final static float MAGSENSITIVE =  0.01F;
+    private final static int MAGBUFFSIZEX =  14;
+    private final static int MAGBUFFSIZEY =  MAGBUFFSIZEX * 2;
+    private final static int MAXMEASUREMENTS = 240;
+    private final static int MESHDELTAUT = 5;
+    private final static float MAGFITERROR = 5;
+    private final static int CHX = 0;
+    private final static int CHY = 1;
+    private final static int CHZ = 2;
+    private float fuTPerCount;
+    private float fCountsPeruT;
+    private int[][][] iMagRawBuffer = new int[3][MAGBUFFSIZEX][MAGBUFFSIZEY];
+    private int[][] Index = new int[MAGBUFFSIZEX][MAGBUFFSIZEY];
+    private int[] Tanarray = new int[MAGBUFFSIZEX - 1];
+    private int iMagBufferCount = 0;
 
     public final static double GRAVITY = 9.80665;
     public final static double SAMPLE_RATE = 100;
@@ -127,6 +145,7 @@ public class SensorFusion {
         trainData = new TrainData();
         iStatus = Calibration;
         CalibrationProgress = 0;
+        magCalibrationInit();
     }
 
     public String sensorFusionExec(int time, double[] gyro, double[] acc, double[] mag, double audio)
@@ -152,28 +171,36 @@ public class SensorFusion {
             cSampleDataArray.clear();
         }
 
-        // static detection
-        uStaticFlag = staticDetect(gyro, acc, mag);
+        // data correction
+        double[] fGyroRaw = new double[]{gyro[0], gyro[1], gyro[2]};
+        double[] fAccRaw = new double[]{acc[0], acc[1], acc[2]};
+        double[] fMagRaw = new double[]{mag[0], mag[1], mag[2]};
+        sensorDataCorrection(gyro, acc, mag);
 
-        // mag calibration
+        // static detection
+        uStaticFlag = staticDetect(fGyroRaw, fAccRaw, fMagRaw);
+
+        // mag buffer update
+        if (MAG_SUPPORT == 1) {
+            magBufferUpdate(fMagRaw, mag, time);
+            if (time % 10 == 0) // 1Hz calibration frequency
+            {
+                magCalibrationExec();
+            }
+        }
+
+        // mag calibration process
         if (MAG_SUPPORT == 1)
         {
-            if (uStaticFlag == 0 && iStatus == Calibration && mag[0] != 0 && mag[1] != 0 && mag[2] != 0)
+            if (iValidMagCal == true)
             {
-                if (magCalibration(mag) == true)
-                {
-                    // mag calibration process complete
-                    if (fGeoB > 10 && fGeoB < 200 && fResidual < 5)
-                    {
-                        iStatus = Alignment;
-                        CalibrationProgress = 100;
-                    }
-                }
-                else
-                {
-                    // mag calibration process not execute
-                    CalibrationProgress = (int)(fCalibrationMagArray.size() * 90 / CALIBRATION_NUM );
-                }
+                iStatus = Alignment;
+                CalibrationProgress = 100;
+            }
+            else
+            {
+                // mag calibration process not execute
+                CalibrationProgress = (int)(iMagBufferCount * 95 / MAXMEASUREMENTS );
             }
         }
         else
@@ -187,9 +214,6 @@ public class SensorFusion {
                 // initial alignment
                 if (sensorAlignment(fAlignAccArray, fAlignMagArray) == true) {
                     gyroCalibration(fAlignGyroArray);
-                    fAlignGyroArray.clear();
-                    fAlignAccArray.clear();
-                    fAlignMagArray.clear();
                     uAlignFlag = true;
                     iStatus = Fusion;
                 }
@@ -203,12 +227,8 @@ public class SensorFusion {
 
         if (uStaticFlag == 1) {
             gyroCalibration(fAlignGyroArray);
-            fAlignGyroArray.clear();
-            fAlignAccArray.clear();
-            fAlignMagArray.clear();
         }
 
-        sensorDataCorrection(gyro, acc, mag);
         /*// quaternion integration
         quaternionIntegration(dt, gyro);
 
@@ -318,28 +338,6 @@ public class SensorFusion {
         sAttitude.append("x");
 
         return String.valueOf(sAttitude);
-    }
-
-    private boolean magCalibration(double[] mag)
-    {
-        if (fCalibrationMagArray.size() < CALIBRATION_NUM)
-        {
-            fCalibrationMagArray.add(new double[]{mag[0], mag[1], mag[2]});
-        }
-        else
-        {
-            fCalibrationMagArray.remove(0);
-            fCalibrationMagArray.add(new double[]{mag[0], mag[1], mag[2]});
-        }
-
-        if (fCalibrationMagArray.size() == CALIBRATION_NUM)
-        {
-            calibration4INV(fCalibrationMagArray);
-
-            return true;
-        }
-
-        return false;
     }
 
     private void platformDataProcess()
@@ -668,7 +666,7 @@ public class SensorFusion {
         if (MAG_SUPPORT == 1)
         {
             double magNorm = Math.sqrt(mag[0]*mag[0] + mag[1]*mag[1] + mag[2]*mag[2]);
-            if (magNorm > fGeoB * 0.8 && magNorm < fGeoB * 1.2)
+            if (magNorm > fB * 0.8 && magNorm < fB * 1.2)
             {
                 // execute the acc aid process
                 double diff = 0;
@@ -1366,85 +1364,307 @@ public class SensorFusion {
         fq[3] *= fnorm;
     }
 
-    private void calibration4INV(ArrayList<double[]> magArray)
+    private void magCalibrationInit()
     {
-        // local variables
-        double fBs2;							// fBs[CHX]^2+fBs[CHY]^2+fBs[CHZ]^2
-        double fSumBs4;							// sum of fBs2
-        double fscaling;						// set to FUTPERCOUNT * FMATRIXSCALING
-        double fE;								// error function = r^T.r
-        double[] fOffset = new double[3];		// offset to remove large DC hard iron bias in matrix
-        int iCount;							    // number of measurements counted
-        int ierror;							    // matrix inversion error flag
-        int i, j, k, l;						    // loop counters
+        int i = 0;
+        int j = 0;
 
-        double ftrB;
-        double ftrFitErrorpc;
+        // initialize the mag buffer
+        iMagBufferCount = 0;
+        for (i = 0; i < MAGBUFFSIZEX; i++)
+        {
+            for (j = 0; j < MAGBUFFSIZEY; j++)
+            {
+                Index[i][j] = -1;
+            }
+        }
+        fuTPerCount = MAGSENSITIVE;
+        fCountsPeruT = (float)(1.0 / fuTPerCount);
+
+        // initialize the array of (MAGBUFFSIZEX - 1) elements of 100 * tangents used for buffer indexing
+        // entries cover the range 100 * tan(-PI/2 + PI/MAGBUFFSIZEX), 100 * tan(-PI/2 + 2*PI/MAGBUFFSIZEX) to
+        // 100 * tan(-PI/2 + (MAGBUFFSIZEX - 1) * PI/MAGBUFFSIZEX).
+        // for MAGBUFFSIZEX=14, the entries range in value from -438 to +438
+        for (i = 0; i < (MAGBUFFSIZEX - 1); i++)
+        {
+            Tanarray[i] = (int) (100.0F * Math.tan(Math.PI * (-0.5F + (i + 1) * 1.0F / MAGBUFFSIZEX)));
+        }
+    }
+
+    private int magBufferUpdate(double[] magRaw, double[] magCal, int loopCounter)
+    {
+        int i = 0;
+        int j = 0;
+        int k = 0;
+        int l = 0;
+        int m = 0;
+        int[] iMagRaw = new int[3];
+        int[] iMagCal = new int[3];
+        int itanj = 0;
+        int itank = 0;
+        int idelta = 0;
+        int iclose = 0;
+
+        // convert float mag data to int mag data to reduce multiplications
+        for (i = CHX; i <= CHZ; i++)
+        {
+            iMagRaw[i] = (int)(magRaw[i] * fCountsPeruT);
+            iMagCal[i] = (int)(magCal[i] * fCountsPeruT);
+        }
+
+        if (iMagCal[CHZ] == 0)
+        {
+            return -1;
+        }
+        itanj = 100 * iMagCal[CHX] / iMagCal[CHZ];
+        itank = 100 * iMagCal[CHY] / iMagCal[CHZ];
+        while ((j < (MAGBUFFSIZEX - 1) && (itanj >= Tanarray[j]))) j++;
+        while ((k < (MAGBUFFSIZEX - 1) && (itank >= Tanarray[k]))) k++;
+        if (iMagCal[CHX] < 0) k += MAGBUFFSIZEX;
+
+        // case 1: buffer is full and this bin has a measurement: over-write without increasing number of measurements
+        // this is the most common option at run time
+        if ((iMagBufferCount == MAXMEASUREMENTS) && (Index[j][k] != -1))
+        {
+            for (i = CHX; i <= CHZ; i++)
+            {
+                iMagRawBuffer[i][j][k] = iMagRaw[i];
+            }
+            Index[j][k] = loopCounter;
+
+            return 0;
+        }
+
+        // case 2: the buffer is full and this bin does not have a measurement: store and retire the oldest
+        // this is the second most common option at run time
+        if ((iMagBufferCount == MAXMEASUREMENTS) && (Index[j][k] == -1))
+        {
+            for (i = CHX; i <= CHZ; i++)
+            {
+                iMagRawBuffer[i][j][k] = iMagRaw[i];
+            }
+            Index[j][k] = loopCounter;
+
+            // set l and m to the oldest active entry and disable it
+            for (j = 0; j < MAGBUFFSIZEX; j++)
+            {
+                for (k = 0; k < MAGBUFFSIZEY; k++)
+                {
+                    // check if the time stamp is older than the oldest found so far (normally fails this test)
+                    if (Index[j][k] < (int)loopCounter)
+                    {
+                        // check if this bin is active (normally passes this test)
+                        if (Index[j][k] != -1)
+                        {
+                            // set l and m to the indices of the oldest entry found so far
+                            l = j;
+                            m = k;
+                            // set i to the time stamp of the oldest entry found so far
+                            i = Index[l][m];
+                        }
+                    }
+                }
+            }
+            // deactivate the oldest measurement (no need to zero the measurement data)
+            Index[l][m] = -1;
+
+            return 0;
+        }
+
+        // case 3: buffer is not full and this bin is empty: store and increment number of measurements
+        if ((iMagBufferCount < MAXMEASUREMENTS) && (Index[j][k] == -1))
+        {
+            for (i = CHX; i <= CHZ; i++)
+            {
+                iMagRawBuffer[i][j][k] = iMagRaw[i];
+            }
+            Index[j][k] = loopCounter;
+            iMagBufferCount++;
+
+            return 0;
+        }
+
+        // case 4: buffer is not full and this bin has a measurement: over-write if close or try to slot in
+        // elsewhere if close to the other measurements so as to create a mesh at power up
+        if ((iMagBufferCount < MAXMEASUREMENTS) && (Index[j][k] != -1))
+        {
+            // calculate the vector difference between current measurement and the buffer entry
+            idelta = 0;
+            for (i = CHX; i <= CHZ; i++)
+            {
+                idelta += Math.abs(iMagRaw[i] - iMagRawBuffer[i][j][k]);
+            }
+            // check to see if the current reading is close to this existing magnetic buffer entry
+            if (idelta < MESHDELTAUT * fCountsPeruT)
+            {
+                // simply over-write the measurement and return
+                for (i = CHX; i <= CHZ; i++)
+                {
+                    iMagRawBuffer[i][j][k] = iMagRaw[i];
+                }
+                Index[j][k] = loopCounter;
+            }
+            else
+            {
+                // reset the flag denoting that the current measurement is close to any measurement in the buffer
+                iclose = 0;
+                // to avoid compiler warning
+                l = m = 0;
+                // loop over the buffer j from 0 potentially up to MAGBUFFSIZEX - 1
+                j = 0;
+                while (iclose == 0 && (j < MAGBUFFSIZEX))
+                {
+                    // loop over the buffer k from 0 potentially up to MAGBUFFSIZEY - 1
+                    k = 0;
+                    while (iclose == 0 && (k < MAGBUFFSIZEY))
+                    {
+                        // check whether this buffer entry already has a measurement or not
+                        if (Index[j][k] != -1)
+                        {
+                            // calculate the vector difference between current measurement and the buffer entry
+                            idelta = 0;
+                            for (i = CHX; i <= CHZ; i++)
+                            {
+                                idelta += Math.abs(iMagRaw[i] - iMagRawBuffer[i][j][k]);
+                            }
+                            // check to see if the current reading is close to this existing magnetic buffer entry
+                            if (idelta < MESHDELTAUT)
+                            {
+                                // set the flag to abort the search
+                                iclose = 1;
+                            }
+                        }
+                        else
+                        {
+                            // store the location of this empty bin for future use
+                            l = j;
+                            m = k;
+                        } // end of test for valid measurement in this bin
+                        k++;
+                    } // end of k loop
+                    j++;
+                } // end of j loop
+
+                // if none too close, store the measurement in the last empty bin found and return
+                // l and m are guaranteed to be set if no entries too close are detected
+                if (iclose == 0)
+                {
+                    for (i = CHX; i <= CHZ; i++)
+                    {
+                        iMagRawBuffer[i][l][m] = iMagRaw[i];
+                    }
+                    Index[l][m] = loopCounter;
+                    iMagBufferCount++;
+                }
+            }
+
+            return 0;
+        }
+
+        return -1;
+    }
+
+    private int magCalibrationExec()
+    {
+        int i = 0;
+        int j = 0;
+        int isolver = 0;
+
+        // 4 element calibration case
+        if (iMagBufferCount > 150)
+        {
+            isolver = 4;
+            calibration4INV();
+        }
+
+        if (ftrFitErrorpc <= MAGFITERROR && ftrB > 10 && ftrB < 300)
+        {
+            if (iValidMagCal == false || ftrFitErrorpc <= fFitErrorpc || ftrFitErrorpc <= 2.0F)
+            {
+                iValidMagCal = true;
+                fFitErrorpc = ftrFitErrorpc;
+                fB = ftrB;
+                for (i = CHX; i <= CHZ; i++) {
+                    fMagBias[i] = fV[i] = ftrV[i];
+                }
+            }
+        }
+
+        return isolver;
+    }
+
+    private void calibration4INV() {
+        // local variables
+        double fBs2;                            // fBs[CHX]^2+fBs[CHY]^2+fBs[CHZ]^2
+        double fSumBs4;                            // sum of fBs2
+        double fscaling;                        // set to FUTPERCOUNT * FMATRIXSCALING
+        double fE;                                // error function = r^T.r
+        int[] iOffset = new int[3];        // offset to remove large DC hard iron bias in matrix
+        int iCount;                                // number of measurements counted
+        int ierror;                                // matrix inversion error flag
+        int i, j, k, l;                            // loop counters
+
         double DEFAULTB = 50.0;
         double[] fvecB = new double[4];
         double[] fvecA = new double[6];
         double[][] fmatA = new double[4][4];
         double[][] fmatB = new double[4][4];
-        double[] ftrV = new double[3];
 
         // compute fscaling to reduce multiplications later
-        fscaling = 1.0 / DEFAULTB;
+        fscaling = fuTPerCount / DEFAULTB;
 
         // zero fSumBs4=Y^T.Y, fvecB=X^T.Y (4x1) and on and above diagonal elements of fmatA=X^T*X (4x4)
         fSumBs4 = 0.0;
-        for (i = 0; i < 4; i++)
-        {
+        for (i = 0; i < 4; i++) {
             fvecB[i] = 0.0;
-            for (j = i; j < 4; j++)
-            {
+            for (j = i; j < 4; j++) {
                 fmatA[i][j] = 0.0;
             }
         }
 
         // the offsets are guaranteed to be set from the first element but to avoid compiler error
-        fOffset[0] = fOffset[1] = fOffset[2] = 0;
+        iOffset[0] = iOffset[1] = iOffset[2] = 0;
 
         // use entries from magnetic buffer to compute matrices
         iCount = 0;
-        for(double[] mag:magArray)
-        {
-            // use first valid magnetic buffer entry as estimate (in counts) for offset
-            if (iCount == 0)
-            {
-                for (l = 0; l <= 2; l++)
-                {
-                    fOffset[l] = mag[l];
+        for (j = 0; j < MAGBUFFSIZEX; j++) {
+            for (k = 0; k < MAGBUFFSIZEY; k++) {
+                if (Index[j][k] != -1) {
+                    // use first valid magnetic buffer entry as estimate (in counts) for offset
+                    if (iCount == 0) {
+                        for (l = 0; l <= 2; l++) {
+                            iOffset[l] = iMagRawBuffer[l][j][k];
+                        }
+                    }
+                    // store scaled and offset fBs[XYZ] in fvecA[0-2] and fBs[XYZ]^2 in fvecA[3-5]
+                    for (l = 0; l <= 2; l++) {
+                        fvecA[l] = (iMagRawBuffer[l][j][k] - iOffset[l]) * fscaling;
+                        fvecA[l + 3] = fvecA[l] * fvecA[l];
+                    }
+                    // calculate fBs2 = fBs[CHX]^2 + fBs[CHY]^2 + fBs[CHZ]^2 (scaled uT^2)
+                    fBs2 = fvecA[3] + fvecA[4] + fvecA[5];
+                    // accumulate fBs^4 over all measurements into fSumBs4=Y^T.Y
+                    fSumBs4 += fBs2 * fBs2;
+                    // now we have fBs2, accumulate fvecB[0-2] = X^T.Y =sum(fBs2.fBs[XYZ])
+                    for (l = 0; l <= 2; l++) {
+                        fvecB[l] += fvecA[l] * fBs2;
+                    }
+                    //accumulate fvecB[3] = X^T.Y =sum(fBs2)
+                    fvecB[3] += fBs2;
+                    // accumulate on and above-diagonal terms of fmatA = X^T.X ignoring fmatA[3][3]
+                    fmatA[0][0] += fvecA[0 + 3];
+                    fmatA[0][1] += fvecA[0] * fvecA[1];
+                    fmatA[0][2] += fvecA[0] * fvecA[2];
+                    fmatA[0][3] += fvecA[0];
+                    fmatA[1][1] += fvecA[1 + 3];
+                    fmatA[1][2] += fvecA[1] * fvecA[2];
+                    fmatA[1][3] += fvecA[1];
+                    fmatA[2][2] += fvecA[2 + 3];
+                    fmatA[2][3] += fvecA[2];
+                    // increment the counter for next iteration
+                    iCount++;
                 }
             }
-            // store scaled and offset fBs[XYZ] in fvecA[0-2] and fBs[XYZ]^2 in fvecA[3-5]
-            for (l = 0; l <= 2; l++)
-            {
-                fvecA[l] = (mag[l] - fOffset[l]) * fscaling;
-                fvecA[l + 3] = fvecA[l] * fvecA[l];
-            }
-            // calculate fBs2 = fBs[CHX]^2 + fBs[CHY]^2 + fBs[CHZ]^2 (scaled uT^2)
-            fBs2 = fvecA[3] + fvecA[4] + fvecA[5];
-            // accumulate fBs^4 over all measurements into fSumBs4=Y^T.Y
-            fSumBs4 += fBs2 * fBs2;
-            // now we have fBs2, accumulate fvecB[0-2] = X^T.Y =sum(fBs2.fBs[XYZ])
-            for (l = 0; l <= 2; l++)
-            {
-                fvecB[l] += fvecA[l] * fBs2;
-            }
-            //accumulate fvecB[3] = X^T.Y =sum(fBs2)
-            fvecB[3] += fBs2;
-            // accumulate on and above-diagonal terms of fmatA = X^T.X ignoring fmatA[3][3]
-            fmatA[0][0] += fvecA[0 + 3];
-            fmatA[0][1] += fvecA[0] * fvecA[1];
-            fmatA[0][2] += fvecA[0] * fvecA[2];
-            fmatA[0][3] += fvecA[0];
-            fmatA[1][1] += fvecA[1 + 3];
-            fmatA[1][2] += fvecA[1] * fvecA[2];
-            fmatA[1][3] += fvecA[1];
-            fmatA[2][2] += fvecA[2 + 3];
-            fmatA[2][3] += fvecA[2];
-            // increment the counter for next iteration
-            iCount++;
         }
         // set the last element of the measurement matrix to the number of buffer elements used
         fmatA[3][3] = (double) iCount;
@@ -1501,20 +1721,12 @@ public class SensorFusion {
         // calculate the trial fit error (percent) normalized to number of measurements and scaled geomagnetic field strength
         ftrFitErrorpc = Math.sqrt(fE / 300) * 100.0F / (2.0F * ftrB * ftrB);
         // correct the hard iron estimate for FMATRIXSCALING and the offsets applied (result in uT)
-        for (l = 0; l <= 2; l++)
+        for (l = CHX; l <= CHZ; l++)
         {
-            ftrV[l] = ftrV[l] * DEFAULTB + fOffset[l];
+            ftrV[l] = (float)(ftrV[l] * DEFAULTB + iOffset[l] * 1.0 * fuTPerCount);
         }
         // correct the geomagnetic field strength B to correct scaling (result in uT)
         ftrB *= DEFAULTB;
-
-        // assignment
-        fGeoB = ftrB;
-        fResidual = ftrFitErrorpc;
-        for (l = 0; l <= 2; l++)
-        {
-            fMagBias[l] = ftrV[l];
-        }
     }
 
     public int getCalibrationProgress()
@@ -1524,7 +1736,6 @@ public class SensorFusion {
 
     public int resetSensorFusion()
     {
-        fCalibrationMagArray.clear();
         CalibrationProgress = 0;
         uTime = 0;
         fPsiPl = 0;
@@ -1557,6 +1768,7 @@ public class SensorFusion {
         sensorKalman = new SensorKalman(STATE_NUM);
         trainData = new TrainData();
         iStatus = Calibration;
+        magCalibrationInit();
 
         return 0;
     }
