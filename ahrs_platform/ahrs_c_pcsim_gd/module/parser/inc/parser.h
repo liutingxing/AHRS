@@ -12,6 +12,10 @@ typedef		unsigned short		uint16_t;                /* Unsigned 16 bits integer */
 typedef		signed int				int32_t;                 /* Signed 32 bits integer   */
 typedef		unsigned int			uint32_t;                /* Unsigned 32 bits integer */
 
+#define  ACC_SENSITIVITY    (1.0/2048)
+#define  GYRO_SENSITIVITY   (1.0/16.4)
+#define  MAG_SENSITIVITY    (0.6)
+
 void parserReceivedData(const char* const strData);
 
 #endif //AHRS_C_PCSIM_GD_PASER_H

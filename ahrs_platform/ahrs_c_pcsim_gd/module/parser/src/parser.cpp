@@ -176,6 +176,78 @@ static int checkDataFrame(const dataArray_t* const array)
 
 static int processDataFrame(const dataArray_t* const array)
 {
+    float fAcc[3];
+    float fGyro[3];
+    float fMag[3];
+    float fAudio;
+    float ftemp;
+    uint8_t type = getValueFromBuffer(array, 1);
+
+    switch(type)
+    {
+        case (uint8_t)0x01: {
+            // sensor data
+            // acc data
+            uint8_t accxH = getValueFromBuffer(array, 4);
+            uint8_t accxL = getValueFromBuffer(array, 5);
+            uint8_t accyH = getValueFromBuffer(array, 6);
+            uint8_t accyL = getValueFromBuffer(array, 7);
+            uint8_t acczH = getValueFromBuffer(array, 8);
+            uint8_t acczL = getValueFromBuffer(array, 9);
+            // gyro data
+            uint8_t gyroxH = getValueFromBuffer(array, 10);
+            uint8_t gyroxL = getValueFromBuffer(array, 11);
+            uint8_t gyroyH = getValueFromBuffer(array, 12);
+            uint8_t gyroyL = getValueFromBuffer(array, 13);
+            uint8_t gyrozH = getValueFromBuffer(array, 14);
+            uint8_t gyrozL = getValueFromBuffer(array, 15);
+            // mag data
+            uint8_t magxH = getValueFromBuffer(array, 16);
+            uint8_t magxL = getValueFromBuffer(array, 17);
+            uint8_t magyH = getValueFromBuffer(array, 18);
+            uint8_t magyL = getValueFromBuffer(array, 19);
+            uint8_t magzH = getValueFromBuffer(array, 20);
+            uint8_t magzL = getValueFromBuffer(array, 21);
+            // audio data
+            uint8_t audioH = getValueFromBuffer(array, 22);
+            uint8_t audioL = getValueFromBuffer(array, 23);
+
+            // Todo: replace the 9.8 with gravity constatnt in sensor fusion class
+            fAcc[0] = (int16_t) (accxH << 8 | accxL) * ACC_SENSITIVITY * 9.8; // m/s2
+            fAcc[1] = (int16_t) (accyH << 8 | accyL) * ACC_SENSITIVITY * 9.8; // m/s2
+            fAcc[2] = (int16_t) (acczH << 8 | acczL) * ACC_SENSITIVITY * 9.8; // m/s2
+            // Todo: replace the 3.14 and 180 with deg2rad marco in sensor fusion class
+            fGyro[0] = (int16_t) (gyroxH << 8 | gyroxL) * GYRO_SENSITIVITY * 3.14 / 180; // rad/s
+            fGyro[1] = (int16_t) (gyroyH << 8 | gyroyL) * GYRO_SENSITIVITY * 3.14 / 180; // rad/s
+            fGyro[2] = (int16_t) (gyrozH << 8 | gyrozL) * GYRO_SENSITIVITY * 3.14 / 180; // rad/s
+
+            fMag[0] = (int16_t) (magxH << 8 | magxL) * MAG_SENSITIVITY; // uT
+            fMag[1] = (int16_t) (magyH << 8 | magyL) * MAG_SENSITIVITY; // uT
+            fMag[2] = (int16_t) (magzH << 8 | magzL) * MAG_SENSITIVITY; // uT
+
+            fAudio = (int16_t) (audioH << 8 | audioL); // count
+
+            // sensor hal: sensor frame(xyz) -> device frame(XYZ)
+            // gyro/acc: X = x, Y = -y, Z = -z
+            fAcc[1] = -fAcc[1];
+            fAcc[2] = -fAcc[2];
+            fGyro[1] = -fGyro[1];
+            fGyro[2] = -fGyro[2];
+            // mag: X = y, Y = -x, Z = z
+            ftemp = -fMag[0];
+            fMag[0] = fMag[1];
+            fMag[1] = ftemp;
+
+            break;
+        }
+        case (uint8_t)0x82: {
+            // power data
+            uint8_t power = getValueFromBuffer(array, 4);
+            break;
+        }
+    }
+
+
     return 1;
 }
 
