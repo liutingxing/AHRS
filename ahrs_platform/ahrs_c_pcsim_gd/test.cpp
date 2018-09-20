@@ -2,6 +2,7 @@
 // Created by jiangtianyu on 2018/9/19.
 //
 #include <stdio.h>
+#include "parser.h"
 
 
 #define  MAX_BUFF_LEN	1024
@@ -12,6 +13,7 @@ int main(int argc,char *argv[])
     FILE *fpOutput;
     char line[MAX_BUFF_LEN];
 
+    setbuf(stdout, 0);
     fpInput = fopen("../data/rawdata.txt", "r");
     fpOutput = fopen("../data/output.txt", "w");
 
@@ -24,6 +26,7 @@ int main(int argc,char *argv[])
     while ( fgets(line, MAX_BUFF_LEN, fpInput) != 0 )
     {
         puts(line);
+        parserReceivedData(line);
     }
 
     fclose(fpInput);

@@ -4,6 +4,7 @@ project(ahrs_c_pcsim_gd)
 set(CMAKE_CXX_STANDARD 14)
 
 add_subdirectory(./module/parser)
+include_directories(./module/parser/inc)
 
 set(
         SOURCE_FILES
