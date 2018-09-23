@@ -7,28 +7,23 @@
 #include <assert.h>
 #include "parser.h"
 
-#define MaxBufferSize   1024
-
-typedef enum parserStatus
+BleDataParser::BleDataParser()
 {
-    DelimiterDetect = 0,
-    DataSave = 1,
-} parserStatus_t;
+    // clear buffer
+    DataBuffer.size = 0;
+    memset(DataBuffer.buffer, 0, sizeof(DataBuffer.buffer));
 
-typedef struct dataArray
-{
-    uint8_t buffer[MaxBufferSize];
-    int size;
-} dataArray_t;
+    DataBufferFiltered.size = 0;
+    memset(DataBufferFiltered.buffer, 0, sizeof(DataBufferFiltered.buffer));
 
-static dataArray_t DataBuffer;
-static dataArray_t DataBufferFiltered;
-static parserStatus_t ParserStatus = DelimiterDetect;
-static int ParserReceiveLength = 0;
-static int ParserReadIndex = 0;
-static int ParserDelimiterIndex = 0;
+    // reset the variable
+    ParserStatus = DelimiterDetect;
+    ParserReceiveLength = 0;
+    ParserReadIndex = 0;
+    ParserDelimiterIndex = 0;
+}
 
-static void strstrip(char* const str)
+void BleDataParser::strstrip(char* const str)
 {
     char* src = str;
     char* dest = str;
@@ -47,7 +42,7 @@ static void strstrip(char* const str)
     *dest = '\0';
 }
 
-static int charToByte(char c)
+int BleDataParser::charToByte(char c)
 {
     char str[] = "0123456789ABCDEF";
     char *p = str;
@@ -69,19 +64,19 @@ static int charToByte(char c)
     return -1;
 }
 
-static int clearBuffer(dataArray_t* const array)
+int BleDataParser::clearBuffer(dataArray_t *const array)
 {
     array->size = 0;
 
     return 0;
 }
 
-static uint8_t getValueFromBuffer(const dataArray_t* const array, const int index)
+uint8_t BleDataParser::getValueFromBuffer(const dataArray_t *const array, const int index)
 {
     return array->buffer[index];
 }
 
-static int addDataInBuffer(dataArray_t* const array, const uint8_t data)
+int BleDataParser::addDataInBuffer(dataArray_t* const array, const uint8_t data)
 {
     if (array->size >= MaxBufferSize)
     {
@@ -94,7 +89,7 @@ static int addDataInBuffer(dataArray_t* const array, const uint8_t data)
     return 0;
 }
 
-static int updateDataBuffer(dataArray_t* const array, const int index)
+int BleDataParser::updateDataBuffer(dataArray_t* const array, const int index)
 {
     if (index < 0 || index > array->size) {
         return -1;
@@ -116,7 +111,7 @@ static int updateDataBuffer(dataArray_t* const array, const int index)
     return 0;
 }
 
-static void resetParserStatus()
+void BleDataParser::resetParserStatus()
 {
     clearBuffer(&DataBufferFiltered);
     ParserDelimiterIndex = 0;
@@ -125,7 +120,7 @@ static void resetParserStatus()
     ParserStatus = DelimiterDetect;
 }
 
-static int checkDataFrame(const dataArray_t* const array)
+int BleDataParser::checkDataFrame(const dataArray_t* const array)
 {
     uint8_t type = getValueFromBuffer(&DataBufferFiltered, 1);
     uint8_t seq = getValueFromBuffer(&DataBufferFiltered, 2);
@@ -174,7 +169,7 @@ static int checkDataFrame(const dataArray_t* const array)
     return 1;
 }
 
-static int processDataFrame(const dataArray_t* const array)
+int BleDataParser::processDataFrame(const dataArray_t *const array)
 {
     float fAcc[3];
     float fGyro[3];
@@ -247,11 +242,10 @@ static int processDataFrame(const dataArray_t* const array)
         }
     }
 
-
     return 1;
 }
 
-void parserReceivedData(const char* const strData)
+void BleDataParser::parserReceivedData(const char *const strData)
 {
     char str[MaxBufferSize];
 
@@ -318,6 +312,4 @@ void parserReceivedData(const char* const strData)
         }
     }
 }
-
-
 

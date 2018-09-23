@@ -12,6 +12,7 @@ int main(int argc,char *argv[])
     FILE *fpInput;
     FILE *fpOutput;
     char line[MAX_BUFF_LEN];
+    BleDataParser bleDataParser;
 
     setbuf(stdout, 0);
     fpInput = fopen("../data/rawdata.txt", "r");
@@ -26,7 +27,7 @@ int main(int argc,char *argv[])
     while ( fgets(line, MAX_BUFF_LEN, fpInput) != 0 )
     {
         puts(line);
-        parserReceivedData(line);
+        bleDataParser.parserReceivedData(line);
     }
 
     fclose(fpInput);
