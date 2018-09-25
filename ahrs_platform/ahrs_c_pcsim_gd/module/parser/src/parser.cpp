@@ -1,10 +1,8 @@
 //
 // Created by jiangtianyu on 2018/9/19.
 //
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <assert.h>
+#include <cstring>
+#include <iostream>
 #include "parser.h"
 
 BleDataParser::BleDataParser()
@@ -164,7 +162,7 @@ int BleDataParser::checkDataFrame(const dataArray_t* const array)
     {
         return 0;
     }
-    printf("seq = %d\n", (int)seq);
+    std::cout << "seq = " << (int)seq << std::endl;
 
     return 1;
 }

@@ -1,7 +1,8 @@
 //
 // Created by jiangtianyu on 2018/9/19.
 //
-#include <stdio.h>
+#include <iostream>
+#include <cstdio>
 #include "parser.h"
 
 
@@ -14,19 +15,18 @@ int main(int argc,char *argv[])
     char line[MAX_BUFF_LEN];
     BleDataParser bleDataParser;
 
-    setbuf(stdout, 0);
     fpInput = fopen("../data/rawdata.txt", "r");
     fpOutput = fopen("../data/output.txt", "w");
 
     if (fpInput == NULL)
     {
-        printf("open file failed!\r\n");
+        std::cout << "open file failed!" << std::endl;
         return -1;
     }
 
     while ( fgets(line, MAX_BUFF_LEN, fpInput) != 0 )
     {
-        puts(line);
+        std::cout << line << std::endl;
         bleDataParser.parserReceivedData(line);
     }
 
