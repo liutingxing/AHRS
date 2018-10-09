@@ -19,8 +19,8 @@ TrainData::TrainData()
     uPlayLoad = 20;
 
     //star chart
-    iTrajectorySweetScore = iTrajectorySweet*20;
-    iStrikeSweetScore = iTrajectorySweet*20;
+    iTrajectorySweetScore = iTrajectorySweet * 20;
+    iStrikeSweetScore = iTrajectorySweet * 20;
     iStrikePowerScore = 80;
     iRangeScore = 70;
     iStrikeVelocityScore = 60;

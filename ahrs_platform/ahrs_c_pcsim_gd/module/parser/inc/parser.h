@@ -5,12 +5,12 @@
 #ifndef AHRS_C_PCSIM_GD_PASER_H
 #define AHRS_C_PCSIM_GD_PASER_H
 
-typedef		signed char			int8_t;                  /* Signed 8 bits integer    */
-typedef		unsigned char			uint8_t;                 /* Unsigned 8 bits integer  */
-typedef		signed short			int16_t;                 /* Signed 16 bits integer   */
-typedef		unsigned short		uint16_t;                /* Unsigned 16 bits integer */
-typedef		signed int				int32_t;                 /* Signed 32 bits integer   */
-typedef		unsigned int			uint32_t;                /* Unsigned 32 bits integer */
+typedef     signed char             int8_t;                  /* Signed 8 bits integer    */
+typedef     unsigned char           uint8_t;                 /* Unsigned 8 bits integer  */
+typedef     signed short            int16_t;                 /* Signed 16 bits integer   */
+typedef     unsigned short          uint16_t;                /* Unsigned 16 bits integer */
+typedef     signed int              int32_t;                 /* Signed 32 bits integer   */
+typedef     unsigned int            uint32_t;                /* Unsigned 32 bits integer */
 
 #define  ACC_SENSITIVITY    (1.0/2048)
 #define  GYRO_SENSITIVITY   (1.0/16.4)
@@ -31,36 +31,36 @@ typedef struct dataArray
 
 class BleDataParser
 {
-private:
-    dataArray_t DataBuffer;
-    dataArray_t DataBufferFiltered;
-    parserStatus_t ParserStatus ;
-    int ParserReceiveLength ;
-    int ParserReadIndex;
-    int ParserDelimiterIndex;
+    private:
+        dataArray_t DataBuffer;
+        dataArray_t DataBufferFiltered;
+        parserStatus_t ParserStatus ;
+        int ParserReceiveLength ;
+        int ParserReadIndex;
+        int ParserDelimiterIndex;
 
-    void strstrip(char* const str);
+        void strstrip(char* const str);
 
-    int charToByte(char c);
+        int charToByte(char c);
 
-    int clearBuffer(dataArray_t* const array);
+        int clearBuffer(dataArray_t* const array);
 
-    uint8_t getValueFromBuffer(const dataArray_t* const array, const int index);
+        uint8_t getValueFromBuffer(const dataArray_t* const array, const int index);
 
-    int addDataInBuffer(dataArray_t* const array, const uint8_t data);
+        int addDataInBuffer(dataArray_t* const array, const uint8_t data);
 
-    int updateDataBuffer(dataArray_t* const array, const int index);
+        int updateDataBuffer(dataArray_t* const array, const int index);
 
-    void resetParserStatus();
+        void resetParserStatus();
 
-    int checkDataFrame(const dataArray_t* const array);
+        int checkDataFrame(const dataArray_t* const array);
 
-public:
-    BleDataParser();
+    public:
+        BleDataParser();
 
-    void parserReceivedData(const char* const strData);
+        void parserReceivedData(const char* const strData);
 
-    int processDataFrame(const dataArray_t* const array);
+        int processDataFrame(const dataArray_t* const array);
 };
 
 #endif //AHRS_C_PCSIM_GD_PASER_H

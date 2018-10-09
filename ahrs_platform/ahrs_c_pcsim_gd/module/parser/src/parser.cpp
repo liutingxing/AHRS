@@ -26,7 +26,7 @@ void BleDataParser::strstrip(char* const str)
     char* src = str;
     char* dest = str;
 
-    while(*src != '\0')
+    while (*src != '\0')
     {
         if (*src != ' ' && *src != '\n')
         {
@@ -37,18 +37,19 @@ void BleDataParser::strstrip(char* const str)
             src++;
         }
     }
+
     *dest = '\0';
 }
 
 int BleDataParser::charToByte(char c)
 {
     char str[] = "0123456789ABCDEF";
-    char *p = str;
+    char* p = str;
     int index = 0;
 
-    while(p)
+    while (p)
     {
-        if(*p != c)
+        if (*p != c)
         {
             p++;
             index++;
@@ -62,14 +63,14 @@ int BleDataParser::charToByte(char c)
     return -1;
 }
 
-int BleDataParser::clearBuffer(dataArray_t *const array)
+int BleDataParser::clearBuffer(dataArray_t* const array)
 {
     array->size = 0;
 
     return 0;
 }
 
-uint8_t BleDataParser::getValueFromBuffer(const dataArray_t *const array, const int index)
+uint8_t BleDataParser::getValueFromBuffer(const dataArray_t* const array, const int index)
 {
     return array->buffer[index];
 }
@@ -89,7 +90,8 @@ int BleDataParser::addDataInBuffer(dataArray_t* const array, const uint8_t data)
 
 int BleDataParser::updateDataBuffer(dataArray_t* const array, const int index)
 {
-    if (index < 0 || index > array->size) {
+    if (index < 0 || index > array->size)
+    {
         return -1;
     }
 
@@ -103,6 +105,7 @@ int BleDataParser::updateDataBuffer(dataArray_t* const array, const int index)
         {
             array->buffer[i - index] = array->buffer[i];
         }
+
         array->size -= index;
     }
 
@@ -132,42 +135,51 @@ int BleDataParser::checkDataFrame(const dataArray_t* const array)
     {
         return 0;
     }
+
     // check data type and data length
-    switch(type)
+    switch (type)
     {
-        // sensor data
-        case (uint8_t)0x01:
-            if (length != (uint8_t)0x14)
-            {
-                return 0;
-            }
-            break;
-            // power data
-        case (uint8_t)0x82:
-            if (length != (uint8_t)0x01)
-            {
-                return 0;
-            }
-            break;
-        default:
+    // sensor data
+    case (uint8_t)0x01:
+        if (length != (uint8_t)0x14)
+        {
             return 0;
+        }
+
+        break;
+
+    // power data
+    case (uint8_t)0x82:
+        if (length != (uint8_t)0x01)
+        {
+            return 0;
+        }
+
+        break;
+
+    default:
+        return 0;
     }
+
     // check sum validation
     sum = (uint32_t)type + (uint32_t)seq + (uint32_t)length;
+
     for (int i = 0; i < length; i++)
     {
-        sum += (uint32_t)getValueFromBuffer(&DataBufferFiltered, 4+i);
+        sum += (uint32_t)getValueFromBuffer(&DataBufferFiltered, 4 + i);
     }
+
     if (checksum != (uint8_t)sum)
     {
         return 0;
     }
+
     std::cout << "seq = " << (int)seq << std::endl;
 
     return 1;
 }
 
-int BleDataParser::processDataFrame(const dataArray_t *const array)
+int BleDataParser::processDataFrame(const dataArray_t* const array)
 {
     float fAcc[3];
     float fGyro[3];
@@ -176,9 +188,10 @@ int BleDataParser::processDataFrame(const dataArray_t *const array)
     float ftemp;
     uint8_t type = getValueFromBuffer(array, 1);
 
-    switch(type)
+    switch (type)
     {
-        case (uint8_t)0x01: {
+    case (uint8_t)0x01:
+        {
             // sensor data
             // acc data
             uint8_t accxH = getValueFromBuffer(array, 4);
@@ -206,19 +219,19 @@ int BleDataParser::processDataFrame(const dataArray_t *const array)
             uint8_t audioL = getValueFromBuffer(array, 23);
 
             // Todo: replace the 9.8 with gravity constatnt in sensor fusion class
-            fAcc[0] = (int16_t) (accxH << 8 | accxL) * ACC_SENSITIVITY * 9.8; // m/s2
-            fAcc[1] = (int16_t) (accyH << 8 | accyL) * ACC_SENSITIVITY * 9.8; // m/s2
-            fAcc[2] = (int16_t) (acczH << 8 | acczL) * ACC_SENSITIVITY * 9.8; // m/s2
+            fAcc[0] = (int16_t)(accxH << 8 | accxL) * ACC_SENSITIVITY * 9.8;  // m/s2
+            fAcc[1] = (int16_t)(accyH << 8 | accyL) * ACC_SENSITIVITY * 9.8;  // m/s2
+            fAcc[2] = (int16_t)(acczH << 8 | acczL) * ACC_SENSITIVITY * 9.8;  // m/s2
             // Todo: replace the 3.14 and 180 with deg2rad marco in sensor fusion class
-            fGyro[0] = (int16_t) (gyroxH << 8 | gyroxL) * GYRO_SENSITIVITY * 3.14 / 180; // rad/s
-            fGyro[1] = (int16_t) (gyroyH << 8 | gyroyL) * GYRO_SENSITIVITY * 3.14 / 180; // rad/s
-            fGyro[2] = (int16_t) (gyrozH << 8 | gyrozL) * GYRO_SENSITIVITY * 3.14 / 180; // rad/s
+            fGyro[0] = (int16_t)(gyroxH << 8 | gyroxL) * GYRO_SENSITIVITY * 3.14 / 180;  // rad/s
+            fGyro[1] = (int16_t)(gyroyH << 8 | gyroyL) * GYRO_SENSITIVITY * 3.14 / 180;  // rad/s
+            fGyro[2] = (int16_t)(gyrozH << 8 | gyrozL) * GYRO_SENSITIVITY * 3.14 / 180;  // rad/s
 
-            fMag[0] = (int16_t) (magxH << 8 | magxL) * MAG_SENSITIVITY; // uT
-            fMag[1] = (int16_t) (magyH << 8 | magyL) * MAG_SENSITIVITY; // uT
-            fMag[2] = (int16_t) (magzH << 8 | magzL) * MAG_SENSITIVITY; // uT
+            fMag[0] = (int16_t)(magxH << 8 | magxL) * MAG_SENSITIVITY;  // uT
+            fMag[1] = (int16_t)(magyH << 8 | magyL) * MAG_SENSITIVITY;  // uT
+            fMag[2] = (int16_t)(magzH << 8 | magzL) * MAG_SENSITIVITY;  // uT
 
-            fAudio = (int16_t) (audioH << 8 | audioL); // count
+            fAudio = (int16_t)(audioH << 8 | audioL);  // count
 
             // sensor hal: sensor frame(xyz) -> device frame(XYZ)
             // gyro/acc: X = x, Y = -y, Z = -z
@@ -233,7 +246,9 @@ int BleDataParser::processDataFrame(const dataArray_t *const array)
 
             break;
         }
-        case (uint8_t)0x82: {
+
+    case (uint8_t)0x82:
+        {
             // power data
             uint8_t power = getValueFromBuffer(array, 4);
             break;
@@ -243,70 +258,90 @@ int BleDataParser::processDataFrame(const dataArray_t *const array)
     return 1;
 }
 
-void BleDataParser::parserReceivedData(const char *const strData)
+void BleDataParser::parserReceivedData(const char* const strData)
 {
     char str[MaxBufferSize];
 
     if (strData == NULL)
+    {
         return;
+    }
+
     strcpy(str, strData);
     // remove space and return character
     strstrip(str);
+
     // convert char to byte into data buffer
-    for (int i = 0; i < strlen(str)/2; i++)
+    for (int i = 0; i < strlen(str) / 2; i++)
     {
-        int pos = i*2;
-        uint8_t val = (uint8_t)(charToByte(str[pos]) << 4 | charToByte(str[pos+1]));
+        int pos = i * 2;
+        uint8_t val = (uint8_t)(charToByte(str[pos]) << 4 | charToByte(str[pos + 1]));
         addDataInBuffer(&DataBuffer, val);
     }
 
     // parser state machine
-    while(ParserReadIndex < DataBuffer.size)
+    while (ParserReadIndex < DataBuffer.size)
     {
         uint8_t charater = DataBuffer.buffer[ParserReadIndex];
 
         ParserReadIndex++;
-        switch(ParserStatus)
+
+        switch (ParserStatus)
         {
-            case DelimiterDetect:
-                if (charater == (uint8_t)0xAA) {
-                    ParserDelimiterIndex = ParserReadIndex;
-                    ParserStatus = DataSave;
-                    addDataInBuffer(&DataBufferFiltered, charater);
-                }
-                break;
-            case DataSave:
+        case DelimiterDetect:
+            if (charater == (uint8_t)0xAA)
+            {
+                ParserDelimiterIndex = ParserReadIndex;
+                ParserStatus = DataSave;
                 addDataInBuffer(&DataBufferFiltered, charater);
-                if (DataBufferFiltered.size == 4) {
-                    // sof type seq len payload checksum eof
-                    int8_t payloadLength = (int8_t) getValueFromBuffer(&DataBufferFiltered, 3);
-                    if (payloadLength < 0) {
-                        // wrong frame
-                        // remove the first delimiter(0xAA)
-                        updateDataBuffer(&DataBuffer, ParserDelimiterIndex);
-                        // reset parser status
-                        resetParserStatus();
-                        continue;
-                    }
-                    ParserReceiveLength = payloadLength + 6;
-                }
-                if (ParserReceiveLength > 0 && DataBufferFiltered.size >= ParserReceiveLength) {
-                    // check frame
-                    if (checkDataFrame(&DataBufferFiltered)) {
-                        // frame match succeed
-                        // remove the match frame from buffer
-                        updateDataBuffer(&DataBuffer, ParserReadIndex);
-                        // process data array
-                        processDataFrame(&DataBufferFiltered);
-                    } else {
-                        // frame match failed
-                        // remove the first delimiter (0xAA)
-                        updateDataBuffer(&DataBuffer, ParserDelimiterIndex);
-                    }
-                    //reset parser status
+            }
+
+            break;
+
+        case DataSave:
+            addDataInBuffer(&DataBufferFiltered, charater);
+
+            if (DataBufferFiltered.size == 4)
+            {
+                // sof type seq len payload checksum eof
+                int8_t payloadLength = (int8_t) getValueFromBuffer(&DataBufferFiltered, 3);
+
+                if (payloadLength < 0)
+                {
+                    // wrong frame
+                    // remove the first delimiter(0xAA)
+                    updateDataBuffer(&DataBuffer, ParserDelimiterIndex);
+                    // reset parser status
                     resetParserStatus();
+                    continue;
                 }
-                break;
+
+                ParserReceiveLength = payloadLength + 6;
+            }
+
+            if (ParserReceiveLength > 0 && DataBufferFiltered.size >= ParserReceiveLength)
+            {
+                // check frame
+                if (checkDataFrame(&DataBufferFiltered))
+                {
+                    // frame match succeed
+                    // remove the match frame from buffer
+                    updateDataBuffer(&DataBuffer, ParserReadIndex);
+                    // process data array
+                    processDataFrame(&DataBufferFiltered);
+                }
+                else
+                {
+                    // frame match failed
+                    // remove the first delimiter (0xAA)
+                    updateDataBuffer(&DataBuffer, ParserDelimiterIndex);
+                }
+
+                //reset parser status
+                resetParserStatus();
+            }
+
+            break;
         }
     }
 }

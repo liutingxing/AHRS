@@ -6,12 +6,12 @@
 #include "parser.h"
 
 
-#define  MAX_BUFF_LEN	1024
+#define  MAX_BUFF_LEN   1024
 
-int main(int argc,char *argv[])
+int main(int argc, char* argv[])
 {
-    FILE *fpInput;
-    FILE *fpOutput;
+    FILE* fpInput;
+    FILE* fpOutput;
     char line[MAX_BUFF_LEN];
     BleDataParser bleDataParser;
 
@@ -24,7 +24,7 @@ int main(int argc,char *argv[])
         return -1;
     }
 
-    while ( fgets(line, MAX_BUFF_LEN, fpInput) != 0 )
+    while (fgets(line, MAX_BUFF_LEN, fpInput) != 0)
     {
         std::cout << line << std::endl;
         bleDataParser.parserReceivedData(line);

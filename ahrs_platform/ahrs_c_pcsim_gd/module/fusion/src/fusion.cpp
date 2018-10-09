@@ -4,7 +4,7 @@
 
 #include "fusion.h"
 
-SensorFusion::SensorFusion():ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100)
+SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100)
 {
 
 }
