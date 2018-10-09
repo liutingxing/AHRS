@@ -1,8 +1,6 @@
 //
 // Created by jiangtianyu on 2018/9/19.
 //
-#include <cstring>
-#include <iostream>
 #include "parser.h"
 
 BleDataParser::BleDataParser()

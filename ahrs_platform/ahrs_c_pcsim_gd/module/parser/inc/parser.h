@@ -5,6 +5,10 @@
 #ifndef AHRS_C_PCSIM_GD_PASER_H
 #define AHRS_C_PCSIM_GD_PASER_H
 
+#include <cstring>
+#include <iostream>
+#include "fusion.h"
+
 typedef     signed char             int8_t;                  /* Signed 8 bits integer    */
 typedef     unsigned char           uint8_t;                 /* Unsigned 8 bits integer  */
 typedef     signed short            int16_t;                 /* Signed 16 bits integer   */
@@ -38,6 +42,7 @@ class BleDataParser
         int ParserReceiveLength ;
         int ParserReadIndex;
         int ParserDelimiterIndex;
+        SensorFusion sensorFusion;
 
         void strstrip(char* const str);
 
