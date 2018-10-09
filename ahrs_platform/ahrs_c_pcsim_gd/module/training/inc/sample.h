@@ -29,6 +29,8 @@ class SampleData
         double       fAudio;
         double       fVel;
         double       fOmegaN[3];
+
+        SampleData() = default;
 };
 
 #endif //AHRS_C_PCSIM_GD_SAMPLE_H

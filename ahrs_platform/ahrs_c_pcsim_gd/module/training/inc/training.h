@@ -5,6 +5,8 @@
 #ifndef AHRS_C_PCSIM_GD_TRAINING_H
 #define AHRS_C_PCSIM_GD_TRAINING_H
 
+using namespace std;
+
 #include <string>
 
 class TrainData
@@ -12,9 +14,9 @@ class TrainData
     public:
         bool bValid;
         int iScore;
-        std::string sTrajectory;
+        string sTrajectory;
         int uActionCount;
-        std::string sActionType;
+        string sActionType;
         double fRangeMax;
         double fVelocityMax;
         double fVelocityStrike;

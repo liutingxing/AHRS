@@ -5,9 +5,14 @@
 #ifndef AHRS_C_PCSIM_GD_FUSION_H
 #define AHRS_C_PCSIM_GD_FUSION_H
 
+#include <string>
 #include <vector>
 #include "training.h"
 #include "sample.h"
+#include "Eigen/Dense"
+
+using namespace std;
+using namespace Eigen;
 
 #define MAG_SUPPORT     1
 #define CHX             0
@@ -17,7 +22,7 @@
 class SensorFusion
 {
     private:
-        int     uTime;
+        int    uTime;
         double fPsiPl;
         double fThePl;
         double fPhiPl;
@@ -55,10 +60,10 @@ class SensorFusion
 
         const int ALIGN_NUM;
         int CalibrationProgress;
-        std::vector<double*> fAlignGyroArray;
-        std::vector<double*> fAlignAccArray;
-        std::vector<double*> fAlignMagArray;
-        std::vector<SampleData> cSampleDataArray;
+        vector<double*> fAlignGyroArray;
+        vector<double*> fAlignAccArray;
+        vector<double*> fAlignMagArray;
+        vector<SampleData> cSampleDataArray;
 
         enum
         {
@@ -87,11 +92,16 @@ class SensorFusion
         double fAudioMax;
         int strikeIndex;
 
+        string sAttitude;
+
     public:
         bool uActionComplete;
         const double GRAVITY;
         const double SAMPLE_RATE;
         TrainData trainData;
+
+        static void euler2q(double q[], double fyaw, double fpitch, double froll);
+        static void euler2dcm(double cbn[][3], double fyaw, double fpitch, double froll);
 
         SensorFusion();
 };

@@ -11,4 +11,4 @@ set(
         SOURCE_FILES
         ./src/fusion.cpp
 )
-add_library(fusionon ${SOURCE_FILES})
+add_library(fusion ${SOURCE_FILES})

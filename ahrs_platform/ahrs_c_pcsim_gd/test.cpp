@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdio>
 #include "parser.h"
+#include "fusion.h"
 
 
 #define  MAX_BUFF_LEN   1024
@@ -14,6 +15,7 @@ int main(int argc, char* argv[])
     FILE* fpOutput;
     char line[MAX_BUFF_LEN];
     BleDataParser bleDataParser;
+    SensorFusion sensorFusion;
 
     fpInput = fopen("../data/rawdata.txt", "r");
     fpOutput = fopen("../data/output.txt", "w");
