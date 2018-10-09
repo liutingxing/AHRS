@@ -35,8 +35,8 @@
       <file leaf-file-name="SensorFusion.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/bottomnav/hitherejoe/com/bottomnavigationsample/SensorFusion.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="69">
-              <caret line="124" column="33" lean-forward="true" selection-start-line="124" selection-start-column="33" selection-end-line="124" selection-end-column="33" />
+            <state relative-caret-position="366">
+              <caret line="18" column="35" lean-forward="false" selection-start-line="18" selection-start-column="25" selection-end-line="18" selection-end-column="35" />
               <folding>
                 <element signature="e#2432#2444#0" expanded="true" />
               </folding>
@@ -416,12 +416,12 @@
       <workItem from="1507532710091" duration="417000" />
       <workItem from="1538963192205" duration="609000" />
       <workItem from="1538992103991" duration="7047000" />
-      <workItem from="1539069706322" duration="2796000" />
+      <workItem from="1539069706322" duration="3397000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="15898000" />
+    <option name="totallyTimeSpent" value="16499000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-11" y="-11" width="1942" height="1042" extended-state="6" />
@@ -669,8 +669,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/bottomnav/hitherejoe/com/bottomnavigationsample/SensorFusion.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="69">
-          <caret line="124" column="33" lean-forward="true" selection-start-line="124" selection-start-column="33" selection-end-line="124" selection-end-column="33" />
+        <state relative-caret-position="366">
+          <caret line="18" column="35" lean-forward="false" selection-start-line="18" selection-start-column="25" selection-end-line="18" selection-end-column="35" />
           <folding>
             <element signature="e#2432#2444#0" expanded="true" />
           </folding>

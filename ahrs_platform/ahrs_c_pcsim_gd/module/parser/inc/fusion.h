@@ -33,6 +33,7 @@ class SensorFusion
         double fCbn[3][3];
         double fCnp[3][3];
         double fqPl[4];
+        double fqPlPlat[4];
         double fCbnPlat[3][3];
         double fGyroBias[3];
         double fAccBias[3];
