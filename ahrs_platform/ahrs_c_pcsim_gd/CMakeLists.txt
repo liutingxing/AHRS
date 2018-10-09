@@ -5,6 +5,11 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_subdirectory(./module/parser)
 include_directories(./module/parser/inc)
+add_subdirectory(./module/training)
+include_directories(./module/training/inc)
+add_subdirectory(./module/fusion)
+include_directories(./module/fusion/inc)
+
 
 set(
         SOURCE_FILES
