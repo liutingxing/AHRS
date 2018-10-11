@@ -135,10 +135,11 @@ class SensorFusion
         void calibration4INV();
         void sensorDataCorrection(double gyro[], double acc[], double mag[]);
         int staticDetect(double gyro[], double acc[], double mag[]);
-        double stdCal(vector<shared_ptr<double[]>> numList);
+        double stdCal(vector<shared_ptr<double[]>>& numList);
+        bool sensorAlignment(vector<shared_ptr<double[]>>& accArray, vector<shared_ptr<double[]>>& magArray);
 
     public:
-        int    uTime;
+        int uTime;
         bool uActionComplete;
         const double GRAVITY;
         const double SAMPLE_RATE;
@@ -146,6 +147,7 @@ class SensorFusion
 
         static void euler2q(double q[], double fyaw, double fpitch, double froll);
         static void euler2dcm(double cbn[][3], double fyaw, double fpitch, double froll);
+        static void dcm2euler(double cbn[][3], double euler[]);
         SensorFusion();
         string sensorFusionExec(int time, double gyro[], double acc[], double mag[], double audio);
 };

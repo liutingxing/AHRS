@@ -108,6 +108,164 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
 
 #endif
 
+#if MAG_SUPPORT
+
+    if (iValidMagCal == true)
+    {
+        iStatus = Alignment;
+        CalibrationProgress = 100;
+    }
+    else
+    {
+        // mag calibration process not execute
+        CalibrationProgress = (int)(iMagBufferCount * 95 / MAXMEASUREMENTS);
+    }
+
+#else
+    iStatus = Alignment;
+#endif
+
+    if (uAlignFlag == false)
+    {
+        if (uStaticFlag == 1 && iStatus == Alignment)
+        {
+            // initial alignment
+            if (sensorAlignment(fAlignAccArray, fAlignMagArray) == true)
+            {
+                //gyroCalibration(fAlignGyroArray);
+                uAlignFlag = true;
+                iStatus = Fusion;
+            }
+        }
+
+        return "";
+    }
+
+    // AHRS/INS process
+}
+
+bool SensorFusion::sensorAlignment(vector<shared_ptr<double[]>>& accArray, vector<shared_ptr<double[]>>& magArray)
+{
+#if MAG_SUPPORT
+    int i = 0;
+    int j = 0;
+    int X = 0;
+    int Y = 1;
+    int Z = 2;
+    double ftmp = 0;
+    double fg[3];
+    double fm[3];
+    double fmod[3];
+    double fR[3][3];
+    double euler[3];
+
+    for (auto p : accArray)
+    {
+        double* value = p.get();
+
+        fg[0] -= value[0];
+        fg[1] -= value[1];
+        fg[2] -= value[2];
+    }
+
+    for (i = 0; i < 3; i++)
+    {
+        fg[i] = fg[i] / accArray.size();
+        fR[i][Z] = fg[i];;
+    }
+
+    for (auto p : magArray)
+    {
+        double* value = p.get();
+
+        fm[0] += value[0];
+        fm[1] += value[1];
+        fm[2] += value[2];
+    }
+
+    for (i = 0; i < 3; i++)
+    {
+        fm[i] = fm[i] / magArray.size() - fMagBias[i];
+        fR[i][X] = fm[i];
+    }
+
+    // set y vector to vector product of z and x vectors
+    fR[X][Y] = fR[Y][Z] * fR[Z][X] - fR[Z][Z] * fR[Y][X];
+    fR[Y][Y] = fR[Z][Z] * fR[X][X] - fR[X][Z] * fR[Z][X];
+    fR[Z][Y] = fR[X][Z] * fR[Y][X] - fR[Y][Z] * fR[X][X];
+
+    // set x vector to vector product of y and z vectors
+    fR[X][X] = fR[Y][Y] * fR[Z][Z] - fR[Z][Y] * fR[Y][Z];
+    fR[Y][X] = fR[Z][Y] * fR[X][Z] - fR[X][Y] * fR[Z][Z];
+    fR[Z][X] = fR[X][Y] * fR[Y][Z] - fR[Y][Y] * fR[X][Z];
+
+    for (i = X; i <= Z; i++)
+    {
+        fmod[i] = sqrt(fR[X][i] * fR[X][i] + fR[Y][i] * fR[Y][i] + fR[Z][i] * fR[Z][i]);
+    }
+
+    if (!((fmod[X] == 0.0F) || (fmod[Y] == 0.0F) || (fmod[Z] == 0.0F)))
+    {
+        for (j = X; j <= Z; j++)
+        {
+            ftmp = 1.0F / fmod[j];
+
+            for (i = X; i <= Z; i++)
+            {
+                fR[i][j] *= ftmp;
+            }
+        }
+    }
+    else
+    {
+        // no solution is possible so set rotation to identity matrix
+        return false;
+    }
+
+    for (i = 0; i < 3; i++)
+    {
+        for (j = 0; j < 3; j++)
+        {
+            fCnb[i][j] = fR[i][j];
+        }
+    }
+
+    Matrix3d temp;
+    temp << fCnb[0][0], fCnb[0][1], fCnb[0][2],
+         fCnb[1][0], fCnb[1][1], fCnb[1][2],
+         fCnb[2][0], fCnb[2][1], fCnb[2][2];
+    temp.transposeInPlace();
+
+    for (i = CHX; i <= CHZ; i++)
+    {
+        for (j = CHX; j <= CHZ; j++)
+        {
+            fCbn[i][j] = temp(i, j);
+        }
+    }
+
+    dcm2euler(fCbn, euler);
+    fPsiPl = euler[0];
+    fThePl = euler[1];
+    fPhiPl = euler[2];
+    euler2q(fqPl, fPsiPl, fThePl, fPhiPl);
+    euler2dcm(fCnp, fPsiPl, 0, 0);
+    temp << fCnp[0][0], fCnp[0][1], fCnp[0][2],
+         fCnp[1][0], fCnp[1][1], fCnp[1][2],
+         fCnp[2][0], fCnp[2][1], fCnp[2][2];
+    temp.transposeInPlace();
+
+    for (i = CHX; i <= CHZ; i++)
+    {
+        for (j = CHX; j <= CHZ; j++)
+        {
+            fCnp[i][j] = temp(i, j);
+        }
+    }
+
+    return true;
+#else
+#endif
 }
 
 int SensorFusion::staticDetect(double gyro[], double acc[], double mag[])
@@ -154,7 +312,7 @@ int SensorFusion::staticDetect(double gyro[], double acc[], double mag[])
     return -1;
 }
 
-double SensorFusion::stdCal(vector<shared_ptr<double[]>> numList)
+double SensorFusion::stdCal(vector<shared_ptr<double[]>>& numList)
 {
     double det = 0;
     double value = 0; // the sum of Xi
@@ -555,10 +713,11 @@ void SensorFusion::calibration4INV()
     // calculate in situ inverse of fmatB = inv(X^T.X) (4x4) while fmatA still holds X^T.X
     Matrix4d temp;
     temp << fmatB[0][0], fmatB[0][1], fmatB[0][2], fmatB[0][3],
-            fmatB[1][0], fmatB[1][1], fmatB[1][2], fmatB[1][3],
-            fmatB[2][0], fmatB[2][1], fmatB[2][2], fmatB[2][3],
-            fmatB[3][0], fmatB[3][1], fmatB[3][2], fmatB[3][3];
+         fmatB[1][0], fmatB[1][1], fmatB[1][2], fmatB[1][3],
+         fmatB[2][0], fmatB[2][1], fmatB[2][2], fmatB[2][3],
+         fmatB[3][0], fmatB[3][1], fmatB[3][2], fmatB[3][3];
     temp = temp.inverse();
+
     for (i = 0; i < 4; i++)
     {
         for (j = i; j < 4; j++)
@@ -649,5 +808,12 @@ void SensorFusion::euler2dcm(double cbn[][3], double fyaw, double fpitch, double
     cbn[2][0] = -sin(fpitch);
     cbn[2][1] = sin(froll) * cos(fpitch);
     cbn[2][2] = cos(froll) * cos(fpitch);
+}
+
+void SensorFusion::dcm2euler(double cbn[][3], double euler[])
+{
+    euler[0] = atan2(cbn[1][0], cbn[0][0]);
+    euler[1] = asin(-cbn[2][0]);
+    euler[2] = atan2(cbn[2][1], cbn[2][2]);
 }
 
