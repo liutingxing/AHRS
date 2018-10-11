@@ -132,7 +132,7 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
             // initial alignment
             if (sensorAlignment(fAlignAccArray, fAlignMagArray) == true)
             {
-                //gyroCalibration(fAlignGyroArray);
+                gyroCalibration(fAlignGyroArray);
                 uAlignFlag = true;
                 iStatus = Fusion;
             }
@@ -142,6 +142,344 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     }
 
     // AHRS/INS process
+    if (uStaticFlag == 1)
+    {
+        gyroCalibration(fAlignGyroArray);
+    }
+
+    // quaternion integration for attitude and heading
+    if (uKalmanFusionFlag == true)
+    {
+        ahrsProcess(dt, gyro, acc, mag);
+    }
+    else
+    {
+        quaternionIntegration(dt, gyro);
+    }
+
+    // convert the ahrs data for MAG_SUPPORT == 0 and MAG_SUPPORT == 1
+    platformDataProcess();
+
+    sAttitude.append(to_string(uTime));
+    sAttitude.append(" ");
+    sAttitude.append(to_string(0));
+    sAttitude.append(" ");
+    sAttitude.append(to_string(0));
+    sAttitude.append(" ");
+    sAttitude.append(to_string(0));
+    sAttitude.append(" ");
+    sAttitude.append(to_string(fqPlPlat[0]));
+    sAttitude.append(" ");
+    sAttitude.append(to_string(-fqPlPlat[1]));
+    sAttitude.append(" ");
+    sAttitude.append(to_string(-fqPlPlat[2]));
+    sAttitude.append(" ");
+    sAttitude.append(to_string(fqPlPlat[3]));
+    sAttitude.append(" ");
+    sAttitude.append(to_string(fLinerAccXLast));
+    sAttitude.append(" ");
+    sAttitude.append("x");
+
+    return sAttitude;
+}
+
+void SensorFusion::platformDataProcess()
+{
+#if MAG_SUPPORT
+    Matrix3d cbn;
+    Matrix3d cnp;
+    Matrix3d cbnPlatform;
+    double euler[3];
+
+    cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
+           fCbn[1][0], fCbn[1][1], fCbn[1][2],
+           fCbn[2][0], fCbn[2][1], fCbn[2][2];
+
+    cnp << fCnp[0][0], fCnp[0][1], fCnp[0][2],
+            fCnp[1][0], fCnp[1][1], fCnp[1][2],
+            fCnp[2][0], fCnp[2][1], fCnp[2][2];
+
+    cbnPlatform = cnp * cbn;
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        for (int j = CHX; j <= CHZ; j++)
+        {
+            fCbnPlat[i][j] = cbnPlatform(i, j);
+        }
+    }
+
+    dcm2euler(fCbnPlat, euler);
+    fPsiPlPlat = euler[0];
+    fThePlPlat = euler[1];
+    fPhiPlPlat = euler[2];
+    euler2q(fqPlPlat, fPsiPlPlat, fThePlPlat, fPhiPlPlat);
+#else
+
+    for (int i = 0; i < 4; i++)
+    {
+        fqPlPlat[i] = fqPl[i];
+    }
+
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            fCbnPlat[i][j] = fCbn[i][j];
+        }
+    }
+
+#endif
+}
+
+void SensorFusion::quaternionIntegration(double dt, double gyro[])
+{
+    int i = 0;
+    double fdq[4] {0, 0, 0, 0};
+    double euler[4];
+
+    fdq[0] = -(gyro[0] * fqPl[1] + gyro[1] * fqPl[2] + gyro[2] * fqPl[3]) / 2.0;
+    fdq[1] = (gyro[0] * fqPl[0] + gyro[2] * fqPl[2] - gyro[1] * fqPl[3]) / 2.0;
+    fdq[2] = (gyro[1] * fqPl[0] - gyro[2] * fqPl[1] + gyro[0] * fqPl[3]) / 2.0;
+    fdq[3] = (gyro[2] * fqPl[0] + gyro[1] * fqPl[1] - gyro[0] * fqPl[2]) / 2.0;
+
+    for (i = 0; i < 4; i++)
+    {
+        fqPl[i] += fdq[i] * dt;
+    }
+
+    qNorm(fqPl);
+    q2dcm(fqPl, fCbn);
+    dcm2euler(fCbn, euler);
+    fPsiPl = euler[0];
+    fThePl = euler[1];
+    fPhiPl = euler[2];
+    Matrix3d temp;
+    temp << fCbn[0][0], fCbn[0][1], fCbn[0][2],
+         fCbn[1][0], fCbn[1][1], fCbn[1][2],
+         fCbn[2][0], fCbn[2][1], fCbn[2][2];
+    temp.transposeInPlace();
+
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        for (int j = CHX; j <= CHZ; j++)
+        {
+            fCnb[i][j] = temp(i, j);
+        }
+    }
+}
+
+void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double mag[])
+{
+    int i = 0;
+    double accNorm = 0;
+    double qDot[4] {0, 0, 0, 0};
+    double qDotError[4] {0, 0, 0, 0};
+    double gyroMeasError = 10 * PI / 180; // gyroscope measurement error in rad/s (shown as 10 deg/s)
+    double beta = sqrt(3.0 / 4.0) * gyroMeasError;
+    double euler[3];
+
+    qDot[0] = -(gyro[0] * fqPl[1] + gyro[1] * fqPl[2] + gyro[2] * fqPl[3]) / 2.0;
+    qDot[1] = (gyro[0] * fqPl[0] + gyro[2] * fqPl[2] - gyro[1] * fqPl[3]) / 2.0;
+    qDot[2] = (gyro[1] * fqPl[0] - gyro[2] * fqPl[1] + gyro[0] * fqPl[3]) / 2.0;
+    qDot[3] = (gyro[2] * fqPl[0] + gyro[1] * fqPl[1] - gyro[0] * fqPl[2]) / 2.0;
+
+    accNorm = sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
+
+    if (accNorm < 12.0)
+    {
+        // execute the acc aid process
+        double diff = 0;
+        double gEstimate[3];
+        MatrixXd F(3, 1);
+        MatrixXd J(3, 4);
+        MatrixXd step(4, 1);
+
+        gEstimate[0] = -acc[0] / accNorm;
+        gEstimate[1] = -acc[1] / accNorm;
+        gEstimate[2] = -acc[2] / accNorm;
+
+        F(0, 0) = 2 * (fqPl[1] * fqPl[3] - fqPl[0] * fqPl[2]) - gEstimate[0];
+        F(1, 0) = 2 * (fqPl[0] * fqPl[1] + fqPl[2] * fqPl[3]) - gEstimate[1];
+        F(2, 0) = 2 * (0.5 - fqPl[1] * fqPl[1] - fqPl[2] * fqPl[2]) - gEstimate[2];
+
+        J(0, 0) = -2 * fqPl[2];
+        J(0, 1) = 2 * fqPl[3];
+        J(0, 2) = -2 * fqPl[0];
+        J(0, 3) = 2 * fqPl[1];
+
+        J(1, 0) = 2 * fqPl[1];
+        J(1, 1) = 2 * fqPl[0];
+        J(1, 2) = 2 * fqPl[3];
+        J(1, 3) = 2 * fqPl[2];
+
+        J(2, 0) = 0;
+        J(2, 1) = -4 * fqPl[1];
+        J(2, 2) = -4 * fqPl[2];
+        J(2, 3) = 0;
+
+        step = J.transpose().eval() * F;
+
+        qDotError[0] += step(0, 0);
+        qDotError[1] += step(1, 0);
+        qDotError[2] += step(2, 0);
+        qDotError[3] += step(3, 0);
+
+        diff = F.norm();
+
+        if (diff < 0.1)
+        {
+            gyroMeasError = 3 * PI / 180;
+            beta = sqrt(3.0 / 4.0) * gyroMeasError;
+        }
+        else
+        {
+            gyroMeasError = 10 * PI / 180;
+            beta = sqrt(3.0 / 4.0) * gyroMeasError;
+        }
+    }
+
+#if MAG_SUPPORT
+    double magNorm = sqrt(mag[0] * mag[0] + mag[1] * mag[1] + mag[2] * mag[2]);
+
+    if (magNorm > fB * 0.8 && magNorm < fB * 1.2)
+    {
+        // execute the acc aid process
+        double diff = 0;
+        double mEstimate[3];
+        double b[4];
+        MatrixXd F(3, 1);
+        MatrixXd J(3, 4);
+        MatrixXd h(3, 1);
+        MatrixXd m(3, 1);
+        MatrixXd step(4, 1);
+        MatrixXd cbn(3, 3);
+
+        cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
+            fCbn[1][0], fCbn[1][1], fCbn[1][2],
+            fCbn[2][0], fCbn[2][1], fCbn[2][2];
+
+        mEstimate[0] = mag[0] / magNorm;
+        mEstimate[1] = mag[1] / magNorm;
+        mEstimate[2] = mag[2] / magNorm;
+
+        m(0, 0) = mEstimate[0];
+        m(1, 0) = mEstimate[1];
+        m(2, 0) = mEstimate[2];
+
+        h = cbn * m;
+        b[0] = 0;
+        b[1] = sqrt(h(0, 0) * h(0, 0) + h(1, 0) * h(1, 0));
+        b[2] = 0;
+        b[3] = h(2, 0);
+
+        F(0, 0) = 2 * b[1] * (0.5 - fqPl[2] * fqPl[2] - fqPl[3] * fqPl[3]) + 2 * b[3] * (fqPl[1] * fqPl[3] - fqPl[0] * fqPl[2]) - mEstimate[0];
+        F(1, 0) = 2 * b[1] * (fqPl[1] * fqPl[2] - fqPl[0] * fqPl[3]) + 2 * b[3] * (fqPl[0] * fqPl[1] + fqPl[2] * fqPl[3]) - mEstimate[1];
+        F(2, 0) = 2 * b[1] * (fqPl[0] * fqPl[2] + fqPl[1] * fqPl[3]) + 2 * b[3] * (0.5 - fqPl[1] * fqPl[1] - fqPl[2] * fqPl[2]) - mEstimate[2];
+
+        J(0, 0) = -2 * b[3] * fqPl[2];
+        J(0, 1) = 2 * b[3] * fqPl[3];
+        J(0, 2) = -4 * b[1] * fqPl[2] - 2 * b[3] * fqPl[0];
+        J(0, 3) = -4 * b[1] * fqPl[3] + 2 * b[3] * fqPl[1];
+
+        J(1, 0) = -2 * b[1] * fqPl[3] + 2 * b[3] * fqPl[1];
+        J(1, 1) = 2 * b[1] * fqPl[2] + 2 * b[3] * fqPl[0];
+        J(1, 2) = 2 * b[1] * fqPl[1] + 2 * b[3] * fqPl[3];
+        J(1, 3) = -2 * b[1] * fqPl[0] + 2 * b[3] * fqPl[2];
+
+        J(2, 0) = 2 * b[1] * fqPl[2];
+        J(2, 1) = 2 * b[1] * fqPl[3] - 4 * b[3] * fqPl[1];
+        J(2, 2) = 2 * b[1] * fqPl[0] - 4 * b[3] * fqPl[2];
+        J(2, 3) = 2 * b[1] * fqPl[1];
+
+        diff = F.norm();
+        step = J.transpose() * F;
+        qDotError[0] += step(0, 0);
+        qDotError[1] += step(1, 0);
+        qDotError[2] += step(2, 0);
+        qDotError[3] += step(3, 0);
+
+        if (diff < 0.1)
+        {
+            gyroMeasError = 10 * PI / 180;
+            beta = sqrt(3.0 / 4.0) * gyroMeasError;
+        }
+        else
+        {
+            gyroMeasError = 20 * PI / 180;
+            beta = sqrt(3.0 / 4.0) * gyroMeasError;
+        }
+    }
+
+#endif
+
+    double qDotErrorNorm = sqrt(qDotError[0] * qDotError[0] + qDotError[1] * qDotError[1] + qDotError[2] * qDotError[2] + qDotError[3] * qDotError[3]);
+
+    if (qDotErrorNorm > 0)
+    {
+        qDotError[0] /= qDotErrorNorm;
+        qDotError[1] /= qDotErrorNorm;
+        qDotError[2] /= qDotErrorNorm;
+        qDotError[3] /= qDotErrorNorm;
+    }
+
+    qDot[0] -= beta * qDotError[0];
+    qDot[1] -= beta * qDotError[1];
+    qDot[2] -= beta * qDotError[2];
+    qDot[3] -= beta * qDotError[3];
+
+    for (i = 0; i < 4; i++)
+    {
+        fqPl[i] += qDot[i] * dt;
+    }
+
+    qNorm(fqPl);
+    q2dcm(fqPl, fCbn);
+    dcm2euler(fCbn, euler);
+    fPsiPl = euler[0];
+    fThePl = euler[1];
+    fPhiPl = euler[2];
+    Matrix3d temp;
+    temp << fCbn[0][0], fCbn[0][1], fCbn[0][2],
+         fCbn[1][0], fCbn[1][1], fCbn[1][2],
+         fCbn[2][0], fCbn[2][1], fCbn[2][2];
+    temp.transposeInPlace();
+
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        for (int j = CHX; j <= CHZ; j++)
+        {
+            fCnb[i][j] = temp(i, j);
+        }
+    }
+}
+
+void SensorFusion::gyroCalibration(vector<shared_ptr<double[]>>& gyroArray)
+{
+    int i;
+    double bias[3] {0, 0, 0};
+
+    // gyro calibration
+    for (auto p : gyroArray)
+    {
+        double* value = p.get();
+
+        bias[0] += value[0];
+        bias[1] += value[1];
+        bias[2] += value[2];
+    }
+
+    for (i = 0; i < 3; i++)
+    {
+        bias[i] /= gyroArray.size();
+    }
+
+    if (abs(bias[0]) < 0.01 && abs(bias[1]) < 0.01 && abs(bias[2]) < 0.01)
+    {
+        for (i = 0; i < 3; i++)
+        {
+            fGyroBias[i] = bias[i] / gyroArray.size();
+        }
+    }
 }
 
 bool SensorFusion::sensorAlignment(vector<shared_ptr<double[]>>& accArray, vector<shared_ptr<double[]>>& magArray)
@@ -153,9 +491,9 @@ bool SensorFusion::sensorAlignment(vector<shared_ptr<double[]>>& accArray, vecto
     int Y = 1;
     int Z = 2;
     double ftmp = 0;
-    double fg[3];
-    double fm[3];
-    double fmod[3];
+    double fg[3] {0, 0, 0};
+    double fm[3] {0, 0, 0};
+    double fmod[3] {0, 0, 0};
     double fR[3][3];
     double euler[3];
 
@@ -265,6 +603,88 @@ bool SensorFusion::sensorAlignment(vector<shared_ptr<double[]>>& accArray, vecto
 
     return true;
 #else
+    int i = 0;
+    int j = 0;
+    double fmodGxyz = 0;
+    double fmodGyz = 0;
+    double frecipmodGxyz = 0;
+    double ftmp = 0;
+    double fg[3] {0, 0, 0};
+    double euler[3];
+
+    // tilt alignment
+    for (auto p : accArray)
+    {
+        double* value = p.get();
+
+        fg[0] -= value[0];
+        fg[1] -= value[1];
+        fg[2] -= value[2];
+    }
+
+    for (i = 0; i < 3; i++)
+    {
+        fg[i] = fg[i] / accArray.size();
+    }
+
+    fmodGyz = fg[1] * fg[1] + fg[2] * fg[2];
+    fmodGxyz = fmodGyz + fg[0] * fg[0];
+
+    // check for free fall special case where no solution is possible
+    if (fmodGxyz == 0.0F)
+    {
+        return false;
+    }
+
+    // check for vertical up or down gimbal lock case
+    if (fmodGyz == 0.0F)
+    {
+        return false;
+    }
+
+    // compute moduli for the general case
+    fmodGyz = sqrt(fmodGyz);
+    fmodGxyz = sqrt(fmodGxyz);
+    frecipmodGxyz = 1.0 / fmodGxyz;
+    ftmp = fmodGxyz / fmodGyz;
+
+    // normalize the accelerometer reading into the z column
+    for (i = 0; i < 3; i++)
+    {
+        fCnb[i][2] = fg[i] * frecipmodGxyz;
+    }
+
+    // construct x column of orientation matrix
+    fCnb[0][0] = fmodGyz * frecipmodGxyz;
+    fCnb[1][0] = -fCnb[0][2] * fCnb[1][2] * ftmp;
+    fCnb[2][0] = -fCnb[0][2] * fCnb[2][2] * ftmp;
+
+    // construct y column of orientation matrix
+    fCnb[0][1] = 0;
+    fCnb[1][1] = fCnb[2][2] * ftmp;
+    fCnb[2][1] = -fCnb[1][2] * ftmp;
+
+    Matrix3d temp;
+    temp << fCnb[0][0], fCnb[0][1], fCnb[0][2],
+         fCnb[1][0], fCnb[1][1], fCnb[1][2],
+         fCnb[2][0], fCnb[2][1], fCnb[2][2];
+    temp.transposeInPlace();
+
+    for (i = CHX; i <= CHZ; i++)
+    {
+        for (j = CHX; j <= CHZ; j++)
+        {
+            fCbn[i][j] = temp(i, j);
+        }
+    }
+
+    dcm2euler(fCbn, euler);
+    fPsiPl = euler[0];
+    fThePl = euler[1];
+    fPhiPl = euler[2];
+    euler2q(fqPl, fPsiPl, fThePl, fPhiPl);
+
+    return true;
 #endif
 }
 
@@ -815,5 +1235,32 @@ void SensorFusion::dcm2euler(double cbn[][3], double euler[])
     euler[0] = atan2(cbn[1][0], cbn[0][0]);
     euler[1] = asin(-cbn[2][0]);
     euler[2] = atan2(cbn[2][1], cbn[2][2]);
+}
+
+void SensorFusion::qNorm(double fq[])
+{
+    double fnorm = 0;
+
+    fnorm = sqrt(fq[0] * fq[0] + fq[1] * fq[1] + fq[2] * fq[2] + fq[3] * fq[3]);
+    fnorm = 1.0 / fnorm;
+    fq[0] *= fnorm;
+    fq[1] *= fnorm;
+    fq[2] *= fnorm;
+    fq[3] *= fnorm;
+}
+
+void SensorFusion::q2dcm(double q[], double cbn[][3])
+{
+    cbn[0][0] = q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3];
+    cbn[0][1] = 2 * (q[1] * q[2] - q[0] * q[3]);
+    cbn[0][2] = 2 * (q[1] * q[3] + q[0] * q[2]);
+
+    cbn[1][0] = 2 * (q[1] * q[2] + q[0] * q[3]);
+    cbn[1][1] = q[0] * q[0] - q[1] * q[1] + q[2] * q[2] - q[3] * q[3];
+    cbn[1][2] = 2 * (q[2] * q[3] - q[0] * q[1]);
+
+    cbn[2][0] = 2 * (q[1] * q[3] - q[0] * q[2]);
+    cbn[2][1] = 2 * (q[2] * q[3] + q[0] * q[1]);
+    cbn[2][2] = q[0] * q[0] - q[1] * q[1] - q[2] * q[2] + q[3] * q[3];
 }
 

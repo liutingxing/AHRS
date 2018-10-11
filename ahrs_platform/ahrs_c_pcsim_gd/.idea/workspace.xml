@@ -46,11 +46,11 @@
           <entry key="Dense" value="2" />
           <entry key="Eigen" value="1" />
           <entry key="Makefile" value="1" />
-          <entry key="ahrs_c_pcsim_gd (disassembly)" value="22" />
+          <entry key="ahrs_c_pcsim_gd (disassembly)" value="28" />
           <entry key="c" value="2" />
           <entry key="cbp" value="1" />
           <entry key="cpp" value="18" />
-          <entry key="h" value="38" />
+          <entry key="h" value="40" />
           <entry key="orig" value="1" />
           <entry key="sh" value="2" />
           <entry key="tcc" value="1" />
@@ -60,15 +60,15 @@
       <usages-collector id="statistics.file.types.open">
         <counts>
           <entry key="CMakeLists.txt" value="29" />
-          <entry key="Disassembly" value="22" />
-          <entry key="ObjectiveC" value="65" />
+          <entry key="Disassembly" value="28" />
+          <entry key="ObjectiveC" value="67" />
           <entry key="PLAIN_TEXT" value="4" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="cpp" value="10322" />
-          <entry key="h" value="3529" />
+          <entry key="cpp" value="11473" />
+          <entry key="h" value="3581" />
           <entry key="mm" value="134" />
           <entry key="sh" value="85" />
           <entry key="txt" value="411" />
@@ -77,7 +77,7 @@
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="CMakeLists.txt" value="411" />
-          <entry key="ObjectiveC" value="13985" />
+          <entry key="ObjectiveC" value="15188" />
           <entry key="PLAIN_TEXT" value="85" />
         </counts>
       </usages-collector>
@@ -107,12 +107,23 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/module/parser/src/fusion.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="172">
-              <caret line="187" column="54" lean-forward="true" selection-start-line="187" selection-start-column="54" selection-end-line="187" selection-end-column="54" />
+            <state relative-caret-position="101">
+              <caret line="291" column="28" lean-forward="true" selection-start-line="291" selection-start-column="28" selection-end-line="291" selection-end-column="28" />
               <folding>
                 <element signature="e#47#63#0" expanded="true" />
                 <element signature="e#2819#2839#0" expanded="true" />
+                <element signature="e#3720#3932#0" expanded="true" />
+                <element signature="e#13870#15771#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/lib/eigen/Eigen/src/Core/DenseCoeffsBase.h">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="171">
+              <caret line="363" selection-start-line="363" selection-end-line="363" />
             </state>
           </provider>
         </entry>
@@ -120,8 +131,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/module/parser/inc/fusion.h">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="201">
-              <caret line="129" column="25" lean-forward="true" selection-start-line="129" selection-start-column="25" selection-end-line="129" selection-end-column="25" />
+            <state relative-caret-position="235">
+              <caret line="143" lean-forward="true" selection-start-line="143" selection-end-line="143" />
               <folding>
                 <element signature="e#114#131#0" expanded="true" />
               </folding>
@@ -152,6 +163,7 @@
       <find>public</find>
       <find>sensorAlignment</find>
       <find>stdCal</find>
+      <find>quaternionIntegration</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -176,8 +188,8 @@
         <option value="$PROJECT_DIR$/module/parser/CMakeLists.txt" />
         <option value="$PROJECT_DIR$/CMakeLists.txt" />
         <option value="$PROJECT_DIR$/module/parser/src/parser.cpp" />
-        <option value="$PROJECT_DIR$/module/parser/src/fusion.cpp" />
         <option value="$PROJECT_DIR$/module/parser/inc/fusion.h" />
+        <option value="$PROJECT_DIR$/module/parser/src/fusion.cpp" />
       </list>
     </option>
   </component>
@@ -306,24 +318,24 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="125342000" />
+    <option name="totallyTimeSpent" value="135140000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="1912" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.5472637" visible="true" weight="0.21801706" />
-      <window_info id="Structure" order="1" sideWeight="0.45273632" side_tool="true" visible="true" weight="0.21801706" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.5473098" visible="true" weight="0.21801706" />
+      <window_info id="Structure" order="1" sideWeight="0.45269015" side_tool="true" visible="true" weight="0.21801706" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
       <window_info anchor="bottom" id="Run" order="2" weight="0.5464684" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.39910814" />
+      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.39910814" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Database Changes" order="7" show_stripe_button="false" />
-      <window_info active="true" anchor="bottom" id="Messages" order="8" visible="true" weight="0.3277592" />
+      <window_info anchor="bottom" id="Messages" order="8" weight="0.3277592" />
       <window_info anchor="bottom" id="Terminal" order="9" weight="0.32887402" />
       <window_info anchor="bottom" id="Event Log" order="10" side_tool="true" />
       <window_info anchor="bottom" id="Version Control" order="11" show_stripe_button="false" />
@@ -361,6 +373,27 @@
   </component>
   <component name="VcsContentAnnotationSettings">
     <option name="myLimit" value="2678400000" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/module/parser/src/fusion.cpp</url>
+          <line>152</line>
+          <option name="timeStamp" value="28" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/module/parser/src/fusion.cpp</url>
+          <line>156</line>
+          <option name="timeStamp" value="29" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/module/parser/src/fusion.cpp</url>
+          <line>300</line>
+          <option name="timeStamp" value="30" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="debuggerHistoryManager">
     <expressions id="breakpointCondition">
@@ -663,6 +696,13 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/lib/eigen/Eigen/src/Core/Dot.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="192">
+          <caret line="107" column="110" selection-start-line="107" selection-start-column="110" selection-end-line="107" selection-end-column="110" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/module/parser/src/parser.cpp">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="282">
@@ -672,21 +712,30 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/module/parser/inc/fusion.h">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="201">
-          <caret line="129" column="25" lean-forward="true" selection-start-line="129" selection-start-column="25" selection-end-line="129" selection-end-column="25" />
+        <state relative-caret-position="235">
+          <caret line="143" lean-forward="true" selection-start-line="143" selection-end-line="143" />
           <folding>
             <element signature="e#114#131#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/lib/eigen/Eigen/src/Core/DenseCoeffsBase.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="171">
+          <caret line="363" selection-start-line="363" selection-end-line="363" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/module/parser/src/fusion.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="172">
-          <caret line="187" column="54" lean-forward="true" selection-start-line="187" selection-start-column="54" selection-end-line="187" selection-end-column="54" />
+        <state relative-caret-position="101">
+          <caret line="291" column="28" lean-forward="true" selection-start-line="291" selection-start-column="28" selection-end-line="291" selection-end-column="28" />
           <folding>
             <element signature="e#47#63#0" expanded="true" />
             <element signature="e#2819#2839#0" expanded="true" />
+            <element signature="e#3720#3932#0" expanded="true" />
+            <element signature="e#13870#15771#0" expanded="true" />
           </folding>
         </state>
       </provider>

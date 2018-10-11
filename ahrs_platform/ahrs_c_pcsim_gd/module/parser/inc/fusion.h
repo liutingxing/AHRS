@@ -137,6 +137,10 @@ class SensorFusion
         int staticDetect(double gyro[], double acc[], double mag[]);
         double stdCal(vector<shared_ptr<double[]>>& numList);
         bool sensorAlignment(vector<shared_ptr<double[]>>& accArray, vector<shared_ptr<double[]>>& magArray);
+        void gyroCalibration(vector<shared_ptr<double[]>>& gyroArray);
+        void ahrsProcess(double dt, double gyro[], double acc[], double mag[]);
+        void quaternionIntegration(double dt, double gyro[]);
+        void platformDataProcess();
 
     public:
         int uTime;
@@ -148,6 +152,9 @@ class SensorFusion
         static void euler2q(double q[], double fyaw, double fpitch, double froll);
         static void euler2dcm(double cbn[][3], double fyaw, double fpitch, double froll);
         static void dcm2euler(double cbn[][3], double euler[]);
+        static void qNorm(double fq[]);
+        static void q2dcm(double q[], double cbn[][3]);
+
         SensorFusion();
         string sensorFusionExec(int time, double gyro[], double acc[], double mag[], double audio);
 };
