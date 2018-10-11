@@ -7,6 +7,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include "training.h"
 #include "sample.h"
 #include "Eigen/Dense"
@@ -19,10 +20,21 @@ using namespace Eigen;
 #define CHY             1
 #define CHZ             2
 
+#ifndef     PI
+#define     PI              ((float)3.14159265358979323846)
+#endif
+
+#ifndef     DEG2RAD
+#define     DEG2RAD         ((float)PI/(float)180.0)
+#endif
+
+#ifndef     RAD2DEG
+#define     RAD2DEG         ((float)180.0/(float)PI)
+#endif
+
 class SensorFusion
 {
     private:
-        int    uTime;
         double fPsiPl;
         double fThePl;
         double fPhiPl;
@@ -47,9 +59,9 @@ class SensorFusion
         double fPosN;
         double fPosE;
         double fPosD;
-        double fOmegaB;
-        double fAccelerate;
-        double fMagnetic;
+        double fOmegaB[3];
+        double fAccelerate[3];
+        double fMagnetic[3];
         double fAudio;
 
         int uStaticFlag;
@@ -61,10 +73,10 @@ class SensorFusion
 
         const int ALIGN_NUM;
         int CalibrationProgress;
-        vector<double*> fAlignGyroArray;
-        vector<double*> fAlignAccArray;
-        vector<double*> fAlignMagArray;
-        vector<SampleData> cSampleDataArray;
+        vector<shared_ptr<double[]>> fAlignGyroArray;
+        vector<shared_ptr<double[]>> fAlignAccArray;
+        vector<shared_ptr<double[]>> fAlignMagArray;
+        vector<shared_ptr<SampleData>> cSampleDataArray;
 
         enum
         {
@@ -95,7 +107,12 @@ class SensorFusion
 
         string sAttitude;
 
+        void sensorDataCorrection(double gyro[], double acc[], double mag[]);
+        int staticDetect(double gyro[], double acc[], double mag[]);
+        double stdCal(vector<shared_ptr<double[]>> numList);
+
     public:
+        int    uTime;
         bool uActionComplete;
         const double GRAVITY;
         const double SAMPLE_RATE;
@@ -103,8 +120,8 @@ class SensorFusion
 
         static void euler2q(double q[], double fyaw, double fpitch, double froll);
         static void euler2dcm(double cbn[][3], double fyaw, double fpitch, double froll);
-
         SensorFusion();
+        string sensorFusionExec(int time, double gyro[], double acc[], double mag[], double audio);
 };
 
 #endif //AHRS_C_PCSIM_GD_FUSION_H
