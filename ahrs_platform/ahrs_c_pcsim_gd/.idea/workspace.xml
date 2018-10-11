@@ -15,7 +15,7 @@
     <list default="true" id="a475d5b9-a05d-4b89-9f54-60d04bbc827e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/module/parser/inc/fusion.h" beforeDir="false" afterPath="$PROJECT_DIR$/module/parser/inc/fusion.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/module/parser/src/fusion.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/module/parser/src/fusion.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/module/parser/src/parser.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/module/parser/src/parser.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../ahrs_java_pcsim/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../ahrs_java_pcsim/.idea/workspace.xml" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/cmake-build-debug/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -49,7 +49,7 @@
           <entry key="ahrs_c_pcsim_gd (disassembly)" value="16" />
           <entry key="cbp" value="1" />
           <entry key="cpp" value="17" />
-          <entry key="h" value="33" />
+          <entry key="h" value="37" />
           <entry key="orig" value="1" />
           <entry key="sh" value="2" />
           <entry key="txt" value="29" />
@@ -59,14 +59,14 @@
         <counts>
           <entry key="CMakeLists.txt" value="29" />
           <entry key="Disassembly" value="16" />
-          <entry key="ObjectiveC" value="56" />
+          <entry key="ObjectiveC" value="60" />
           <entry key="PLAIN_TEXT" value="4" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="cpp" value="9193" />
-          <entry key="h" value="3100" />
+          <entry key="cpp" value="9736" />
+          <entry key="h" value="3509" />
           <entry key="mm" value="134" />
           <entry key="sh" value="85" />
           <entry key="txt" value="411" />
@@ -75,7 +75,7 @@
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="CMakeLists.txt" value="411" />
-          <entry key="ObjectiveC" value="12427" />
+          <entry key="ObjectiveC" value="13379" />
           <entry key="PLAIN_TEXT" value="85" />
         </counts>
       </usages-collector>
@@ -105,8 +105,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/module/parser/src/fusion.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="264">
-              <caret line="96" column="23" lean-forward="true" selection-start-line="96" selection-start-column="23" selection-end-line="96" selection-end-column="23" />
+            <state relative-caret-position="281">
+              <caret line="563" column="31" lean-forward="true" selection-start-line="563" selection-start-column="31" selection-end-line="563" selection-end-column="31" />
               <folding>
                 <element signature="e#47#63#0" expanded="true" />
               </folding>
@@ -117,31 +117,10 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/module/parser/inc/fusion.h">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="801">
-              <caret line="111" column="59" selection-start-line="111" selection-start-column="8" selection-end-line="111" selection-end-column="59" />
+            <state relative-caret-position="141">
+              <caret line="134" column="31" lean-forward="true" selection-start-line="134" selection-start-column="31" selection-end-line="134" selection-end-column="31" />
               <folding>
                 <element signature="e#114#131#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/module/parser/src/parser.cpp">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1601">
-              <caret line="221" column="81" selection-start-line="221" selection-start-column="81" selection-end-line="221" selection-end-column="81" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/module/parser/inc/parser.h">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="748">
-              <caret line="44" column="8" selection-start-line="44" selection-start-column="8" selection-end-line="44" selection-end-column="8" />
-              <folding>
-                <element signature="e#112#130#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -313,14 +292,14 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="113406000" />
+    <option name="totallyTimeSpent" value="120701000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="1912" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.5771144" visible="true" weight="0.21801706" />
-      <window_info id="Structure" order="1" sideWeight="0.42288557" side_tool="true" weight="0.21375267" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.5754561" visible="true" weight="0.21801706" />
+      <window_info active="true" id="Structure" order="1" sideWeight="0.42454395" side_tool="true" visible="true" weight="0.21801706" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
@@ -330,7 +309,7 @@
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Database Changes" order="7" show_stripe_button="false" />
-      <window_info active="true" anchor="bottom" id="Messages" order="8" visible="true" weight="0.3277592" />
+      <window_info anchor="bottom" id="Messages" order="8" visible="true" weight="0.3277592" />
       <window_info anchor="bottom" id="Terminal" order="9" weight="0.32887402" />
       <window_info anchor="bottom" id="Event Log" order="10" side_tool="true" />
       <window_info anchor="bottom" id="Version Control" order="11" show_stripe_button="false" />
@@ -508,13 +487,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/lib/eigen/Eigen/src/Core/DenseBase.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="290">
-          <caret line="318" column="31" selection-start-line="318" selection-start-column="31" selection-end-line="318" selection-end-column="31" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/module/training/inc/sample.h">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="493">
@@ -635,13 +607,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/lib/eigen/Eigen/src/Core/Transpose.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="282">
-          <caret line="283" column="32" selection-start-line="283" selection-start-column="32" selection-end-line="283" selection-end-column="32" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/module/parser/inc/parser.h">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="748">
@@ -652,13 +617,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/module/parser/src/parser.cpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1601">
-          <caret line="221" column="81" selection-start-line="221" selection-start-column="81" selection-end-line="221" selection-end-column="81" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://C:/cygwin64/lib/gcc/x86_64-pc-cygwin/7.3.0/include/c++/bits/stl_vector.h">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="408">
@@ -666,20 +624,48 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/module/parser/src/parser.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-314">
+          <caret line="221" column="81" selection-start-line="221" selection-start-column="81" selection-end-line="221" selection-end-column="81" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/lib/eigen/Eigen/src/Core/Transpose.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="333">
+          <caret line="283" column="32" selection-start-line="283" selection-start-column="32" selection-end-line="283" selection-end-column="32" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/module/parser/inc/fusion.h">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="801">
-          <caret line="111" column="59" selection-start-line="111" selection-start-column="8" selection-end-line="111" selection-end-column="59" />
+        <state relative-caret-position="141">
+          <caret line="134" column="31" lean-forward="true" selection-start-line="134" selection-start-column="31" selection-end-line="134" selection-end-column="31" />
           <folding>
             <element signature="e#114#131#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/lib/eigen/Eigen/src/LU/InverseImpl.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="396">
+          <caret line="334" column="51" selection-start-line="334" selection-start-column="51" selection-end-line="334" selection-end-column="51" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/lib/eigen/Eigen/src/Core/DenseBase.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="290">
+          <caret line="400" column="39" selection-start-line="400" selection-start-column="39" selection-end-line="400" selection-end-column="39" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/module/parser/src/fusion.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="264">
-          <caret line="96" column="23" lean-forward="true" selection-start-line="96" selection-start-column="23" selection-end-line="96" selection-end-column="23" />
+        <state relative-caret-position="281">
+          <caret line="563" column="31" lean-forward="true" selection-start-line="563" selection-start-column="31" selection-end-line="563" selection-end-column="31" />
           <folding>
             <element signature="e#47#63#0" expanded="true" />
           </folding>

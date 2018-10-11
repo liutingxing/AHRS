@@ -32,6 +32,13 @@ using namespace Eigen;
 #define     RAD2DEG         ((float)180.0/(float)PI)
 #endif
 
+#define     MAGSENSITIVE    (0.01F)
+#define     MAGBUFFSIZEX    (14)
+#define     MAGBUFFSIZEY    (MAGBUFFSIZEX * 2)
+#define     MAXMEASUREMENTS (240)
+#define     MESHDELTAUT     (5)
+#define     MAGFITERROR     (5)
+
 class SensorFusion
 {
     private:
@@ -64,6 +71,14 @@ class SensorFusion
         double fMagnetic[3];
         double fAudio;
 
+        double fB;
+        double ftrB;
+        double ftrFitErrorpc;
+        double fFitErrorpc;
+        bool iValidMagCal;
+        double ftrV[3];
+        double fV[3];
+
         int uStaticFlag;
         bool uAlignFlag;
         bool uKalmanFusionFlag;
@@ -77,6 +92,13 @@ class SensorFusion
         vector<shared_ptr<double[]>> fAlignAccArray;
         vector<shared_ptr<double[]>> fAlignMagArray;
         vector<shared_ptr<SampleData>> cSampleDataArray;
+
+        float fuTPerCount;
+        float fCountsPeruT;
+        int iMagRawBuffer[3][MAGBUFFSIZEX][MAGBUFFSIZEY];
+        int Index[MAGBUFFSIZEX][MAGBUFFSIZEY];
+        int Tanarray[MAGBUFFSIZEX - 1];
+        int iMagBufferCount;
 
         enum
         {
@@ -107,6 +129,10 @@ class SensorFusion
 
         string sAttitude;
 
+        void magCalibrationInit();
+        int magBufferUpdate(double magRaw[], double magCal[], int loopCounter);
+        int magCalibrationExec();
+        void calibration4INV();
         void sensorDataCorrection(double gyro[], double acc[], double mag[]);
         int staticDetect(double gyro[], double acc[], double mag[]);
         double stdCal(vector<shared_ptr<double[]>> numList);
