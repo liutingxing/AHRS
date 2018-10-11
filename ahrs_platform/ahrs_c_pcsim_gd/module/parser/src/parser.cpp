@@ -179,11 +179,11 @@ int BleDataParser::checkDataFrame(const dataArray_t* const array)
 
 int BleDataParser::processDataFrame(const dataArray_t* const array)
 {
-    float fAcc[3];
-    float fGyro[3];
-    float fMag[3];
-    float fAudio;
-    float ftemp;
+    double fAcc[3];
+    double fGyro[3];
+    double fMag[3];
+    double fAudio;
+    double ftemp;
     uint8_t type = getValueFromBuffer(array, 1);
 
     switch (type)
@@ -216,14 +216,12 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
             uint8_t audioH = getValueFromBuffer(array, 22);
             uint8_t audioL = getValueFromBuffer(array, 23);
 
-            // Todo: replace the 9.8 with gravity constatnt in sensor fusion class
-            fAcc[0] = (int16_t)(accxH << 8 | accxL) * ACC_SENSITIVITY * 9.8;  // m/s2
-            fAcc[1] = (int16_t)(accyH << 8 | accyL) * ACC_SENSITIVITY * 9.8;  // m/s2
-            fAcc[2] = (int16_t)(acczH << 8 | acczL) * ACC_SENSITIVITY * 9.8;  // m/s2
-            // Todo: replace the 3.14 and 180 with deg2rad marco in sensor fusion class
-            fGyro[0] = (int16_t)(gyroxH << 8 | gyroxL) * GYRO_SENSITIVITY * 3.14 / 180;  // rad/s
-            fGyro[1] = (int16_t)(gyroyH << 8 | gyroyL) * GYRO_SENSITIVITY * 3.14 / 180;  // rad/s
-            fGyro[2] = (int16_t)(gyrozH << 8 | gyrozL) * GYRO_SENSITIVITY * 3.14 / 180;  // rad/s
+            fAcc[0] = (int16_t)(accxH << 8 | accxL) * ACC_SENSITIVITY * sensorFusion.GRAVITY;  // m/s2
+            fAcc[1] = (int16_t)(accyH << 8 | accyL) * ACC_SENSITIVITY * sensorFusion.GRAVITY;  // m/s2
+            fAcc[2] = (int16_t)(acczH << 8 | acczL) * ACC_SENSITIVITY * sensorFusion.GRAVITY;  // m/s2
+            fGyro[0] = (int16_t)(gyroxH << 8 | gyroxL) * GYRO_SENSITIVITY * DEG2RAD;  // rad/s
+            fGyro[1] = (int16_t)(gyroyH << 8 | gyroyL) * GYRO_SENSITIVITY * DEG2RAD;  // rad/s
+            fGyro[2] = (int16_t)(gyrozH << 8 | gyrozL) * GYRO_SENSITIVITY * DEG2RAD;  // rad/s
 
             fMag[0] = (int16_t)(magxH << 8 | magxL) * MAG_SENSITIVITY;  // uT
             fMag[1] = (int16_t)(magyH << 8 | magyL) * MAG_SENSITIVITY;  // uT
@@ -241,6 +239,9 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
             ftemp = -fMag[0];
             fMag[0] = fMag[1];
             fMag[1] = ftemp;
+
+            sensorFusion.uTime++;
+            sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
 
             break;
         }
