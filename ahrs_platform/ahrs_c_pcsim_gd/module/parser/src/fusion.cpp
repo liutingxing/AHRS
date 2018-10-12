@@ -33,7 +33,6 @@ SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100)
         }
     }
 
-    memset(fqPl, 0, sizeof(fqPl));
     memset(fqPlPlat, 0, sizeof(fqPlPlat));
     memset(fGyroBias, 0, sizeof(fGyroBias));
     memset(fAccBias, 0, sizeof(fAccBias));
@@ -697,6 +696,7 @@ int SensorFusion::staticDetect(double gyro[], double acc[], double mag[])
     {
         fAlignAccArray.erase(fAlignAccArray.begin());
         fAlignGyroArray.erase(fAlignGyroArray.begin());
+        fAlignMagArray.erase(fAlignMagArray.begin());
     }
 
     fAlignAccArray.push_back(shared_ptr<double[]> (new double[3] {acc[0], acc[1], acc[2]}, [](double * p)
