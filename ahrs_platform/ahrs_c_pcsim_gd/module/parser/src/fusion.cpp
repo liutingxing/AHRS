@@ -772,6 +772,18 @@ void SensorFusion::sensorDataCorrection(double gyro[], double acc[], double mag[
 
 void SensorFusion::magCalibrationInit()
 {
+    // initialize the mag variable
+    fB = 0;
+    ftrB = 0;
+    ftrFitErrorpc = 0;
+    fFitErrorpc = 0;
+    iValidMagCal = false;
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        ftrV[i] = 0;
+        fV[i] = 0;
+    }
+
     // initialize the mag buffer
     iMagBufferCount = 0;
 
@@ -1136,11 +1148,11 @@ void SensorFusion::calibration4INV()
          fmatB[1][0], fmatB[1][1], fmatB[1][2], fmatB[1][3],
          fmatB[2][0], fmatB[2][1], fmatB[2][2], fmatB[2][3],
          fmatB[3][0], fmatB[3][1], fmatB[3][2], fmatB[3][3];
-    temp = temp.inverse();
+    temp = temp.inverse().eval();
 
     for (i = 0; i < 4; i++)
     {
-        for (j = i; j < 4; j++)
+        for (j = 0; j < 4; j++)
         {
             fmatB[i][j] = temp(i, j);
         }
