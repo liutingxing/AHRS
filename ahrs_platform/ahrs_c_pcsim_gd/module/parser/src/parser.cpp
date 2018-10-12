@@ -185,6 +185,7 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
     double fAudio;
     double ftemp;
     uint8_t type = getValueFromBuffer(array, 1);
+    string sAttitude;
 
     switch (type)
     {
@@ -241,7 +242,16 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
             fMag[1] = ftemp;
 
             sensorFusion.uTime++;
-            sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
+            sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
+
+            //Todo: remove it if integrated in iOS
+            extern FILE* fpOutput;
+            if (!sAttitude.empty())
+            {
+                fputs(sAttitude.c_str(), fpOutput);
+                fputs("\r\n", fpOutput);
+            }
+            //Todo: remove it if integrated in iOS
 
             break;
         }

@@ -8,10 +8,11 @@
 
 #define  MAX_BUFF_LEN   1024
 
+FILE* fpOutput;
+
 int main(int argc, char* argv[])
 {
     FILE* fpInput;
-    FILE* fpOutput;
     char line[MAX_BUFF_LEN];
     BleDataParser bleDataParser;
 

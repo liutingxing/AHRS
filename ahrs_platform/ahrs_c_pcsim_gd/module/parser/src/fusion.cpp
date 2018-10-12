@@ -141,6 +141,8 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     }
 
     // AHRS/INS process
+    sAttitude.clear();
+
     if (uStaticFlag == 1)
     {
         gyroCalibration(fAlignGyroArray);
