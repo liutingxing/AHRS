@@ -88,9 +88,9 @@ class SensorFusion
 
         const int ALIGN_NUM;
         int CalibrationProgress;
-        vector<shared_ptr<double[]>> fAlignGyroArray;
-        vector<shared_ptr<double[]>> fAlignAccArray;
-        vector<shared_ptr<double[]>> fAlignMagArray;
+        vector<shared_ptr<double>> fAlignGyroArray;
+        vector<shared_ptr<double>> fAlignAccArray;
+        vector<shared_ptr<double>> fAlignMagArray;
         vector<shared_ptr<SampleData>> cSampleDataArray;
 
         float fuTPerCount;
@@ -135,9 +135,9 @@ class SensorFusion
         void calibration4INV();
         void sensorDataCorrection(double gyro[], double acc[], double mag[]);
         int staticDetect(double gyro[], double acc[], double mag[]);
-        double stdCal(vector<shared_ptr<double[]>>& numList);
-        bool sensorAlignment(vector<shared_ptr<double[]>>& accArray, vector<shared_ptr<double[]>>& magArray);
-        void gyroCalibration(vector<shared_ptr<double[]>>& gyroArray);
+        double stdCal(vector<shared_ptr<double>>& numList);
+        bool sensorAlignment(vector<shared_ptr<double>>& accArray, vector<shared_ptr<double>>& magArray);
+        void gyroCalibration(vector<shared_ptr<double>>& gyroArray);
         void ahrsProcess(double dt, double gyro[], double acc[], double mag[]);
         void quaternionIntegration(double dt, double gyro[]);
         void platformDataProcess();
@@ -147,7 +147,7 @@ class SensorFusion
         bool uActionComplete;
         const double GRAVITY;
         const double SAMPLE_RATE;
-        TrainData trainData;
+        PingPongTrainData trainData;
 
         static void euler2q(double q[], double fyaw, double fpitch, double froll);
         static void euler2dcm(double cbn[][3], double fyaw, double fpitch, double froll);

@@ -3,7 +3,7 @@
 //
 #include "training.h"
 
-TrainData::TrainData()
+PingPongTrainData::PingPongTrainData()
 {
     bValid = false;
     iScore = 88;

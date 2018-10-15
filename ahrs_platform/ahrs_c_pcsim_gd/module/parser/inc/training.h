@@ -5,11 +5,11 @@
 #ifndef AHRS_C_PCSIM_GD_TRAINING_H
 #define AHRS_C_PCSIM_GD_TRAINING_H
 
-using namespace std;
-
 #include <string>
 
-class TrainData
+using namespace std;
+
+class PingPongTrainData
 {
     public:
         bool bValid;
@@ -34,7 +34,7 @@ class TrainData
         int iRangeScore;
         int iStrikeVelocityScore;
 
-        TrainData();
+        PingPongTrainData();
 };
 
 #endif //AHRS_C_PCSIM_GD_TRAINING_H

@@ -454,7 +454,7 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
     }
 }
 
-void SensorFusion::gyroCalibration(vector<shared_ptr<double[]>>& gyroArray)
+void SensorFusion::gyroCalibration(vector<shared_ptr<double>>& gyroArray)
 {
     int i;
     double bias[3] {0, 0, 0};
@@ -483,7 +483,7 @@ void SensorFusion::gyroCalibration(vector<shared_ptr<double[]>>& gyroArray)
     }
 }
 
-bool SensorFusion::sensorAlignment(vector<shared_ptr<double[]>>& accArray, vector<shared_ptr<double[]>>& magArray)
+bool SensorFusion::sensorAlignment(vector<shared_ptr<double>>& accArray, vector<shared_ptr<double>>& magArray)
 {
 #if MAG_SUPPORT
     int i = 0;
@@ -701,16 +701,16 @@ int SensorFusion::staticDetect(double gyro[], double acc[], double mag[])
         fAlignMagArray.erase(fAlignMagArray.begin());
     }
 
-    fAlignAccArray.push_back(shared_ptr<double[]> (new double[3] {acc[0], acc[1], acc[2]}, [](double * p)
+    fAlignAccArray.push_back(shared_ptr<double> (new double[3] {acc[0], acc[1], acc[2]}, [](double * p)
     {
         delete[] p;
     }));
-    fAlignGyroArray.push_back(shared_ptr<double[]> (new double[3] {gyro[0], gyro[1], gyro[2]}, [](double * p)
+    fAlignGyroArray.push_back(shared_ptr<double> (new double[3] {gyro[0], gyro[1], gyro[2]}, [](double * p)
     {
         delete[] p;
     }));
 #if MAG_SUPPORT
-    fAlignMagArray.push_back(shared_ptr<double[]> (new double[3] {mag[0], mag[1], mag[2]}, [](double * p)
+    fAlignMagArray.push_back(shared_ptr<double> (new double[3] {mag[0], mag[1], mag[2]}, [](double * p)
     {
         delete[] p;
     }));
@@ -734,7 +734,7 @@ int SensorFusion::staticDetect(double gyro[], double acc[], double mag[])
     return -1;
 }
 
-double SensorFusion::stdCal(vector<shared_ptr<double[]>>& numList)
+double SensorFusion::stdCal(vector<shared_ptr<double>>& numList)
 {
     double det = 0;
     double value = 0; // the sum of Xi
