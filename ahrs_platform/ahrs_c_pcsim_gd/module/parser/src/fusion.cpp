@@ -193,14 +193,15 @@ void SensorFusion::platformDataProcess()
     double euler[3];
 
     cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
-           fCbn[1][0], fCbn[1][1], fCbn[1][2],
-           fCbn[2][0], fCbn[2][1], fCbn[2][2];
+        fCbn[1][0], fCbn[1][1], fCbn[1][2],
+        fCbn[2][0], fCbn[2][1], fCbn[2][2];
 
     cnp << fCnp[0][0], fCnp[0][1], fCnp[0][2],
-            fCnp[1][0], fCnp[1][1], fCnp[1][2],
-            fCnp[2][0], fCnp[2][1], fCnp[2][2];
+        fCnp[1][0], fCnp[1][1], fCnp[1][2],
+        fCnp[2][0], fCnp[2][1], fCnp[2][2];
 
     cbnPlatform = cnp * cbn;
+
     for (int i = CHX; i <= CHZ; i++)
     {
         for (int j = CHX; j <= CHZ; j++)
@@ -780,6 +781,7 @@ void SensorFusion::magCalibrationInit()
     ftrFitErrorpc = 0;
     fFitErrorpc = 0;
     iValidMagCal = false;
+
     for (int i = CHX; i <= CHZ; i++)
     {
         ftrV[i] = 0;

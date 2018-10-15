@@ -246,11 +246,13 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
 
             //Todo: remove it if integrated in iOS
             extern FILE* fpOutput;
+
             if (!sAttitude.empty())
             {
                 fputs(sAttitude.c_str(), fpOutput);
                 fputs("\r\n", fpOutput);
             }
+
             //Todo: remove it if integrated in iOS
 
             break;
