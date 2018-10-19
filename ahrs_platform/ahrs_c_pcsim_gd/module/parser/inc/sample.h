@@ -12,7 +12,7 @@ class SampleData
         double       fPsiPlPlat;
         double       fThePlPlat;
         double       fPhiPlPlat;
-        double       fCbnPla[3][3];
+        double       fCbnPlat[3][3];
         double       fqPlPlat[4];
         double       fLinerAccN;
         double       fLinerAccE;

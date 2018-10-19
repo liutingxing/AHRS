@@ -3,6 +3,7 @@
 //
 
 #include <cmath>
+#include <algorithm>
 #include "fusion.h"
 #include "Eigen/Dense"
 
@@ -161,6 +162,48 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     // convert the ahrs data for MAG_SUPPORT == 0 and MAG_SUPPORT == 1
     platformDataProcess();
 
+    // action detect
+    actionDetect(dt, gyro, acc);
+
+    // system condition change
+    systemConditionSet();
+
+    if (uMechanizationFlag == true)
+    {
+        shared_ptr<SampleData> pSampleData = make_shared<SampleData>();
+
+        // ins mechanization
+        insStrapdownMechanization(dt, acc);
+
+        // copy sample data into array list
+        copyInSampleData(this, pSampleData.get());
+        cSampleDataArray.push_back(pSampleData);
+    }
+
+    // record the attitude and trajectory
+    if (uActionComplete == true)
+    {
+        processSampleData(cSampleDataArray, trainData);
+
+        // filter the invalid action
+        if (trainData.fVelocityMax < 1.0 && trainData.fRangeMax < 0.05)
+        {
+            trainData.bValid = false;
+            trainData.uActionCount--;
+
+            uActionComplete = false;
+            fLinerAccXLast = 0;
+            fPlatformOmegaMaxZ = 0;
+            fPlatformOmegaMinZ = 0;
+            fRangeMax = 0.0;
+            fVelocityMax = 0.0;
+            fAudioMax = 0.0;
+            strikeIndex = 0;
+
+            cSampleDataArray.clear();
+        }
+    }
+
     sAttitude.append(to_string(uTime));
     sAttitude.append(" ");
     sAttitude.append(to_string(0));
@@ -182,6 +225,462 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     sAttitude.append("x");
 
     return sAttitude;
+}
+
+int SensorFusion::updateAudioInfo(PingPongTrainData &data) {
+
+    if (data.uStrikePower > 70)
+    {
+        data.uAudioType = 2;
+    }
+    else if (data.fRangeMax > 1.5)
+    {
+        data.uAudioType = 3;
+    }
+    else if (data.fVelocityMax > 6)
+    {
+        data.uAudioType = 1;
+    }
+    else if ((data.fVelocityMax - data.fVelocityStrike) < data.fVelocityMax*0.08)
+    {
+        data.uAudioType = 4;
+    }
+    else
+    {
+        data.uAudioType = 0;
+    }
+
+    return 0;
+}
+
+int SensorFusion::processSampleData(vector<shared_ptr<SampleData>> &sampleDataArray, PingPongTrainData &data) {
+
+    int count = 0;
+    string trajectory;
+    SampleData *value;
+
+    for(auto p:sampleDataArray)
+    {
+        double deltaN = 0;
+        double deltaE = 0;
+        double deltaD = 0;
+        SampleData *valLast = nullptr;
+        SampleData *val = p.get();
+
+        // platform omega
+        if (val->fOmegaN[2] > fPlatformOmegaMaxZ)
+        {
+            fPlatformOmegaMaxZ = val->fOmegaN[2];
+        }
+
+        if (val->fOmegaN[2]  < fPlatformOmegaMinZ)
+        {
+            fPlatformOmegaMinZ = val->fOmegaN[2];
+        }
+
+        // max velocity
+        if (val->fVel > fVelocityMax)
+        {
+            fVelocityMax = val->fVel;
+        }
+
+        // range
+        auto i = find(sampleDataArray.begin(), sampleDataArray.end(), p) - sampleDataArray.begin();
+        if (i >= 1)
+        {
+            valLast = sampleDataArray[i-1].get();
+            deltaN = val->fPosN - valLast->fPosN;
+            deltaE = val->fPosE - valLast->fPosE;
+            deltaD = val->fPosD - valLast->fPosD;
+        }
+        fRangeMax += sqrt(deltaN*deltaN + deltaE*deltaE + deltaD*deltaD);
+
+        // max audio for strike timing
+        if (val->fAudio > fAudioMax)
+        {
+            fAudioMax = val->fAudio;
+            strikeIndex = int(find(sampleDataArray.begin(), sampleDataArray.end(), p) - sampleDataArray.begin());
+        }
+    }
+
+    if (fAudioMax < 250) // no ping pong ball training
+    {
+        fAudioMax = 0;
+        strikeIndex = -1;
+    }
+    else if (fAudioMax > 1000)
+    {
+        fAudioMax = 1000;
+    }
+
+    for(auto p:sampleDataArray)
+    {
+        SampleData *val = p.get();
+        // trajectory
+        trajectory.append(to_string(val->uTime));
+        trajectory.append(" ");
+        trajectory.append(to_string(val->fPosN));
+        trajectory.append(" ");
+        trajectory.append(to_string(-val->fPosD));
+        trajectory.append(" ");
+        trajectory.append(to_string(-val->fPosE));
+        trajectory.append(" ");
+        trajectory.append(to_string(val->fqPlPlat[0]));
+        trajectory.append(" ");
+        trajectory.append(to_string(-val->fqPlPlat[1]));
+        trajectory.append(" ");
+        trajectory.append(to_string(-val->fqPlPlat[2]));
+        trajectory.append(" ");
+        trajectory.append(to_string(val->fqPlPlat[3]));
+        trajectory.append(" ");
+        if (count == strikeIndex)
+        {
+            trajectory.append("s");
+        }
+        else
+        {
+            trajectory.append("x");
+        }
+        trajectory.append("\n");
+
+        count++;
+    }
+    // delete the last enter character
+    trajectory.erase(trajectory.end() - 1);
+
+    // update train data
+    data.bValid = true;
+    data.uActionCount ++;
+    data.fRangeMax = fRangeMax;
+    data.fVelocityMax = fVelocityMax;
+    data.fStrikeAudio = fAudioMax;
+    if (strikeIndex != -1)
+    {
+        value = sampleDataArray[strikeIndex].get();
+        data.fVelocityStrike = sqrt(value->fVelN*value->fVelN + value->fVelE*value->fVelE + value->fVelD*value->fVelD);
+        if (data.fVelocityStrike > 9)
+        {
+            data.uStrikePower = 100;
+        }
+        else if (data.fVelocityStrike > 8)
+        {
+            data.uStrikePower = (int) ((data.fVelocityStrike - 8) * 10.0 + 90);
+        }
+        else if (data.fVelocityStrike > 7)
+        {
+            data.uStrikePower = (int) ((data.fVelocityStrike - 7) * 5.0 + 85);
+        }
+        else if (data.fVelocityStrike > 6)
+        {
+            data.uStrikePower = (int) ((data.fVelocityStrike - 6) * 5.0 + 80);
+        }
+        else if (data.fVelocityStrike > 5)
+        {
+            data.uStrikePower = (int) ((data.fVelocityStrike - 5) * 15.0 + 65);
+        }
+        else if (data.fVelocityStrike > 4)
+        {
+            data.uStrikePower = (int) ((data.fVelocityStrike - 4) * 25.0 + 40);
+        }
+        else
+        {
+            data.uStrikePower = (int) (data.fVelocityStrike * 10);
+        }
+    }
+    else
+    {
+        data.fVelocityStrike = 0;
+        data.uStrikePower = 0;
+    }
+
+
+    if (abs(fPlatformOmegaMaxZ) > abs(fPlatformOmegaMinZ))
+    {
+        data.sActionType = "backhand";
+    }
+    else
+    {
+        data.sActionType = "forehand";
+    }
+
+    // replace the type character in trajectory
+    while (trajectory.find('x') != string::npos)
+    {
+        auto typeIndex = trajectory.find('x');
+
+        trajectory.replace(typeIndex, 1, data.sActionType);
+    }
+    data.sTrajectory = trajectory;
+
+    // update audio index
+    updateAudioInfo(data);
+
+    return 0;
+}
+
+void SensorFusion::insStrapdownMechanization(double dt, double acc[]) {
+
+    int i;
+    double linerAccIBP[3] = {0, 0, 0};
+    double velIBP[3] = {0, 0, 0};
+    double linerAccAve[3] = {0, 0, 0};
+    double velAve[3] = {0, 0, 0};
+    double deltaN = 0.0;
+    double deltaE = 0.0;
+    double deltaD = 0.0;
+    double velCurrent = 0.0;
+
+    for (i = 0; i < 3; i++)
+    {
+        linerAccIBP[i] = acc[0]*fCbnPlat[i][0] + acc[1]*fCbnPlat[i][1] + acc[2]*fCbnPlat[i][2];
+    }
+    linerAccIBP[2] += GRAVITY;
+
+    // static constrain
+    for (i = 0; i < 3; i++)
+    {
+        if (abs(linerAccIBP[i]) < 1)
+        {
+            linerAccIBP[i] = 0;
+        }
+    }
+
+    linerAccAve[0] = (linerAccIBP[0] + fLinerAccN) / 2.0;
+    linerAccAve[1] = (linerAccIBP[1] + fLinerAccE) / 2.0;
+    linerAccAve[2] = (linerAccIBP[2] + fLinerAccD) / 2.0;
+    velIBP[0] = fVelN + linerAccAve[0] * dt;
+    velIBP[1] = fVelE + linerAccAve[1] * dt;
+    velIBP[2] = fVelD + linerAccAve[2] * dt;
+    velAve[0] = (fVelN + velIBP[0]) / 2.0;
+    velAve[1] = (fVelE + velIBP[1]) / 2.0;
+    velAve[2] = (fVelD + velIBP[2]) / 2.0;
+
+    fLinerAccN = linerAccIBP[0];
+    fLinerAccE = linerAccIBP[1];
+    fLinerAccD = linerAccIBP[2];
+    fVelN = velIBP[0];
+    fVelE = velIBP[1];
+    fVelD = velIBP[2];
+    deltaN = velAve[0] * dt;
+    deltaE = velAve[1] * dt;
+    deltaD = velAve[2] * dt;
+    fPosN += deltaN;
+    fPosE += deltaE;
+    fPosD += deltaD;
+}
+
+void SensorFusion::systemConditionSet() {
+
+    if (uActionStartFlag == true)
+    {
+        uMechanizationFlag = true;
+        uKalmanFusionFlag = false;
+    }
+    else
+    {
+        uMechanizationFlag = false;
+        uKalmanFusionFlag = true;
+
+        // clear ins data
+        fLinerAccN = 0;
+        fLinerAccE = 0;
+        fLinerAccD = 0;
+        fVelN = 0;
+        fVelE = 0;
+        fVelD = 0;
+        fPosN = 0;
+        fPosE = 0;
+        fPosD = 0;
+
+        // clear sample data
+        cSampleDataArray.clear();
+    }
+
+    if (uActionEndFlag == true)
+    {
+        uActionStartFlag = false;
+        uActionEndFlag = false;
+        uActionComplete = true;
+
+        // one action complete, report and reset ins data
+        uMechanizationFlag = false;
+        uKalmanFusionFlag = true;
+
+        // clear ins data
+        fLinerAccN = 0;
+        fLinerAccE = 0;
+        fLinerAccD = 0;
+        fVelN = 0;
+        fVelE = 0;
+        fVelD = 0;
+        fPosN = 0;
+        fPosE = 0;
+        fPosD = 0;
+    }
+}
+
+int SensorFusion::copyInSampleData(SensorFusion *src, SampleData *dst) {
+
+    dst->uTime = src->uTime;
+    dst->fPsiPlPlat = src->fPsiPlPlat;
+    dst->fThePlPlat = src->fThePlPlat;
+    dst->fPhiPlPlat = src->fPhiPlPlat;
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        for (int j = CHX; j <= CHZ; j++)
+        {
+            dst->fCbnPlat[i][j] = src->fCbnPlat[i][j];
+        }
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        dst->fqPlPlat[i] = src->fqPlPlat[i];
+    }
+    dst->fLinerAccN = src->fLinerAccN;
+    dst->fLinerAccE = src->fLinerAccE;
+    dst->fLinerAccD = src->fLinerAccD;
+    dst->fVelN = src->fVelN;
+    dst->fVelE = src->fVelE;
+    dst->fVelD = src->fVelD;
+    dst->fPosN = src->fPosN;
+    dst->fPosE = src->fPosE;
+    dst->fPosD = src->fPosD;
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        dst->fOmegaB[i] = src->fOmegaB[i];
+        dst->fAccelerate[i] = src->fAccelerate[i];
+        dst->fMagnetic[i] = src->fMagnetic[i];
+    }
+    dst->fAudio = src->fAudio;
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        dst->fOmegaN[i] = src->fCbnPlat[i][0] * src->fOmegaB[0] + src->fCbnPlat[i][1] * src->fOmegaB[1] + src->fCbnPlat[i][2] * src->fOmegaB[2];
+    }
+    dst->fVel = sqrt(src->fVelN * src->fVelN +  src->fVelE * src->fVelE + src->fVelD * src->fVelD);
+
+    return 0;
+}
+
+void SensorFusion::actionDetect(double dt, double gyro[], double acc[]) {
+
+    int i;
+    int slop = 0;
+    double linerAccIBP[] = {0, 0, 0};
+    double linerAccX = 0.0;
+
+    // calculate the liner accelerate along the x axis
+    for (i = 0; i < 3; i++)
+    {
+        linerAccIBP[i] = acc[0]*fCbnPlat[i][0] + acc[1]*fCbnPlat[i][1] + acc[2]*fCbnPlat[i][2];
+    }
+    linerAccIBP[2] += GRAVITY;
+
+    // static constrain
+    for (i = 0; i < 3; i++)
+    {
+        if (abs(linerAccIBP[i]) < 1)
+        {
+            linerAccIBP[i] = 0;
+        }
+    }
+    linerAccX = linerAccIBP[0];
+
+    switch(iCurveCondition)
+    {
+        case Peace:
+            if (linerAccX > 3){
+
+                shared_ptr<SampleData> pSampleData = make_shared<SampleData>();
+                uActionStartFlag = true;
+                iCurveCondition = Step1;
+                actionTime = 0;
+
+                // copy sample data into array list
+                copyInSampleData(this, pSampleData.get());
+                cSampleDataArray.push_back(pSampleData);
+            }
+            break;
+
+        case Step1:
+            actionTime += dt;
+            if (linerAccX > fLinerAccXLast){
+                slop = 1;
+            }else{
+                slop = -1;
+                // reach the up peak
+                if (fLinerAccXLast < 8){
+                    // false peak
+                    iCurveCondition = Peace;
+                    uActionStartFlag = false;
+                }else{
+                    iCurveCondition = Step2;
+                    downTime = 0;
+                    peakValue = fLinerAccXLast;
+                    // maybe is a false peak since the prepare action
+                }
+            }
+            break;
+
+        case Step2:
+            actionTime += dt;
+            downTime += dt;
+            if (downTime > 0.3)
+            {
+                iCurveCondition = Peace;
+                uActionStartFlag = false;
+            }
+            else
+            {
+                if (linerAccX > fLinerAccXLast){
+                    slop = 1;
+                    // reach the trough
+                    if (fLinerAccXLast > 0.5 * peakValue && peakValue < 30){
+                        // maybe there is false peak in the step1
+                        if (downTime > 0.05)
+                        {
+                            // there is a false peak in the step1
+                            iCurveCondition = Peace;
+                            uActionStartFlag = false;
+                        }
+                        else
+                        {
+                            //the following peak is false peak
+                        }
+                    }
+                    else if(fLinerAccXLast > -5){
+                        // false trough
+                        // no action, because it is normal
+                    }
+                    else{
+                        iCurveCondition = Step3;
+                    }
+                }else{
+                    slop = -1;
+                }
+            }
+            break;
+
+        case Step3:
+            actionTime += dt;
+            if (linerAccX > fLinerAccXLast){
+                slop = 1;
+            }else {
+                slop = -1;
+            }
+            if (linerAccX > -10 && linerAccX < 10){
+                if (actionTime > 0.1 && actionTime < 0.6)
+                {
+                    uActionEndFlag = true;
+                }
+                else
+                {
+                    uActionStartFlag = false;
+                }
+                iCurveCondition = Peace;
+            }
+            break;
+    }
+    fLinerAccXLast = linerAccX;
 }
 
 void SensorFusion::platformDataProcess()

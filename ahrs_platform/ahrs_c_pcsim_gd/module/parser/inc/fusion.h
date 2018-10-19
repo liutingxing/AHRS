@@ -141,6 +141,12 @@ class SensorFusion
         void ahrsProcess(double dt, double gyro[], double acc[], double mag[]);
         void quaternionIntegration(double dt, double gyro[]);
         void platformDataProcess();
+        void actionDetect(double dt, double gyro[], double acc[]);
+        int copyInSampleData(SensorFusion *src, SampleData *dst);
+        void systemConditionSet();
+        void insStrapdownMechanization(double dt, double acc[]);
+        int processSampleData(vector<shared_ptr<SampleData>>& sampleDataArray, PingPongTrainData& data);
+        int updateAudioInfo(PingPongTrainData& data);
 
     public:
         int uTime;
