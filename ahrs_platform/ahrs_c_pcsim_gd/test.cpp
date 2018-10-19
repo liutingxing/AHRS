@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
 
     while (fgets(line, MAX_BUFF_LEN, fpInput) != 0)
     {
-        std::cout << line << std::endl;
+        //std::cout << line << std::endl;
         bleDataParser.parserReceivedData(line);
     }
 

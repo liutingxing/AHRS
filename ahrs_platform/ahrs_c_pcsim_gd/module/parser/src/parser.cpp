@@ -172,7 +172,7 @@ int BleDataParser::checkDataFrame(const dataArray_t* const array)
         return 0;
     }
 
-    std::cout << "seq = " << (int)seq << std::endl;
+    //std::cout << "seq = " << (int)seq << std::endl;
 
     return 1;
 }
@@ -252,6 +252,13 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
                 fputs(sAttitude.c_str(), fpOutput);
                 fputs("\r\n", fpOutput);
             }
+
+            if (sensorFusion.uActionComplete == true)
+            {
+                cout << "-------------------------------------------------------------------------------------------------------------------------------------\n"
+                     << sensorFusion.trainData.sTrajectory << "\n" <<
+                        "-------------------------------------------------------------------------------------------------------------------------------------\n" << endl;
+                }
 
             //Todo: remove it if integrated in iOS
 
