@@ -408,7 +408,7 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
     {
         auto typeIndex = trajectory.find('x');
 
-        trajectory.replace(typeIndex, 1, data.sActionType);
+        trajectory.replace(typeIndex, 1, data.sActionType, 0, 1);
     }
     data.sTrajectory = trajectory;
 
