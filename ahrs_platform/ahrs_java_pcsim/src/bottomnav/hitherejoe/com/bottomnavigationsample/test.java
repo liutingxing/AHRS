@@ -29,7 +29,7 @@ public class test {
             int line = 1;
 
             while ((tempString = myTest.reader.readLine()) != null) {
-            	System.out.println("line " + line + ": " + tempString);
+            	//System.out.println("line " + line + ": " + tempString);
             	// parse the sensor data
                 myTest.displayData(tempString);
                 line++;
