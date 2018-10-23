@@ -82,6 +82,7 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     if (uActionComplete == true)
     {
         uActionComplete = false;
+        trainData.bValid = false;
         fLinerAccXLast = 0;
         fPlatformOmegaMaxZ = 0;
         fPlatformOmegaMinZ = 0;
@@ -89,7 +90,6 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
         fVelocityMax = 0.0;
         fAudioMax = 0.0;
         strikeIndex = 0;
-
         cSampleDataArray.clear();
     }
 
