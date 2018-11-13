@@ -163,6 +163,8 @@ class SensorFusion
 
         SensorFusion();
         string sensorFusionExec(int time, double gyro[], double acc[], double mag[], double audio);
+        int resetSensorFusion();
+        int getCalibrationProgress() {return CalibrationProgress;};
 };
 
 #endif //AHRS_C_PCSIM_GD_FUSION_H

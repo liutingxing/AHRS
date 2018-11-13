@@ -61,6 +61,62 @@ SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100)
     magCalibrationInit();
 }
 
+int SensorFusion::resetSensorFusion()
+{
+    Matrix3d temp;
+
+    uTime = 0;
+    fPsiPl = 0;
+    fThePl = 0;
+    fPhiPl = 0;
+    fPsiPlPlat = 0;
+    fThePlPlat = 0;
+    fPhiPlPlat = 0;
+    euler2q(fqPl, fPsiPl, fThePl, fPhiPl);
+    euler2dcm(fCbn, fPsiPl, fThePl, fPhiPl);
+    temp << fCbn[0][0], fCbn[0][1], fCbn[0][2],
+            fCbn[1][0], fCbn[1][1], fCbn[1][2],
+            fCbn[2][0], fCbn[2][1], fCbn[2][2];
+    temp.transposeInPlace();
+
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        for (int j = CHX; j <= CHZ; j++)
+        {
+            fCnb[i][j] = temp(i, j);
+            fCbnPlat[i][j] = 0;
+        }
+    }
+
+    memset(fqPlPlat, 0, sizeof(fqPlPlat));
+    memset(fGyroBias, 0, sizeof(fGyroBias));
+    memset(fAccBias, 0, sizeof(fAccBias));
+    memset(fMagBias, 0, sizeof(fMagBias));
+    fLinerAccN = 0;
+    fLinerAccE = 0;
+    fLinerAccD = 0;
+    fVelN = 0;
+    fVelE = 0;
+    fVelD = 0;
+    fPosN = 0;
+    fPosE = 0;
+    fPosD = 0;
+    uStaticFlag = -1;
+    uAlignFlag = false;
+    uKalmanFusionFlag = true;
+    uMechanizationFlag = false;
+    uActionStartFlag = false;
+    uActionEndFlag = false;
+    uActionComplete = false;
+    sAttitude = "";
+    iStatus = Calibration;
+    iCurveCondition = Peace;
+    CalibrationProgress = 0;
+    magCalibrationInit();
+
+    return 0;
+}
+
 string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], double mag[], double audio)
 {
     double dt = 1.0 / SAMPLE_RATE;
