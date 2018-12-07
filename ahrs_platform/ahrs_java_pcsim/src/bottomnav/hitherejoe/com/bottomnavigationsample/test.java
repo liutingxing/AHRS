@@ -18,6 +18,7 @@ public class test {
     public String sAttitude = null;
     public BufferedReader reader = null;
     public BufferedWriter writer = null;
+    public BufferedWriter sensorDataWriter = null;
 
 	public static void main(String[] args) {
         test myTest = new test();
@@ -25,6 +26,7 @@ public class test {
         try {
             myTest.reader = new BufferedReader(new FileReader("./data/rawData.txt"));
             myTest.writer = new BufferedWriter(new FileWriter("./data/outputData.txt"));
+            myTest.sensorDataWriter = new BufferedWriter(new FileWriter("./data/sensorData.txt"));
             String tempString = null;
             int line = 1;
 
@@ -242,6 +244,12 @@ public class test {
 
                 sensorFusion.uTime++;
                 sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
+                try {
+                    sensorDataWriter.write(String.valueOf(sensorFusion.uTime) + " " + String.valueOf(fMag[0]) + " " + String.valueOf(fMag[1]) + " " + String.valueOf(fMag[2]) + "\r\n");
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
                 if (sAttitude != null)
                 {
                     try {
