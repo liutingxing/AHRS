@@ -178,12 +178,19 @@ public class SensorFusion {
         sensorDataCorrection(gyro, acc, mag);
 
         // static detection
-        uStaticFlag = staticDetect(fGyroRaw, fAccRaw, fMagRaw);
+        staticDetectUpdate(fGyroRaw, fAccRaw, fMagRaw);
+        if (time % 100 == 0) // 1Hz static check frequency
+        {
+            uStaticFlag = staticDetectCheck();
+        }
 
         // mag buffer update
         if (MAG_SUPPORT == 1) {
-            magBufferUpdate(fMagRaw, mag, time);
-            if (time % 10 == 0) // 1Hz calibration frequency
+            if (uStaticFlag == 0)
+            {
+                magBufferUpdate(fMagRaw, mag, time);
+            }
+            if (time % 100 == 0) // 1Hz calibration frequency
             {
                 magCalibrationExec();
             }
@@ -1222,13 +1229,8 @@ public class SensorFusion {
         }
     }
 
-    private int staticDetect(double[] gyro, double[] acc, double[] mag)
+    private int staticDetectUpdate(double[] gyro, double[] acc, double[] mag)
     {
-        double gyro_det = 0;
-        double acc_det = 0;
-        double gyro_std = 0;
-        double acc_std = 0;
-
         if (fAlignGyroArray.size() < ALIGN_NUM)
         {
             fAlignAccArray.add(new double[]{acc[0], acc[1], acc[2]});
@@ -1251,6 +1253,14 @@ public class SensorFusion {
             }
         }
 
+        return 0;
+    }
+
+    private int staticDetectCheck()
+    {
+        double gyro_std = 0;
+        double acc_std = 0;
+
         if (fAlignGyroArray.size() == ALIGN_NUM && fAlignAccArray.size() == ALIGN_NUM)
         {
             gyro_std = stdCal(fAlignGyroArray);
@@ -1260,7 +1270,7 @@ public class SensorFusion {
             {
                 return 1;
             }
-            else
+            else if (gyro_std > 0.5 && acc_std > 1.0)
             {
                 return 0;
             }
