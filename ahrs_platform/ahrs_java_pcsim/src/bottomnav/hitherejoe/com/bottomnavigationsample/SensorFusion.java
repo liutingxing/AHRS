@@ -68,7 +68,7 @@ public class SensorFusion {
     private final static int MAGBUFFSIZEY =  MAGBUFFSIZEX * 2;
     private final static int MAXMEASUREMENTS = 240;
     private final static int MESHDELTAUT = 5;
-    private final static float MAGFITERROR = 5;
+    private final static float MAGFITERROR = 10;
     private final static int CHX = 0;
     private final static int CHY = 1;
     private final static int CHZ = 2;
@@ -724,7 +724,7 @@ public class SensorFusion {
                 }
                 else
                 {
-                    gyroMeasError = 20 * Math.PI / 180;
+                    gyroMeasError = 40 * Math.PI / 180;
                     beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
                 }
             }
@@ -1577,9 +1577,9 @@ public class SensorFusion {
             calibration4INV();
         }
 
-        if (ftrFitErrorpc <= MAGFITERROR && ftrB > 10 && ftrB < 300)
+        if (ftrFitErrorpc <= MAGFITERROR && ftrB > 10 && ftrB < 200)
         {
-            if (iValidMagCal == false || ftrFitErrorpc <= fFitErrorpc || ftrFitErrorpc <= 2.0F)
+            if (iValidMagCal == false || ftrFitErrorpc <= fFitErrorpc || ftrFitErrorpc <= 5.0F)
             {
                 iValidMagCal = true;
                 fFitErrorpc = ftrFitErrorpc;
