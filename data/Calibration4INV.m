@@ -110,7 +110,7 @@ plot(Mag_c(:, 1), 'r');
 hold on;
 plot(Mag_c(:, 2), 'g');
 plot(Mag_c(:, 3), 'b');
-title('mag raw measurement');
+title('mag calibrated measurement');
 legend('x', 'y', 'z');
 xlabel('sample point');
 ylabel('mag (uT)');
