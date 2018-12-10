@@ -243,13 +243,13 @@ public class test {
                 fMag[1] = ftemp;
 
                 sensorFusion.uTime++;
-                sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
                 try {
                     sensorDataWriter.write(String.valueOf(sensorFusion.uTime) + " " + String.valueOf(fMag[0]) + " " + String.valueOf(fMag[1]) + " " + String.valueOf(fMag[2]) + "\r\n");
                 }
                 catch (IOException e) {
                     e.printStackTrace();
                 }
+                sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
                 if (sAttitude != null)
                 {
                     try {
