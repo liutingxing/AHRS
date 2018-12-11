@@ -187,6 +187,10 @@ public class SensorFusion {
         if (time % 100 == 0) // 1Hz static check frequency
         {
             uStaticFlag = staticDetectCheck();
+            if (uStaticFlag == 1)
+            {
+                gyroCalibration(fAlignGyroArray);
+            }
         }
 
         // mag buffer update
@@ -219,7 +223,6 @@ public class SensorFusion {
             {
                 // initial alignment
                 if (sensorAlignment(fAlignAccArray, fAlignMagArray) == true) {
-                    gyroCalibration(fAlignGyroArray);
                     uAlignFlag = true;
                     iStatus = Fusion;
                 }
@@ -241,10 +244,6 @@ public class SensorFusion {
 
         // AHRS/INS process
         sAttitude = new StringBuffer();
-
-        if (uStaticFlag == 1) {
-            gyroCalibration(fAlignGyroArray);
-        }
 
         /*// quaternion integration
         quaternionIntegration(dt, gyro);
@@ -1230,11 +1229,11 @@ public class SensorFusion {
             bias[i] /= gyroArray.size();
         }
 
-        if (Math.abs(bias[0]) < 0.01 && Math.abs(bias[1]) < 0.01 && Math.abs(bias[2]) < 0.01)
+        //if (Math.abs(bias[0]) < 0.01 && Math.abs(bias[1]) < 0.01 && Math.abs(bias[2]) < 0.01)
         {
             for (i = 0; i < 3; i++)
             {
-                fGyroBias[i] = bias[i] / gyroArray.size();
+                fGyroBias[i] = bias[i];
             }
         }
     }
