@@ -1034,7 +1034,7 @@ void SensorFusion::gyroCalibration(vector<shared_ptr<double>>& gyroArray)
     {
         for (i = 0; i < 3; i++)
         {
-            fGyroBias[i] = bias[i] / gyroArray.size();
+            fGyroBias[i] = bias[i];
         }
     }
 }
