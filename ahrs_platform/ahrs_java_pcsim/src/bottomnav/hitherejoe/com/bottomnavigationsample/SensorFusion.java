@@ -279,7 +279,7 @@ public class SensorFusion {
         	uKfCount++;
         }*/
         // quaternion integration for attitude and heading
-        if (uKalmanFusionFlag == true)
+        if (true)
         {
             ahrsProcess(dt, gyro, acc, mag);
         }
