@@ -78,6 +78,8 @@ class SensorFusion
         bool iValidMagCal;
         double ftrV[3];
         double fV[3];
+        double fGeoB;
+        double fResidual;
 
         int uStaticFlag;
         bool uAlignFlag;
@@ -87,10 +89,12 @@ class SensorFusion
         bool uActionEndFlag;
 
         const int ALIGN_NUM;
+        const int CALIBRATION_NUM;
         int CalibrationProgress;
         vector<shared_ptr<double>> fAlignGyroArray;
         vector<shared_ptr<double>> fAlignAccArray;
         vector<shared_ptr<double>> fAlignMagArray;
+        vector<shared_ptr<double>> fCalibrationMagArray;
         vector<shared_ptr<SampleData>> cSampleDataArray;
 
         float fuTPerCount;
@@ -148,6 +152,8 @@ class SensorFusion
         void insStrapdownMechanization(double dt, double acc[]);
         int processSampleData(vector<shared_ptr<SampleData>>& sampleDataArray, PingPongTrainData& data);
         int updateAudioInfo(PingPongTrainData& data);
+        bool magCalibration(double mag[]);
+        void calibration4InvRaw(vector<shared_ptr<double>>& magArray);
 
     public:
         int uTime;

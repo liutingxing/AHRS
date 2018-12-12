@@ -7,7 +7,7 @@
 #include "fusion.h"
 #include "Eigen/Dense"
 
-SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100)
+SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100), CALIBRATION_NUM(500)
 {
     Matrix3d temp;
 
@@ -113,6 +113,7 @@ int SensorFusion::resetSensorFusion()
     iCurveCondition = Peace;
     CalibrationProgress = 0;
     magCalibrationInit();
+    fCalibrationMagArray.clear();
     fAlignGyroArray.clear();
     fAlignAccArray.clear();
     fAlignMagArray.clear();
@@ -166,28 +167,23 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     }
     // mag buffer update
 #if MAG_SUPPORT
-    magBufferUpdate(fMagRaw, mag, time);
-
-    if (time % 10 == 0) // 1Hz calibration frequency
+    if (uStaticFlag == 0 && iStatus == Calibration)
     {
-        magCalibrationExec();
+        if (magCalibration(mag) == true)
+        {
+            // mag calibration process complete
+            if (fGeoB > 10 && fGeoB < 200 && fResidual < 10)
+            {
+                iStatus = Alignment;
+                CalibrationProgress = 100;
+            }
+        }
+        else
+        {
+            // mag calibration process not execute
+            CalibrationProgress = (int)(fCalibrationMagArray.size() * 95 / CALIBRATION_NUM );
+        }
     }
-
-#endif
-
-#if MAG_SUPPORT
-
-    if (iValidMagCal == true)
-    {
-        iStatus = Alignment;
-        CalibrationProgress = 100;
-    }
-    else
-    {
-        // mag calibration process not execute
-        CalibrationProgress = (int)(iMagBufferCount * 95 / MAXMEASUREMENTS);
-    }
-
 #else
     iStatus = Alignment;
 #endif
@@ -206,6 +202,16 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
 
         return "";
     }
+
+#if MAG_SUPPORT
+    if (uStaticFlag == 0) {
+        magBufferUpdate(fMagRaw, mag, time);
+    }
+    if (time % 100 == 0) // 1Hz calibration frequency
+    {
+        magCalibrationExec();
+    }
+#endif
 
     // AHRS/INS process
     sAttitude.clear();
@@ -791,6 +797,217 @@ void SensorFusion::platformDataProcess()
     }
 
 #endif
+}
+
+bool SensorFusion::magCalibration(double mag[])
+{
+    if (mag[2] == 0)
+    {
+        return false;
+    }
+
+    if (fCalibrationMagArray.size() >= CALIBRATION_NUM) {
+        fCalibrationMagArray.erase(fCalibrationMagArray.begin());
+    }
+
+    fCalibrationMagArray.push_back(shared_ptr<double>(new double[3]{mag[0], mag[1], mag[2]}, [](double *p) {
+        delete[] p;
+    }));
+
+    if (fCalibrationMagArray.size() == CALIBRATION_NUM)
+    {
+        calibration4InvRaw(fCalibrationMagArray);
+
+        return true;
+    }
+
+    return false;
+}
+
+void SensorFusion::calibration4InvRaw(vector<shared_ptr<double>> &magArray)
+{
+    // local variables
+    double fBs2;                            // fBs[CHX]^2+fBs[CHY]^2+fBs[CHZ]^2
+    double fSumBs4;                         // sum of fBs2
+    double fscaling;                        // set to FUTPERCOUNT * FMATRIXSCALING
+    double fE;                              // error function = r^T.r
+    double fOffset[3];                      // offset to remove large DC hard iron bias in matrix
+    int iCount;                             // number of measurements counted
+    int ierror;                             // matrix inversion error flag
+    int i, j, k, l;                         // loop counters
+
+    double ftrB;
+    double ftrFitErrorpc;
+    double DEFAULTB = 50.0;
+    double fvecB[4];
+    double fvecA[6];
+    double fmatA[4][4];
+    double fmatB[4][4];
+    double ftrV[3];
+
+    // compute fscaling to reduce multiplications later
+    fscaling = 1.0 / DEFAULTB;
+
+    // zero fSumBs4=Y^T.Y, fvecB=X^T.Y (4x1) and on and above diagonal elements of fmatA=X^T*X (4x4)
+    fSumBs4 = 0.0;
+
+    for (i = 0; i < 4; i++)
+    {
+        fvecB[i] = 0.0;
+
+        for (j = i; j < 4; j++)
+        {
+            fmatA[i][j] = 0.0;
+        }
+    }
+
+    // the offsets are guaranteed to be set from the first element but to avoid compiler error
+    fOffset[0] = fOffset[1] = fOffset[2] = 0;
+
+    // use entries from magnetic buffer to compute matrices
+    iCount = 0;
+
+    for (auto val : magArray)
+    {
+        double *pMag = val.get();
+        // use first valid magnetic buffer entry as estimate (in counts) for offset
+        if (iCount == 0)
+        {
+            for (l = 0; l <= 2; l++)
+            {
+                fOffset[l] = pMag[l];
+            }
+        }
+
+        // store scaled and offset fBs[XYZ] in fvecA[0-2] and fBs[XYZ]^2 in fvecA[3-5]
+        for (l = 0; l <= 2; l++)
+        {
+            fvecA[l] = (pMag[l] - fOffset[l]) * fscaling;
+            fvecA[l + 3] = fvecA[l] * fvecA[l];
+        }
+
+        // calculate fBs2 = fBs[CHX]^2 + fBs[CHY]^2 + fBs[CHZ]^2 (scaled uT^2)
+        fBs2 = fvecA[3] + fvecA[4] + fvecA[5];
+        // accumulate fBs^4 over all measurements into fSumBs4=Y^T.Y
+        fSumBs4 += fBs2 * fBs2;
+
+        // now we have fBs2, accumulate fvecB[0-2] = X^T.Y =sum(fBs2.fBs[XYZ])
+        for (l = 0; l <= 2; l++)
+        {
+            fvecB[l] += fvecA[l] * fBs2;
+        }
+
+        //accumulate fvecB[3] = X^T.Y =sum(fBs2)
+        fvecB[3] += fBs2;
+        // accumulate on and above-diagonal terms of fmatA = X^T.X ignoring fmatA[3][3]
+        fmatA[0][0] += fvecA[0 + 3];
+        fmatA[0][1] += fvecA[0] * fvecA[1];
+        fmatA[0][2] += fvecA[0] * fvecA[2];
+        fmatA[0][3] += fvecA[0];
+        fmatA[1][1] += fvecA[1 + 3];
+        fmatA[1][2] += fvecA[1] * fvecA[2];
+        fmatA[1][3] += fvecA[1];
+        fmatA[2][2] += fvecA[2 + 3];
+        fmatA[2][3] += fvecA[2];
+        // increment the counter for next iteration
+        iCount++;
+    }
+
+    // set the last element of the measurement matrix to the number of buffer elements used
+    fmatA[3][3] = (double) iCount;
+
+    // use above diagonal elements of symmetric fmatA to set both fmatB and fmatA to X^T.X
+    for (i = 0; i < 4; i++)
+    {
+        for (j = i; j < 4; j++)
+        {
+            fmatB[i][j] = fmatB[j][i] = fmatA[j][i] = fmatA[i][j];
+        }
+    }
+
+    // calculate in situ inverse of fmatB = inv(X^T.X) (4x4) while fmatA still holds X^T.X
+    Matrix4d temp;
+    temp << fmatB[0][0], fmatB[0][1], fmatB[0][2], fmatB[0][3],
+            fmatB[1][0], fmatB[1][1], fmatB[1][2], fmatB[1][3],
+            fmatB[2][0], fmatB[2][1], fmatB[2][2], fmatB[2][3],
+            fmatB[3][0], fmatB[3][1], fmatB[3][2], fmatB[3][3];
+    temp = temp.inverse().eval();
+
+    for (i = 0; i < 4; i++)
+    {
+        for (j = 0; j < 4; j++)
+        {
+            fmatB[i][j] = temp(i, j);
+        }
+    }
+
+    // calculate fvecA = solution beta (4x1) = inv(X^T.X).X^T.Y = fmatB * fvecB
+    for (i = 0; i < 4; i++)
+    {
+        fvecA[i] = 0.0F;
+
+        for (k = 0; k < 4; k++)
+        {
+            fvecA[i] += fmatB[i][k] * fvecB[k];
+        }
+    }
+
+    // calculate P = r^T.r = Y^T.Y - 2 * beta^T.(X^T.Y) + beta^T.(X^T.X).beta
+    // = fSumBs4 - 2 * fvecA^T.fvecB + fvecA^T.fmatA.fvecA
+    // first set P = Y^T.Y - 2 * beta^T.(X^T.Y) = fSumBs4 - 2 * fvecA^T.fvecB
+    fE = 0.0F;
+
+    for (i = 0; i < 4; i++)
+    {
+        fE += fvecA[i] * fvecB[i];
+    }
+
+    fE = fSumBs4 - 2.0F * fE;
+
+    // set fvecB = (X^T.X).beta = fmatA.fvecA
+    for (i = 0; i < 4; i++)
+    {
+        fvecB[i] = 0.0F;
+
+        for (k = 0; k < 4; k++)
+        {
+            fvecB[i] += fmatA[i][k] * fvecA[k];
+        }
+    }
+
+    // complete calculation of P by adding beta^T.(X^T.X).beta = fvecA^T * fvecB
+    for (i = 0; i < 4; i++)
+    {
+        fE += fvecB[i] * fvecA[i];
+    }
+
+    // compute the hard iron vector (in uT but offset and scaled by FMATRIXSCALING)
+    for (l = 0; l <= 2; l++)
+    {
+        ftrV[l] = 0.5F * fvecA[l];
+    }
+
+    // compute the scaled geomagnetic field strength B (in uT but scaled by FMATRIXSCALING)
+    ftrB = sqrt(fvecA[3] + ftrV[0] * ftrV[0] + ftrV[1] * ftrV[1] + ftrV[2] * ftrV[2]);
+    // calculate the trial fit error (percent) normalized to number of measurements and scaled geomagnetic field strength
+    ftrFitErrorpc = sqrt(fE / 300) * 100.0F / (2.0F * ftrB * ftrB);
+
+    // correct the hard iron estimate for FMATRIXSCALING and the offsets applied (result in uT)
+    for (l = CHX; l <= CHZ; l++)
+    {
+        ftrV[l] = (float)(ftrV[l] * DEFAULTB + fOffset[l]);
+    }
+
+    // correct the geomagnetic field strength B to correct scaling (result in uT)
+    ftrB *= DEFAULTB;
+
+    // assignment
+    fGeoB = ftrB;
+    fResidual = ftrFitErrorpc;
+    for (l = 0; l <= 2; l++)
+    {
+        fMagBias[l] = ftrV[l];
+    }
 }
 
 void SensorFusion::quaternionIntegration(double dt, double gyro[])
@@ -1580,7 +1797,7 @@ int SensorFusion::magCalibrationExec()
     int isolver = 0;
 
     // 4 element calibration case
-    if (iMagBufferCount > 150)
+    if (iMagBufferCount > 200)
     {
         isolver = 4;
         calibration4INV();
