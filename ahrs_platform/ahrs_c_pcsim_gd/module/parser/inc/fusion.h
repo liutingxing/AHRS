@@ -147,7 +147,7 @@ class SensorFusion
         void quaternionIntegration(double dt, double gyro[]);
         void platformDataProcess();
         void actionDetect(double dt, double gyro[], double acc[]);
-        int copyInSampleData(SensorFusion *src, SampleData *dst);
+        int copyInSampleData(SensorFusion* src, SampleData* dst);
         void systemConditionSet();
         void insStrapdownMechanization(double dt, double acc[]);
         int processSampleData(vector<shared_ptr<SampleData>>& sampleDataArray, PingPongTrainData& data);
@@ -171,7 +171,10 @@ class SensorFusion
         SensorFusion();
         string sensorFusionExec(int time, double gyro[], double acc[], double mag[], double audio);
         int resetSensorFusion();
-        int getCalibrationProgress() {return CalibrationProgress;};
+        int getCalibrationProgress()
+        {
+            return CalibrationProgress;
+        };
 };
 
 #endif //AHRS_C_PCSIM_GD_FUSION_H

@@ -75,8 +75,8 @@ int SensorFusion::resetSensorFusion()
     euler2q(fqPl, fPsiPl, fThePl, fPhiPl);
     euler2dcm(fCbn, fPsiPl, fThePl, fPhiPl);
     temp << fCbn[0][0], fCbn[0][1], fCbn[0][2],
-            fCbn[1][0], fCbn[1][1], fCbn[1][2],
-            fCbn[2][0], fCbn[2][1], fCbn[2][2];
+         fCbn[1][0], fCbn[1][1], fCbn[1][2],
+         fCbn[2][0], fCbn[2][1], fCbn[2][2];
     temp.transposeInPlace();
 
     for (int i = CHX; i <= CHZ; i++)
@@ -157,16 +157,20 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     sensorDataCorrection(gyro, acc, mag);
     // static detection
     staticDetectUpdate(fGyroRaw, fAccRaw, fMagRaw);
+
     if (time % 100 == 0) // 1Hz static check frequency
     {
         uStaticFlag = staticDetectCheck();
+
         if (uStaticFlag == 1)
         {
             gyroCalibration(fAlignGyroArray);
         }
     }
+
     // mag buffer update
 #if MAG_SUPPORT
+
     if (uStaticFlag == 0 && iStatus == Calibration)
     {
         if (magCalibration(mag) == true)
@@ -181,9 +185,10 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
         else
         {
             // mag calibration process not execute
-            CalibrationProgress = (int)(fCalibrationMagArray.size() * 95 / CALIBRATION_NUM );
+            CalibrationProgress = (int)(fCalibrationMagArray.size() * 95 / CALIBRATION_NUM);
         }
     }
+
 #else
     iStatus = Alignment;
 #endif
@@ -204,13 +209,17 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     }
 
 #if MAG_SUPPORT
-    if (uStaticFlag == 0) {
+
+    if (uStaticFlag == 0)
+    {
         magBufferUpdate(fMagRaw, mag, time);
     }
+
     if (time % 100 == 0) // 1Hz calibration frequency
     {
         magCalibrationExec();
     }
+
 #endif
 
     // AHRS/INS process
@@ -294,7 +303,8 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     return sAttitude;
 }
 
-int SensorFusion::updateAudioInfo(PingPongTrainData &data) {
+int SensorFusion::updateAudioInfo(PingPongTrainData& data)
+{
 
     if (data.uStrikePower > 70)
     {
@@ -308,7 +318,7 @@ int SensorFusion::updateAudioInfo(PingPongTrainData &data) {
     {
         data.uAudioType = 1;
     }
-    else if ((data.fVelocityMax - data.fVelocityStrike) < data.fVelocityMax*0.08)
+    else if ((data.fVelocityMax - data.fVelocityStrike) < data.fVelocityMax * 0.08)
     {
         data.uAudioType = 4;
     }
@@ -320,19 +330,20 @@ int SensorFusion::updateAudioInfo(PingPongTrainData &data) {
     return 0;
 }
 
-int SensorFusion::processSampleData(vector<shared_ptr<SampleData>> &sampleDataArray, PingPongTrainData &data) {
+int SensorFusion::processSampleData(vector<shared_ptr<SampleData>>& sampleDataArray, PingPongTrainData& data)
+{
 
     int count = 0;
     string trajectory;
-    SampleData *value;
+    SampleData* value;
 
-    for(auto p:sampleDataArray)
+    for (auto p : sampleDataArray)
     {
         double deltaN = 0;
         double deltaE = 0;
         double deltaD = 0;
-        SampleData *valLast = nullptr;
-        SampleData *val = p.get();
+        SampleData* valLast = nullptr;
+        SampleData* val = p.get();
 
         // platform omega
         if (val->fOmegaN[2] > fPlatformOmegaMaxZ)
@@ -353,14 +364,16 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
 
         // range
         auto i = find(sampleDataArray.begin(), sampleDataArray.end(), p) - sampleDataArray.begin();
+
         if (i >= 1)
         {
-            valLast = sampleDataArray[i-1].get();
+            valLast = sampleDataArray[i - 1].get();
             deltaN = val->fPosN - valLast->fPosN;
             deltaE = val->fPosE - valLast->fPosE;
             deltaD = val->fPosD - valLast->fPosD;
         }
-        fRangeMax += sqrt(deltaN*deltaN + deltaE*deltaE + deltaD*deltaD);
+
+        fRangeMax += sqrt(deltaN * deltaN + deltaE * deltaE + deltaD * deltaD);
 
         // max audio for strike timing
         if (val->fAudio > fAudioMax)
@@ -380,9 +393,9 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
         fAudioMax = 1000;
     }
 
-    for(auto p:sampleDataArray)
+    for (auto p : sampleDataArray)
     {
-        SampleData *val = p.get();
+        SampleData* val = p.get();
         // trajectory
         trajectory.append(to_string(val->uTime));
         trajectory.append(" ");
@@ -400,6 +413,7 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
         trajectory.append(" ");
         trajectory.append(to_string(val->fqPlPlat[3]));
         trajectory.append(" ");
+
         if (count == strikeIndex)
         {
             trajectory.append("s");
@@ -408,10 +422,12 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
         {
             trajectory.append("x");
         }
+
         trajectory.append("\n");
 
         count++;
     }
+
     // delete the last enter character
     trajectory.erase(trajectory.end() - 1);
 
@@ -421,37 +437,39 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
     data.fRangeMax = fRangeMax;
     data.fVelocityMax = fVelocityMax;
     data.fStrikeAudio = fAudioMax;
+
     if (strikeIndex != -1)
     {
         value = sampleDataArray[strikeIndex].get();
-        data.fVelocityStrike = sqrt(value->fVelN*value->fVelN + value->fVelE*value->fVelE + value->fVelD*value->fVelD);
+        data.fVelocityStrike = sqrt(value->fVelN * value->fVelN + value->fVelE * value->fVelE + value->fVelD * value->fVelD);
+
         if (data.fVelocityStrike > 9)
         {
             data.uStrikePower = 100;
         }
         else if (data.fVelocityStrike > 8)
         {
-            data.uStrikePower = (int) ((data.fVelocityStrike - 8) * 10.0 + 90);
+            data.uStrikePower = (int)((data.fVelocityStrike - 8) * 10.0 + 90);
         }
         else if (data.fVelocityStrike > 7)
         {
-            data.uStrikePower = (int) ((data.fVelocityStrike - 7) * 5.0 + 85);
+            data.uStrikePower = (int)((data.fVelocityStrike - 7) * 5.0 + 85);
         }
         else if (data.fVelocityStrike > 6)
         {
-            data.uStrikePower = (int) ((data.fVelocityStrike - 6) * 5.0 + 80);
+            data.uStrikePower = (int)((data.fVelocityStrike - 6) * 5.0 + 80);
         }
         else if (data.fVelocityStrike > 5)
         {
-            data.uStrikePower = (int) ((data.fVelocityStrike - 5) * 15.0 + 65);
+            data.uStrikePower = (int)((data.fVelocityStrike - 5) * 15.0 + 65);
         }
         else if (data.fVelocityStrike > 4)
         {
-            data.uStrikePower = (int) ((data.fVelocityStrike - 4) * 25.0 + 40);
+            data.uStrikePower = (int)((data.fVelocityStrike - 4) * 25.0 + 40);
         }
         else
         {
-            data.uStrikePower = (int) (data.fVelocityStrike * 10);
+            data.uStrikePower = (int)(data.fVelocityStrike * 10);
         }
     }
     else
@@ -477,6 +495,7 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
 
         trajectory.replace(typeIndex, 1, data.sActionType, 0, 1);
     }
+
     data.sTrajectory = trajectory;
 
     // update audio index
@@ -485,7 +504,8 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
     return 0;
 }
 
-void SensorFusion::insStrapdownMechanization(double dt, double acc[]) {
+void SensorFusion::insStrapdownMechanization(double dt, double acc[])
+{
 
     int i;
     double linerAccIBP[3] = {0, 0, 0};
@@ -499,8 +519,9 @@ void SensorFusion::insStrapdownMechanization(double dt, double acc[]) {
 
     for (i = 0; i < 3; i++)
     {
-        linerAccIBP[i] = acc[0]*fCbnPlat[i][0] + acc[1]*fCbnPlat[i][1] + acc[2]*fCbnPlat[i][2];
+        linerAccIBP[i] = acc[0] * fCbnPlat[i][0] + acc[1] * fCbnPlat[i][1] + acc[2] * fCbnPlat[i][2];
     }
+
     linerAccIBP[2] += GRAVITY;
 
     // static constrain
@@ -536,7 +557,8 @@ void SensorFusion::insStrapdownMechanization(double dt, double acc[]) {
     fPosD += deltaD;
 }
 
-void SensorFusion::systemConditionSet() {
+void SensorFusion::systemConditionSet()
+{
 
     if (uActionStartFlag == true)
     {
@@ -586,12 +608,14 @@ void SensorFusion::systemConditionSet() {
     }
 }
 
-int SensorFusion::copyInSampleData(SensorFusion *src, SampleData *dst) {
+int SensorFusion::copyInSampleData(SensorFusion* src, SampleData* dst)
+{
 
     dst->uTime = src->uTime;
     dst->fPsiPlPlat = src->fPsiPlPlat;
     dst->fThePlPlat = src->fThePlPlat;
     dst->fPhiPlPlat = src->fPhiPlPlat;
+
     for (int i = CHX; i <= CHZ; i++)
     {
         for (int j = CHX; j <= CHZ; j++)
@@ -599,10 +623,12 @@ int SensorFusion::copyInSampleData(SensorFusion *src, SampleData *dst) {
             dst->fCbnPlat[i][j] = src->fCbnPlat[i][j];
         }
     }
+
     for (int i = 0; i < 4; i++)
     {
         dst->fqPlPlat[i] = src->fqPlPlat[i];
     }
+
     dst->fLinerAccN = src->fLinerAccN;
     dst->fLinerAccE = src->fLinerAccE;
     dst->fLinerAccD = src->fLinerAccD;
@@ -612,23 +638,28 @@ int SensorFusion::copyInSampleData(SensorFusion *src, SampleData *dst) {
     dst->fPosN = src->fPosN;
     dst->fPosE = src->fPosE;
     dst->fPosD = src->fPosD;
+
     for (int i = CHX; i <= CHZ; i++)
     {
         dst->fOmegaB[i] = src->fOmegaB[i];
         dst->fAccelerate[i] = src->fAccelerate[i];
         dst->fMagnetic[i] = src->fMagnetic[i];
     }
+
     dst->fAudio = src->fAudio;
+
     for (int i = CHX; i <= CHZ; i++)
     {
         dst->fOmegaN[i] = src->fCbnPlat[i][0] * src->fOmegaB[0] + src->fCbnPlat[i][1] * src->fOmegaB[1] + src->fCbnPlat[i][2] * src->fOmegaB[2];
     }
+
     dst->fVel = sqrt(src->fVelN * src->fVelN +  src->fVelE * src->fVelE + src->fVelD * src->fVelD);
 
     return 0;
 }
 
-void SensorFusion::actionDetect(double dt, double gyro[], double acc[]) {
+void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
+{
 
     int i;
     int slop = 0;
@@ -638,8 +669,9 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[]) {
     // calculate the liner accelerate along the x axis
     for (i = 0; i < 3; i++)
     {
-        linerAccIBP[i] = acc[0]*fCbnPlat[i][0] + acc[1]*fCbnPlat[i][1] + acc[2]*fCbnPlat[i][2];
+        linerAccIBP[i] = acc[0] * fCbnPlat[i][0] + acc[1] * fCbnPlat[i][1] + acc[2] * fCbnPlat[i][2];
     }
+
     linerAccIBP[2] += GRAVITY;
 
     // static constrain
@@ -650,103 +682,133 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[]) {
             linerAccIBP[i] = 0;
         }
     }
+
     linerAccX = linerAccIBP[0];
 
-    switch(iCurveCondition)
+    switch (iCurveCondition)
     {
-        case Peace:
-            if (linerAccX > 3){
+    case Peace:
+        if (linerAccX > 3)
+        {
 
-                shared_ptr<SampleData> pSampleData = make_shared<SampleData>();
-                uActionStartFlag = true;
-                iCurveCondition = Step1;
-                actionTime = 0;
+            shared_ptr<SampleData> pSampleData = make_shared<SampleData>();
+            uActionStartFlag = true;
+            iCurveCondition = Step1;
+            actionTime = 0;
 
-                // copy sample data into array list
-                copyInSampleData(this, pSampleData.get());
-                cSampleDataArray.push_back(pSampleData);
-            }
-            break;
+            // copy sample data into array list
+            copyInSampleData(this, pSampleData.get());
+            cSampleDataArray.push_back(pSampleData);
+        }
 
-        case Step1:
-            actionTime += dt;
-            if (linerAccX > fLinerAccXLast){
-                slop = 1;
-            }else{
-                slop = -1;
-                // reach the up peak
-                if (fLinerAccXLast < 8){
-                    // false peak
-                    iCurveCondition = Peace;
-                    uActionStartFlag = false;
-                }else{
-                    iCurveCondition = Step2;
-                    downTime = 0;
-                    peakValue = fLinerAccXLast;
-                    // maybe is a false peak since the prepare action
-                }
-            }
-            break;
+        break;
 
-        case Step2:
-            actionTime += dt;
-            downTime += dt;
-            if (downTime > 0.3)
+    case Step1:
+        actionTime += dt;
+
+        if (linerAccX > fLinerAccXLast)
+        {
+            slop = 1;
+        }
+        else
+        {
+            slop = -1;
+
+            // reach the up peak
+            if (fLinerAccXLast < 8)
             {
+                // false peak
                 iCurveCondition = Peace;
                 uActionStartFlag = false;
             }
             else
             {
-                if (linerAccX > fLinerAccXLast){
-                    slop = 1;
-                    // reach the trough
-                    if (fLinerAccXLast > 0.5 * peakValue && peakValue < 30){
-                        // maybe there is false peak in the step1
-                        if (downTime > 0.05)
-                        {
-                            // there is a false peak in the step1
-                            iCurveCondition = Peace;
-                            uActionStartFlag = false;
-                        }
-                        else
-                        {
-                            //the following peak is false peak
-                        }
-                    }
-                    else if(fLinerAccXLast > -5){
-                        // false trough
-                        // no action, because it is normal
-                    }
-                    else{
-                        iCurveCondition = Step3;
-                    }
-                }else{
-                    slop = -1;
-                }
+                iCurveCondition = Step2;
+                downTime = 0;
+                peakValue = fLinerAccXLast;
+                // maybe is a false peak since the prepare action
             }
-            break;
+        }
 
-        case Step3:
-            actionTime += dt;
-            if (linerAccX > fLinerAccXLast){
+        break;
+
+    case Step2:
+        actionTime += dt;
+        downTime += dt;
+
+        if (downTime > 0.3)
+        {
+            iCurveCondition = Peace;
+            uActionStartFlag = false;
+        }
+        else
+        {
+            if (linerAccX > fLinerAccXLast)
+            {
                 slop = 1;
-            }else {
-                slop = -1;
-            }
-            if (linerAccX > -10 && linerAccX < 10){
-                if (actionTime > 0.1 && actionTime < 0.6)
+
+                // reach the trough
+                if (fLinerAccXLast > 0.5 * peakValue && peakValue < 30)
                 {
-                    uActionEndFlag = true;
+                    // maybe there is false peak in the step1
+                    if (downTime > 0.05)
+                    {
+                        // there is a false peak in the step1
+                        iCurveCondition = Peace;
+                        uActionStartFlag = false;
+                    }
+                    else
+                    {
+                        //the following peak is false peak
+                    }
+                }
+                else if (fLinerAccXLast > -5)
+                {
+                    // false trough
+                    // no action, because it is normal
                 }
                 else
                 {
-                    uActionStartFlag = false;
+                    iCurveCondition = Step3;
                 }
-                iCurveCondition = Peace;
             }
-            break;
+            else
+            {
+                slop = -1;
+            }
+        }
+
+        break;
+
+    case Step3:
+        actionTime += dt;
+
+        if (linerAccX > fLinerAccXLast)
+        {
+            slop = 1;
+        }
+        else
+        {
+            slop = -1;
+        }
+
+        if (linerAccX > -10 && linerAccX < 10)
+        {
+            if (actionTime > 0.1 && actionTime < 0.6)
+            {
+                uActionEndFlag = true;
+            }
+            else
+            {
+                uActionStartFlag = false;
+            }
+
+            iCurveCondition = Peace;
+        }
+
+        break;
     }
+
     fLinerAccXLast = linerAccX;
 }
 
@@ -806,11 +868,13 @@ bool SensorFusion::magCalibration(double mag[])
         return false;
     }
 
-    if (fCalibrationMagArray.size() >= CALIBRATION_NUM) {
+    if (fCalibrationMagArray.size() >= CALIBRATION_NUM)
+    {
         fCalibrationMagArray.erase(fCalibrationMagArray.begin());
     }
 
-    fCalibrationMagArray.push_back(shared_ptr<double>(new double[3]{mag[0], mag[1], mag[2]}, [](double *p) {
+    fCalibrationMagArray.push_back(shared_ptr<double>(new double[3] {mag[0], mag[1], mag[2]}, [](double * p)
+    {
         delete[] p;
     }));
 
@@ -824,7 +888,7 @@ bool SensorFusion::magCalibration(double mag[])
     return false;
 }
 
-void SensorFusion::calibration4InvRaw(vector<shared_ptr<double>> &magArray)
+void SensorFusion::calibration4InvRaw(vector<shared_ptr<double>>& magArray)
 {
     // local variables
     double fBs2;                            // fBs[CHX]^2+fBs[CHY]^2+fBs[CHZ]^2
@@ -869,7 +933,8 @@ void SensorFusion::calibration4InvRaw(vector<shared_ptr<double>> &magArray)
 
     for (auto val : magArray)
     {
-        double *pMag = val.get();
+        double* pMag = val.get();
+
         // use first valid magnetic buffer entry as estimate (in counts) for offset
         if (iCount == 0)
         {
@@ -928,9 +993,9 @@ void SensorFusion::calibration4InvRaw(vector<shared_ptr<double>> &magArray)
     // calculate in situ inverse of fmatB = inv(X^T.X) (4x4) while fmatA still holds X^T.X
     Matrix4d temp;
     temp << fmatB[0][0], fmatB[0][1], fmatB[0][2], fmatB[0][3],
-            fmatB[1][0], fmatB[1][1], fmatB[1][2], fmatB[1][3],
-            fmatB[2][0], fmatB[2][1], fmatB[2][2], fmatB[2][3],
-            fmatB[3][0], fmatB[3][1], fmatB[3][2], fmatB[3][3];
+         fmatB[1][0], fmatB[1][1], fmatB[1][2], fmatB[1][3],
+         fmatB[2][0], fmatB[2][1], fmatB[2][2], fmatB[2][3],
+         fmatB[3][0], fmatB[3][1], fmatB[3][2], fmatB[3][3];
     temp = temp.inverse().eval();
 
     for (i = 0; i < 4; i++)
@@ -1004,6 +1069,7 @@ void SensorFusion::calibration4InvRaw(vector<shared_ptr<double>> &magArray)
     // assignment
     fGeoB = ftrB;
     fResidual = ftrFitErrorpc;
+
     for (l = 0; l <= 2; l++)
     {
         fMagBias[l] = ftrV[l];
@@ -1469,20 +1535,24 @@ bool SensorFusion::sensorAlignment(vector<shared_ptr<double>>& accArray, vector<
 
 int SensorFusion::staticDetectUpdate(double gyro[], double acc[], double mag[])
 {
-    if (fAlignGyroArray.size() >= ALIGN_NUM) {
+    if (fAlignGyroArray.size() >= ALIGN_NUM)
+    {
         fAlignAccArray.erase(fAlignAccArray.begin());
         fAlignGyroArray.erase(fAlignGyroArray.begin());
         fAlignMagArray.erase(fAlignMagArray.begin());
     }
 
-    fAlignAccArray.push_back(shared_ptr<double>(new double[3]{acc[0], acc[1], acc[2]}, [](double *p) {
+    fAlignAccArray.push_back(shared_ptr<double>(new double[3] {acc[0], acc[1], acc[2]}, [](double * p)
+    {
         delete[] p;
     }));
-    fAlignGyroArray.push_back(shared_ptr<double>(new double[3]{gyro[0], gyro[1], gyro[2]}, [](double *p) {
+    fAlignGyroArray.push_back(shared_ptr<double>(new double[3] {gyro[0], gyro[1], gyro[2]}, [](double * p)
+    {
         delete[] p;
     }));
 #if MAG_SUPPORT
-    fAlignMagArray.push_back(shared_ptr<double>(new double[3]{mag[0], mag[1], mag[2]}, [](double *p) {
+    fAlignMagArray.push_back(shared_ptr<double>(new double[3] {mag[0], mag[1], mag[2]}, [](double * p)
+    {
         delete[] p;
     }));
 #endif
