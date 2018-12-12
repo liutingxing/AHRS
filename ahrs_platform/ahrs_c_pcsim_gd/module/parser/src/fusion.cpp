@@ -113,6 +113,9 @@ int SensorFusion::resetSensorFusion()
     iCurveCondition = Peace;
     CalibrationProgress = 0;
     magCalibrationInit();
+    fAlignGyroArray.clear();
+    fAlignAccArray.clear();
+    fAlignMagArray.clear();
 
     return 0;
 }
