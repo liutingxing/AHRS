@@ -152,7 +152,11 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     // data correction
     sensorDataCorrection(gyro, acc, mag);
     // static detection
-    uStaticFlag = staticDetect(fGyroRaw, fAccRaw, fMagRaw);
+    staticDetectUpdate(fGyroRaw, fAccRaw, fMagRaw);
+    if (time % 100 == 0) // 1Hz static check frequency
+    {
+        uStaticFlag = staticDetectCheck();
+    }
     // mag buffer update
 #if MAG_SUPPORT
     magBufferUpdate(fMagRaw, mag, time);
@@ -1245,32 +1249,33 @@ bool SensorFusion::sensorAlignment(vector<shared_ptr<double>>& accArray, vector<
 #endif
 }
 
-int SensorFusion::staticDetect(double gyro[], double acc[], double mag[])
+int SensorFusion::staticDetectUpdate(double gyro[], double acc[], double mag[])
 {
-    double gyro_std = 0;
-    double acc_std = 0;
-
-    if (fAlignGyroArray.size() >= ALIGN_NUM)
-    {
+    if (fAlignGyroArray.size() >= ALIGN_NUM) {
         fAlignAccArray.erase(fAlignAccArray.begin());
         fAlignGyroArray.erase(fAlignGyroArray.begin());
         fAlignMagArray.erase(fAlignMagArray.begin());
     }
 
-    fAlignAccArray.push_back(shared_ptr<double> (new double[3] {acc[0], acc[1], acc[2]}, [](double * p)
-    {
+    fAlignAccArray.push_back(shared_ptr<double>(new double[3]{acc[0], acc[1], acc[2]}, [](double *p) {
         delete[] p;
     }));
-    fAlignGyroArray.push_back(shared_ptr<double> (new double[3] {gyro[0], gyro[1], gyro[2]}, [](double * p)
-    {
+    fAlignGyroArray.push_back(shared_ptr<double>(new double[3]{gyro[0], gyro[1], gyro[2]}, [](double *p) {
         delete[] p;
     }));
 #if MAG_SUPPORT
-    fAlignMagArray.push_back(shared_ptr<double> (new double[3] {mag[0], mag[1], mag[2]}, [](double * p)
-    {
+    fAlignMagArray.push_back(shared_ptr<double>(new double[3]{mag[0], mag[1], mag[2]}, [](double *p) {
         delete[] p;
     }));
 #endif
+
+    return 0;
+}
+
+int SensorFusion::staticDetectCheck()
+{
+    double gyro_std = 0;
+    double acc_std = 0;
 
     if (fAlignGyroArray.size() == ALIGN_NUM && fAlignAccArray.size() == ALIGN_NUM)
     {
@@ -1281,7 +1286,7 @@ int SensorFusion::staticDetect(double gyro[], double acc[], double mag[])
         {
             return 1;
         }
-        else
+        else if (gyro_std > 0.5 && acc_std > 1.0)
         {
             return 0;
         }

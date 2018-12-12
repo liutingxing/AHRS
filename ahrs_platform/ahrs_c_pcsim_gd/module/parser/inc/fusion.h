@@ -134,7 +134,8 @@ class SensorFusion
         int magCalibrationExec();
         void calibration4INV();
         void sensorDataCorrection(double gyro[], double acc[], double mag[]);
-        int staticDetect(double gyro[], double acc[], double mag[]);
+        int staticDetectUpdate(double gyro[], double acc[], double mag[]);
+        int staticDetectCheck();
         double stdCal(vector<shared_ptr<double>>& numList);
         bool sensorAlignment(vector<shared_ptr<double>>& accArray, vector<shared_ptr<double>>& magArray);
         void gyroCalibration(vector<shared_ptr<double>>& gyroArray);
