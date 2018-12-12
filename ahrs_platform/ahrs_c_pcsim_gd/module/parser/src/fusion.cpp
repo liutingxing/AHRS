@@ -217,7 +217,7 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     sAttitude.clear();
 
     // quaternion integration for attitude and heading
-    if (uKalmanFusionFlag == true)
+    if (true)
     {
         ahrsProcess(dt, gyro, acc, mag);
     }
@@ -1184,7 +1184,7 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
         }
         else
         {
-            gyroMeasError = 20 * PI / 180;
+            gyroMeasError = 40 * PI / 180;
             beta = sqrt(3.0 / 4.0) * gyroMeasError;
         }
     }
