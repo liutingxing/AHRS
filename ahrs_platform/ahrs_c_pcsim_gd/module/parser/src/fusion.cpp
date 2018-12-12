@@ -1252,7 +1252,7 @@ void SensorFusion::gyroCalibration(vector<shared_ptr<double>>& gyroArray)
         bias[i] /= gyroArray.size();
     }
 
-    if (abs(bias[0]) < 0.01 && abs(bias[1]) < 0.01 && abs(bias[2]) < 0.01)
+    //if (abs(bias[0]) < 0.01 && abs(bias[1]) < 0.01 && abs(bias[2]) < 0.01)
     {
         for (i = 0; i < 3; i++)
         {
