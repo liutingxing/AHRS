@@ -159,6 +159,10 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     if (time % 100 == 0) // 1Hz static check frequency
     {
         uStaticFlag = staticDetectCheck();
+        if (uStaticFlag == 1)
+        {
+            gyroCalibration(fAlignGyroArray);
+        }
     }
     // mag buffer update
 #if MAG_SUPPORT
@@ -195,7 +199,6 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
             // initial alignment
             if (sensorAlignment(fAlignAccArray, fAlignMagArray) == true)
             {
-                gyroCalibration(fAlignGyroArray);
                 uAlignFlag = true;
                 iStatus = Fusion;
             }
@@ -206,11 +209,6 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
 
     // AHRS/INS process
     sAttitude.clear();
-
-    if (uStaticFlag == 1)
-    {
-        gyroCalibration(fAlignGyroArray);
-    }
 
     // quaternion integration for attitude and heading
     if (uKalmanFusionFlag == true)
