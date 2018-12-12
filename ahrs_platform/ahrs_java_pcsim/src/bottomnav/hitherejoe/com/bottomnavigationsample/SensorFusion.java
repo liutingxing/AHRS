@@ -1756,6 +1756,9 @@ public class SensorFusion {
     public int resetSensorFusion()
     {
         fCalibrationMagArray.clear();
+        fAlignGyroArray.clear();
+        fAlignAccArray.clear();
+        fAlignMagArray.clear();
         CalibrationProgress = 0;
         uTime = 0;
         fPsiPl = 0;
