@@ -16,8 +16,8 @@ int main(int argc, char* argv[])
     char line[MAX_BUFF_LEN];
     BleDataParser bleDataParser;
 
-    fpInput = fopen("../data/rawdata.txt", "r");
-    fpOutput = fopen("../data/output.txt", "w");
+    fpInput = fopen("../data/rawData.txt", "r");
+    fpOutput = fopen("../data/outputData.txt", "w");
 
     if (fpInput == NULL)
     {
