@@ -49,6 +49,7 @@ public class test {
             if (myTest.writer != null) {
                 try {
                     myTest.writer.close();
+                    myTest.sensorDataWriter.close();
                 } catch (IOException e1) {
                 }
             }
