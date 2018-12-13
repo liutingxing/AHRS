@@ -244,7 +244,11 @@ public class test {
 
                 sensorFusion.uTime++;
                 try {
-                    sensorDataWriter.write(String.valueOf(sensorFusion.uTime) + " " + String.valueOf(fMag[0]) + " " + String.valueOf(fMag[1]) + " " + String.valueOf(fMag[2]) + "\r\n");
+                    sensorDataWriter.write(String.valueOf(sensorFusion.uTime) + " " +
+                                               String.valueOf(fGyro[0]) + " " + String.valueOf(fGyro[1]) + " " + String.valueOf(fGyro[2]) + " " +
+                                               String.valueOf(fAcc[0]) + " " + String.valueOf(fAcc[1]) + " " + String.valueOf(fAcc[2]) + " " +
+                                               String.valueOf(fMag[0]) + " " + String.valueOf(fMag[1]) + " " + String.valueOf(fMag[2]) +  " " +
+                                               String.valueOf(fAudio) + "\r\n");
                 }
                 catch (IOException e) {
                     e.printStackTrace();
