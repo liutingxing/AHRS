@@ -902,15 +902,9 @@ public class SensorFusion {
         {
             case Peace:
                 if (linerAccX > 3){
-                    SampleData sampleData = new SampleData();
-
                     uActionStartFlag = true;
                     iCurveCondition = Step1;
                     actionTime = 0;
-
-                    // copy sample data into array list
-                    copyInSampleData(this, sampleData);
-                    cSampleDataArray.add(sampleData);
                 }
                 break;
 
