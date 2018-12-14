@@ -116,6 +116,9 @@ public class SensorFusion {
     private StringBuffer sAttitude;
     public TrainData trainData;
 
+    // extra data for performance tuning
+    public double[] extLinerAccIBP = new double[]{0, 0, 0};
+
     public SensorFusion()
     {
         uTime = 0;
@@ -888,6 +891,12 @@ public class SensorFusion {
             linerAccIBP[i] = acc[0]*fCbnPlat[i][0] + acc[1]*fCbnPlat[i][1] + acc[2]*fCbnPlat[i][2];
         }
         linerAccIBP[2] += GRAVITY;
+
+        // record the extra data for performance tuning
+        for (i = 0; i < 3; i++)
+        {
+            extLinerAccIBP[i] = linerAccIBP[i];
+        }
 
         // static constrain
         for (i = 0; i < 3; i++)

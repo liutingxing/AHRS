@@ -19,6 +19,7 @@ public class test {
     public BufferedReader reader = null;
     public BufferedWriter writer = null;
     public BufferedWriter sensorDataWriter = null;
+    public BufferedWriter extraDataWriter = null;
 
 	public static void main(String[] args) {
         test myTest = new test();
@@ -27,6 +28,7 @@ public class test {
             myTest.reader = new BufferedReader(new FileReader("./data/rawData.txt"));
             myTest.writer = new BufferedWriter(new FileWriter("./data/outputData.txt"));
             myTest.sensorDataWriter = new BufferedWriter(new FileWriter("./data/sensorData.txt"));
+            myTest.extraDataWriter = new BufferedWriter(new FileWriter("./data/extData.txt"));
             String tempString = null;
             int line = 1;
 
@@ -50,6 +52,7 @@ public class test {
                 try {
                     myTest.writer.close();
                     myTest.sensorDataWriter.close();
+                    myTest.extraDataWriter.close();
                 } catch (IOException e1) {
                 }
             }
@@ -249,20 +252,23 @@ public class test {
                                                String.valueOf(fGyro[0]) + " " + String.valueOf(fGyro[1]) + " " + String.valueOf(fGyro[2]) + " " +
                                                String.valueOf(fAcc[0]) + " " + String.valueOf(fAcc[1]) + " " + String.valueOf(fAcc[2]) + " " +
                                                String.valueOf(fMag[0]) + " " + String.valueOf(fMag[1]) + " " + String.valueOf(fMag[2]) +  " " +
-                                               String.valueOf(fAudio) + "\r\n");
+                                               String.valueOf(fAudio) + "\n");
                 }
                 catch (IOException e) {
                     e.printStackTrace();
                 }
                 sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
-                if (sAttitude != null)
-                {
-                    try {
+                try {
+                    if (sAttitude != null) {
                         writer.write(sAttitude + "\r\n");
                     }
-                    catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    extraDataWriter.write(String.valueOf(sensorFusion.uTime) + " " +
+                                              String.valueOf(sensorFusion.extLinerAccIBP[0]) + " " +
+                                              String.valueOf(sensorFusion.extLinerAccIBP[1]) + " " +
+                                              String.valueOf(sensorFusion.extLinerAccIBP[2]) + "\n");
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
                 }
                 if (sensorFusion.uActionComplete == true)
                 {
