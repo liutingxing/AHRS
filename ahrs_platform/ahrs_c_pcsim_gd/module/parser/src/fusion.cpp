@@ -690,15 +690,9 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
     case Peace:
         if (linerAccX > 3)
         {
-
-            shared_ptr<SampleData> pSampleData = make_shared<SampleData>();
             uActionStartFlag = true;
             iCurveCondition = Step1;
             actionTime = 0;
-
-            // copy sample data into array list
-            copyInSampleData(this, pSampleData.get());
-            cSampleDataArray.push_back(pSampleData);
         }
 
         break;
