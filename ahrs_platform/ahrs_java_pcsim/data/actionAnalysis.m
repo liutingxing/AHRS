@@ -26,39 +26,14 @@ title('gyroZ low pass filter');
 legend('raw data', 'filtered data');
 end
 
-%% display linerAccX and filtered linerAccX
-
-% 5Hz low pass filter. 100Hz sample rate
-[b, a] = butter(2, 4/(100/2), 'low');
-LinerAccPlatFiltered = filter(b, a, LinerAccPlat(:, 1));
-
-if 0
-figure
-plot(LinerAccPlat(:, 1), 'r');
-hold on;
-plot(LinerAccPlatFiltered, 'b');
-title('linerAccX low pass filter');
-legend('raw data', 'filtered data');
-end
-
-%% display gyroZ and LinerAccX
-if 1
-figure
-plot(Gyro(:, 3)*10, 'r');
-hold on;
-plot(LinerAccPlat(:, 1), 'b');
-title('action character data');
-legend('gyroZ', 'linerAccX');
-end
-
-%% display filtered gyroZ and filtered LinerAccX
+%% display filtered gyroZ and LinerAccX
 if 1
 figure
 plot(GyroFiltered*10, 'r');
 hold on;
-plot(LinerAccPlatFiltered, 'b');
+plot(LinerAccPlat(:, 1), 'b');
 title('action character data');
-legend('filtered gyroZ', 'filtered linerAccX');
+legend('gyroZ', 'linerAccX');
 end
 
 %% calulate the trajectory
