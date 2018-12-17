@@ -11,14 +11,54 @@ Mag = sensor_data(:, 8:10);                    % ( uT )
 LinerAccPlat = extra_data(:, 2:4);             % ( m/s2 )
 QuaternionPlat = extra_data(:, 5:8);
 
+%% display gyroZ and filtered gyroZ
+
+% 5Hz low pass filter. 100Hz sample rate
+[b, a] = butter(2, 4/(100/2), 'low');
+GyroFiltered = filter(b, a, Gyro(:, 3));
+
+if 0
+figure
+plot(Gyro(:, 3)*180/pi, 'r');
+hold on;
+plot(GyroFiltered*180/pi, 'b');
+title('gyroZ low pass filter');
+legend('raw data', 'filtered data');
+end
+
+%% display linerAccX and filtered linerAccX
+
+% 5Hz low pass filter. 100Hz sample rate
+[b, a] = butter(2, 4/(100/2), 'low');
+LinerAccPlatFiltered = filter(b, a, LinerAccPlat(:, 1));
+
+if 0
+figure
+plot(LinerAccPlat(:, 1), 'r');
+hold on;
+plot(LinerAccPlatFiltered, 'b');
+title('linerAccX low pass filter');
+legend('raw data', 'filtered data');
+end
+
 %% display gyroZ and LinerAccX
 if 1
 figure
-plot(Gyro(:, 3), 'r');
+plot(Gyro(:, 3)*10, 'r');
 hold on;
 plot(LinerAccPlat(:, 1), 'b');
 title('action character data');
 legend('gyroZ', 'linerAccX');
+end
+
+%% display filtered gyroZ and filtered LinerAccX
+if 1
+figure
+plot(GyroFiltered*10, 'r');
+hold on;
+plot(LinerAccPlatFiltered, 'b');
+title('action character data');
+legend('filtered gyroZ', 'filtered linerAccX');
 end
 
 %% calulate the trajectory
