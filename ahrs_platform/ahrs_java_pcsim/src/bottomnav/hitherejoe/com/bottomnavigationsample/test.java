@@ -265,7 +265,11 @@ public class test {
                     extraDataWriter.write(String.valueOf(sensorFusion.uTime) + " " +
                                               String.valueOf(sensorFusion.extLinerAccIBP[0]) + " " +
                                               String.valueOf(sensorFusion.extLinerAccIBP[1]) + " " +
-                                              String.valueOf(sensorFusion.extLinerAccIBP[2]) + "\n");
+                                              String.valueOf(sensorFusion.extLinerAccIBP[2]) + " " +
+                                              String.valueOf(sensorFusion.extPlatQ[0]) + " " +
+                                              String.valueOf(sensorFusion.extPlatQ[1]) + " " +
+                                              String.valueOf(sensorFusion.extPlatQ[2]) + " " +
+                                              String.valueOf(sensorFusion.extPlatQ[3]) + " " +"\n");
                 }
                 catch (IOException e) {
                     e.printStackTrace();

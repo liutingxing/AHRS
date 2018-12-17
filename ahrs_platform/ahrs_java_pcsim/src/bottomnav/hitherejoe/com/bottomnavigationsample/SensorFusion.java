@@ -118,6 +118,7 @@ public class SensorFusion {
 
     // extra data for performance tuning
     public double[] extLinerAccIBP = new double[]{0, 0, 0};
+    public double[] extPlatQ = new double[]{0, 0, 0, 0};
 
     public SensorFusion()
     {
@@ -391,6 +392,13 @@ public class SensorFusion {
             fThePlPlat = euler[1];
             fPhiPlPlat = euler[2];
             euler2q(fqPlPlat, fPsiPlPlat, fThePlPlat, fPhiPlPlat);
+
+        }
+
+        // record the debug info
+        for (i = 0; i < 4; i++)
+        {
+            extPlatQ[i] = fqPlPlat[i];
         }
     }
 
