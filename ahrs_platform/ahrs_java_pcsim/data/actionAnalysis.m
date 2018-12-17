@@ -9,6 +9,7 @@ Gyro = sensor_data(:, 2:4);                    % ( rad/s )
 Acc = sensor_data(:, 5:7);                     % ( m/s2 )
 Mag = sensor_data(:, 8:10);                    % ( uT )
 LinerAccPlat = extra_data(:, 2:4);             % ( m/s2 )
+QuaternionPlat = extra_data(:, 5:8);
 
 %% display gyroZ and LinerAccX
 if 1
@@ -19,3 +20,53 @@ plot(LinerAccPlat(:, 1), 'b');
 title('action character data');
 legend('gyroZ', 'linerAccX');
 end
+
+%% calulate the trajectory
+ActionStart = 1985;
+ActionEnd = 2016;
+dt = 1 / 100;
+
+LinerAccX = 0;
+LinerAccY = 0;
+LinerAccZ = 0;
+VelX = 0;
+VelY = 0;
+VelZ = 0;
+PosX = 0;
+PosY = 0;
+PosZ = 0;
+
+for i = ActionStart:ActionEnd
+    for j = 1:3
+        if abs(LinerAccPlat(i, j)) < 1
+            LinerAccPlat(i, j) = 0;
+        end
+    end
+    
+    linerAccAveX = (LinerAccPlat(i, 1) + LinerAccX) / 2;
+    linerAccAveY = (LinerAccPlat(i, 2) + LinerAccY) / 2;
+    linerAccAveZ = (LinerAccPlat(i, 3) + LinerAccZ) / 2;
+    
+    velPlatX = VelX + linerAccAveX * dt;
+    velPlatY = VelY + linerAccAveY * dt;
+    velPlatZ = VelZ + linerAccAveZ * dt;
+    velAveX = (VelX + velPlatX) / 2;
+    velAveY = (VelY + velPlatY) / 2;
+    velAveZ = (VelZ + velPlatZ) / 2;
+    
+    PosX = PosX + velAveX * dt;
+    PosY = PosY + velAveY * dt;
+    PosZ = PosZ + velAveZ * dt;
+    
+    LinerAccX = LinerAccPlat(i, 1);
+    LinerAccY = LinerAccPlat(i, 2);
+    LinerAccZ = LinerAccPlat(i, 3);
+    VelX = velPlatX;
+    VelY = velPlatY;
+    VelZ = velPlatZ;
+    
+    str = sprintf('%d %f %f %f %f %f %f %f x', i, PosX, -PosZ, PosY, QuaternionPlat(i, 1), -QuaternionPlat(i, 2), -QuaternionPlat(i, 3), QuaternionPlat(i, 4));
+    disp(str);
+end
+
+
