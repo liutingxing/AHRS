@@ -112,6 +112,17 @@ public class SensorFusion {
     private double fAudioMax = 0.0;
     private int strikeIndex = 0;
 
+    // low pass filter
+    private final static int LPF_ORDER = 2;
+    private final static double[] LpfGyroA = new double[]{1.0, -1.647459981076977, 0.700896781188403};
+    private final static double[] LpfGyroB = new double[]{0.013359200027856, 0.026718400055713, 0.013359200027856};
+    private double[][] LpfGyroX = new double[3][2];
+    private double[][] LpfGyroY = new double[3][2];
+    private final static double[] LpfAccA = new double[]{1.0, -1.647459981076977, 0.700896781188403};
+    private final static double[] LpfAccB = new double[]{0.013359200027856, 0.026718400055713, 0.013359200027856};
+    private double[][] LpfAccX = new double[3][2];
+    private double[][] LpfAccY = new double[3][2];
+
     private SensorKalman sensorKalman;
     private StringBuffer sAttitude;
     public TrainData trainData;
@@ -179,6 +190,10 @@ public class SensorFusion {
 
             cSampleDataArray.clear();
         }
+
+        // data filter
+        gyroFilter(gyro);
+        accFilter(acc);
 
         // data correction
         double[] fGyroRaw = new double[]{gyro[0], gyro[1], gyro[2]};
@@ -1981,6 +1996,40 @@ public class SensorFusion {
         for (l = 0; l <= 2; l++)
         {
             fMagBias[l] = ftrV[l];
+        }
+    }
+
+    private void gyroFilter(double[] gyro)
+    {
+        int i;
+        double temp;
+
+        for (i = CHX; i <= CHZ; i++)
+        {
+            temp = LpfGyroB[0] * gyro[i] + LpfGyroB[1] * LpfGyroX[i][0] + LpfGyroB[2] * LpfGyroX[i][1]
+                                         - LpfGyroA[1] * LpfGyroY[i][0] - LpfGyroA[2] * LpfGyroY[i][1];
+            LpfGyroX[i][1] = LpfGyroX[i][0];
+            LpfGyroX[i][0] = gyro[i];
+            LpfGyroY[i][1] = LpfGyroY[i][0];
+            LpfGyroY[i][0] = temp;
+            gyro[i] = temp;
+        }
+    }
+
+    private void accFilter(double[] acc)
+    {
+        int i;
+        double temp;
+
+        for (i = CHX; i <= CHZ; i++)
+        {
+            temp = LpfAccB[0] * acc[i] + LpfAccB[1] * LpfAccX[i][0] + LpfAccB[2] * LpfAccX[i][1]
+                                       - LpfAccA[1] * LpfAccY[i][0] - LpfAccA[2] * LpfAccY[i][1];
+            LpfAccX[i][1] = LpfAccX[i][0];
+            LpfAccX[i][0] = acc[i];
+            LpfAccY[i][1] = LpfAccY[i][0];
+            LpfAccY[i][0] = temp;
+            acc[i] = temp;
         }
     }
 }
