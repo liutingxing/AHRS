@@ -192,8 +192,8 @@ public class SensorFusion {
         }
 
         // data filter
-        gyroFilter(gyro);
-        accFilter(acc);
+        gyroFilter(gyro); // 4Hz cutoff frequency
+        accFilter(acc);   // 4Hz cutoff frequency
 
         // data correction
         double[] fGyroRaw = new double[]{gyro[0], gyro[1], gyro[2]};
