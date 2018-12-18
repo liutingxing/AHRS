@@ -325,7 +325,13 @@ public class SensorFusion {
             cSampleDataArray.add(sampleData);
         }
 
-        // record the attitude and trajectory
+        // refine the sample data array
+        if (uActionComplete == true)
+        {
+            refineSampleData(cSampleDataArray);
+        }
+
+        // process the sample data array
         if (uActionComplete == true)
         {
             processSampleData(cSampleDataArray, trainData);
@@ -942,6 +948,15 @@ public class SensorFusion {
                 break;
 
             case Step1:
+                if (actionTime == 0)
+                {
+                    if (linerAccX < fLinerAccXLast)
+                    {
+                        // abnormal case
+                        iCurveCondition = Peace;
+                        uActionStartFlag = false;
+                    }
+                }
                 actionTime += dt;
                 if (linerAccX > fLinerAccXLast){
                     slop = 1;
@@ -964,39 +979,24 @@ public class SensorFusion {
             case Step2:
                 actionTime += dt;
                 downTime += dt;
-                if (downTime > 0.3)
-                {
-                    iCurveCondition = Peace;
-                    uActionStartFlag = false;
-                }
-                else
-                {
-                    if (linerAccX > fLinerAccXLast){
-                        slop = 1;
-                        // reach the trough
-                        if (fLinerAccXLast > 0.5 * peakValue && peakValue < 30){
-                            // maybe there is false peak in the step1
-                            if (downTime > 0.05)
-                            {
-                                // there is a false peak in the step1
-                                iCurveCondition = Peace;
-                                uActionStartFlag = false;
-                            }
-                            else
-                            {
-                                //the following peak is false peak
-                            }
-                        }
-                        else if(fLinerAccXLast > -5){
-                            // false trough
-                            // no action, because it is normal
-                        }
-                        else{
-                            iCurveCondition = Step3;
-                        }
-                    }else{
-                        slop = -1;
+                if (linerAccX > fLinerAccXLast){
+                    slop = 1;
+                    // reach the trough
+                    if (fLinerAccXLast > 0.5 * peakValue){
+                        // there are 2 kind of false peak:
+                        // 1. first peak is false peak
+                        // 2. the following peak is false peak
+                        // we recording the two kinds of false peak for the following refine
                     }
+                    else if(fLinerAccXLast > -5){
+                        // false trough
+                        // no action, because it is normal
+                    }
+                    else{
+                        iCurveCondition = Step3;
+                    }
+                }else{
+                    slop = -1;
                 }
                 break;
 
@@ -1008,14 +1008,7 @@ public class SensorFusion {
                     slop = -1;
                 }
                 if (linerAccX > -10 && linerAccX < 10){
-                    if (actionTime > 0.1 && actionTime < 0.6)
-                    {
-                        uActionEndFlag = true;
-                    }
-                    else
-                    {
-                        uActionStartFlag = false;
-                    }
+                    uActionEndFlag = true;
                     iCurveCondition = Peace;
                 }
                 break;
@@ -2031,6 +2024,157 @@ public class SensorFusion {
             LpfAccY[i][1] = LpfAccY[i][0];
             LpfAccY[i][0] = temp;
             acc[i] = temp;
+        }
+    }
+
+    private void refineSampleData(ArrayList<SampleData> sampleDataArray)
+    {
+        double fOmegaMax = 0;
+        double fOmegaMin = 0;
+        double fOmegaPeak = 0;
+        double fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
+        double fOmegaLetter = 0;
+        double fScale = 10;
+
+        // calculate the max/min omega
+        for(SampleData val:sampleDataArray)
+        {
+            if (val.fOmegaB[2] > fOmegaMax)
+            {
+                fOmegaMax = val.fOmegaB[2];
+            }
+
+            if (val.fOmegaB[2]  < fOmegaMin)
+            {
+                fOmegaMin = val.fOmegaB[2];
+            }
+        }
+
+        if (fOmegaFirst < fOmegaMax)
+        {
+            fOmegaPeak = fOmegaMax;
+            fOmegaLetter = 1;
+        }
+        else if (fOmegaFirst > fOmegaMin)
+        {
+            fOmegaPeak = fOmegaMin;
+            fOmegaLetter = -1;
+        }
+        else
+        {
+            // abnormal case
+        }
+
+        if (Math.abs(fOmegaMin) * fScale > 30 || fOmegaMax * fScale > 30)
+        {
+            double fGyroLastZ = 0;
+            int slop = 0;
+            final int START = 0;
+            final int UP = 1;
+            final int DOWN = 2;
+            int condition = START;
+            int startIndex = 0;
+            int endIndex = 0;
+            boolean errorFlag = false;
+
+            for(SampleData val:sampleDataArray)
+            {
+                double gyroZ = val.fOmegaB[2] * fOmegaLetter * fScale;
+
+                switch(condition)
+                {
+                    case START:
+                        if (gyroZ > 20)
+                        {
+                            condition = UP;
+                            startIndex = sampleDataArray.indexOf(val);
+                        }
+                        break;
+                    case UP:
+                        if (slop == 0)
+                        {
+                            if (gyroZ < fGyroLastZ)
+                            {
+                                // abnormal case
+                                errorFlag = true;
+                            }
+                            else
+                            {
+                                slop = 1;
+                            }
+                        }
+                        else {
+                            if (gyroZ > fGyroLastZ) {
+                                // norm case
+                                slop = 1;
+                            } else {
+                                // peak
+                                slop = -1;
+                                condition = DOWN;
+                            }
+                        }
+                        break;
+                    case DOWN:
+                        if (gyroZ > fGyroLastZ)
+                        {
+                            // trough (never happen)
+                            slop = 1;
+                        }
+                        else
+                        {
+                            // normal case
+                            slop = -1;
+                            if (gyroZ < 20)
+                            {
+                                endIndex = sampleDataArray.indexOf(val);
+                            }
+                        }
+                        break;
+
+                }
+                fGyroLastZ = gyroZ;
+                if (errorFlag)
+                {
+                    break;
+                }
+            }
+
+            if (errorFlag || condition != DOWN)
+            {
+                uActionComplete = false;
+                sampleDataArray.clear();
+
+                return;
+            }
+
+            // refine the sample data array
+            if (startIndex > 0)
+            {
+                for (int i = 0; i < startIndex; i++)
+                {
+                    sampleDataArray.remove(0);
+                }
+            }
+
+            if (endIndex > 0)
+            {
+                for (int i = 0; i < sampleDataArray.size() - endIndex; i++)
+                {
+                    sampleDataArray.remove(sampleDataArray.size() - 1);
+                }
+            }
+
+            // check action time
+            if (sampleDataArray.size() > 50 || sampleDataArray.size() < 15)
+            {
+                // abnormal case: action time larger than 0.5s
+                uActionComplete = false;
+                sampleDataArray.clear();
+            }
+        }
+        else
+        {
+            // push the ball, which cannot use the gyro to refine
         }
     }
 }
