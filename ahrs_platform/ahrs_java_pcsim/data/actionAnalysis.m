@@ -83,7 +83,7 @@ for i = ActionStart:ActionEnd
     VelY = velPlatY;
     VelZ = velPlatZ;
     
-    str = sprintf('%d %f %f %f %f %f %f %f x', i, PosX, -PosZ, PosY, QuaternionPlat(i, 1), -QuaternionPlat(i, 2), -QuaternionPlat(i, 3), QuaternionPlat(i, 4));
+    str = sprintf('%d %f %f %f %f %f %f %f x', i, PosX, -PosZ, -PosY, QuaternionPlat(i, 1), -QuaternionPlat(i, 2), -QuaternionPlat(i, 3), QuaternionPlat(i, 4));
     disp(str);
 end
 
