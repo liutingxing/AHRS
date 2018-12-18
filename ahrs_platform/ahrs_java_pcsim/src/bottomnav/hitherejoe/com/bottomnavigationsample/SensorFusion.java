@@ -656,7 +656,7 @@ public class SensorFusion {
         qDot[3] =  (gyro[2] * fqPl[0] + gyro[1] * fqPl[1] - gyro[0] * fqPl[2]) / 2.0;
 
         accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
-        if (accNorm < 12.0) {
+        if (accNorm > 8.0 && accNorm < 12.0) {
             // execute the acc aid process
             double diff = 0;
             double[] gEstimate = new double[3];
