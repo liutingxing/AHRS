@@ -85,7 +85,8 @@ public class SensorFusion {
 
 
     public final static double GRAVITY = 9.80665;
-    public final static double SAMPLE_RATE = 100;
+    private final static double SAMPLE_RATE = 100;
+    private final static double dt = 1.0 / SAMPLE_RATE;
 
     private final static int STATE_NUM = 9;
     private int uKfCount = 1;
@@ -170,7 +171,6 @@ public class SensorFusion {
 
     public String sensorFusionExec(int time, double[] gyro, double[] acc, double[] mag, double audio)
     {
-        double dt = 1.0 / SAMPLE_RATE;
         uTime = time;
         fOmegaB = gyro;
         fAccelerate = acc;
@@ -320,9 +320,6 @@ public class SensorFusion {
         {
             SampleData sampleData = new SampleData();
 
-            // ins mechanization
-            insStrapdownMechanization(dt, acc);
-
             // copy sample data into array list
             copyInSampleData(this, sampleData);
             cSampleDataArray.add(sampleData);
@@ -423,6 +420,8 @@ public class SensorFusion {
         int count = 0;
         StringBuffer trajectory = new StringBuffer();
         SampleData value;
+
+        insStrapdownMechanization(dt, sampleDataArray);
 
         for(SampleData val:sampleDataArray)
         {
@@ -812,17 +811,6 @@ public class SensorFusion {
             uMechanizationFlag = false;
             uKalmanFusionFlag = true;
 
-            // clear ins data
-            fLinerAccN = 0;
-            fLinerAccE = 0;
-            fLinerAccD = 0;
-            fVelN = 0;
-            fVelE = 0;
-            fVelD = 0;
-            fPosN = 0;
-            fPosE = 0;
-            fPosD = 0;
-
             // clear sample data
             cSampleDataArray.clear();
         }
@@ -836,21 +824,10 @@ public class SensorFusion {
             // one action complete, report and reset ins data
             uMechanizationFlag = false;
             uKalmanFusionFlag = true;
-
-            // clear ins data
-            fLinerAccN = 0;
-            fLinerAccE = 0;
-            fLinerAccD = 0;
-            fVelN = 0;
-            fVelE = 0;
-            fVelD = 0;
-            fPosN = 0;
-            fPosE = 0;
-            fPosD = 0;
         }
     }
 
-    private void insStrapdownMechanization(double dt, double[] acc)
+    private void insStrapdownMechanization(double dt, ArrayList<SampleData> sampleDataArray)
     {
         int i;
         double[] linerAccIBP = new double[]{0, 0, 0};
@@ -860,45 +837,69 @@ public class SensorFusion {
         double deltaN = 0.0;
         double deltaE = 0.0;
         double deltaD = 0.0;
-        double velCurrent = 0.0;
+        SampleData valLast;
 
-        for (i = 0; i < 3; i++)
+        for(SampleData val:sampleDataArray)
         {
-            linerAccIBP[i] = acc[0]*fCbnPlat[i][0] + acc[1]*fCbnPlat[i][1] + acc[2]*fCbnPlat[i][2];
-        }
-        linerAccIBP[2] += GRAVITY;
+            int index = sampleDataArray.indexOf(val);
 
-        // static constrain
-        for (i = 0; i < 3; i++)
-        {
-            if (Math.abs(linerAccIBP[i]) < 1)
+            for (i = 0; i < 3; i++)
             {
-                linerAccIBP[i] = 0;
+                linerAccIBP[i] = val.fAccelerate[0] * val.fCbnPlat[i][0] +
+                                 val.fAccelerate[1] * val.fCbnPlat[i][1] +
+                                 val.fAccelerate[2] * val.fCbnPlat[i][2];
             }
+            linerAccIBP[2] += GRAVITY;
+
+            // static constrain
+            for (i = 0; i < 3; i++)
+            {
+                if (Math.abs(linerAccIBP[i]) < 1)
+                {
+                    linerAccIBP[i] = 0;
+                }
+            }
+
+            if (index == 0)
+            {
+                valLast = new SampleData();
+                valLast.fLinerAccN = 0;
+                valLast.fLinerAccE = 0;
+                valLast.fLinerAccD = 0;
+                valLast.fVelN = 0;
+                valLast.fVelE = 0;
+                valLast.fVelD = 0;
+                valLast.fPosN = 0;
+                valLast.fPosE = 0;
+                valLast.fPosD = 0;
+            }
+            else
+            {
+                valLast = sampleDataArray.get(index -1);
+            }
+            linerAccAve[0] = (linerAccIBP[0] + valLast.fLinerAccN) / 2.0;
+            linerAccAve[1] = (linerAccIBP[1] + valLast.fLinerAccE) / 2.0;
+            linerAccAve[2] = (linerAccIBP[2] + valLast.fLinerAccD) / 2.0;
+            velIBP[0] = valLast.fVelN + linerAccAve[0] * dt;
+            velIBP[1] = valLast.fVelE + linerAccAve[1] * dt;
+            velIBP[2] = valLast.fVelD + linerAccAve[2] * dt;
+            velAve[0] = (valLast.fVelN + velIBP[0]) / 2.0;
+            velAve[1] = (valLast.fVelE + velIBP[1]) / 2.0;
+            velAve[2] = (valLast.fVelD + velIBP[2]) / 2.0;
+
+            val.fLinerAccN = linerAccIBP[0];
+            val.fLinerAccE = linerAccIBP[1];
+            val.fLinerAccD = linerAccIBP[2];
+            val.fVelN = velIBP[0];
+            val.fVelE = velIBP[1];
+            val.fVelD = velIBP[2];
+            deltaN = velAve[0] * dt;
+            deltaE = velAve[1] * dt;
+            deltaD = velAve[2] * dt;
+            val.fPosN = valLast.fPosN + deltaN;
+            val.fPosE = valLast.fPosE+ deltaE;
+            val.fPosD = valLast.fPosD + deltaD;
         }
-
-        linerAccAve[0] = (linerAccIBP[0] + fLinerAccN) / 2.0;
-        linerAccAve[1] = (linerAccIBP[1] + fLinerAccE) / 2.0;
-        linerAccAve[2] = (linerAccIBP[2] + fLinerAccD) / 2.0;
-        velIBP[0] = fVelN + linerAccAve[0] * dt;
-        velIBP[1] = fVelE + linerAccAve[1] * dt;
-        velIBP[2] = fVelD + linerAccAve[2] * dt;
-        velAve[0] = (fVelN + velIBP[0]) / 2.0;
-        velAve[1] = (fVelE + velIBP[1]) / 2.0;
-        velAve[2] = (fVelD + velIBP[2]) / 2.0;
-
-        fLinerAccN = linerAccIBP[0];
-        fLinerAccE = linerAccIBP[1];
-        fLinerAccD = linerAccIBP[2];
-        fVelN = velIBP[0];
-        fVelE = velIBP[1];
-        fVelD = velIBP[2];
-        deltaN = velAve[0] * dt;
-        deltaE = velAve[1] * dt;
-        deltaD = velAve[2] * dt;
-        fPosN += deltaN;
-        fPosE += deltaE;
-        fPosD += deltaD;
     }
 
     private void actionDetect(double dt, double[] gyro, double[] acc)
