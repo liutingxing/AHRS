@@ -2153,6 +2153,7 @@ public class SensorFusion {
                 for (int i = 0; i < startIndex; i++)
                 {
                     sampleDataArray.remove(0);
+                    endIndex--;
                 }
             }
 
