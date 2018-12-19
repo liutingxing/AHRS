@@ -105,6 +105,7 @@ public class SensorFusion {
     private double actionTime = 0.0;
     private double downTime = 0.0;
     private double peakValue = 0.0;
+    private int iActionEndTimeLast = 0;
 
     private double fPlatformOmegaMaxZ = 0.0;
     private double fPlatformOmegaMinZ = 0.0;
@@ -988,7 +989,7 @@ public class SensorFusion {
                         // 2. the following peak is false peak
                         // we recording the two kinds of false peak for the following refine
                     }
-                    else if(fLinerAccXLast > -5){
+                    else if(fLinerAccXLast > -12){
                         // false trough
                         // no action, because it is normal
                     }
@@ -2076,6 +2077,7 @@ public class SensorFusion {
             int startIndex = 0;
             int endIndex = 0;
             boolean errorFlag = false;
+            boolean endFlag = false;
 
             for(SampleData val:sampleDataArray)
             {
@@ -2104,13 +2106,21 @@ public class SensorFusion {
                             }
                         }
                         else {
-                            if (gyroZ > fGyroLastZ) {
+                            if (gyroZ < fGyroLastZ) {
+                                // peak
+                                if (fGyroLastZ > 0.9 * fOmegaPeak * fOmegaLetter * fScale) {
+                                    // true peak
+                                    slop = -1;
+                                    condition = DOWN;
+                                }
+                                else
+                                {
+                                    slop = -1;
+                                    // false peak;
+                                }
+                            } else{
                                 // norm case
                                 slop = 1;
-                            } else {
-                                // peak
-                                slop = -1;
-                                condition = DOWN;
                             }
                         }
                         break;
@@ -2124,16 +2134,17 @@ public class SensorFusion {
                         {
                             // normal case
                             slop = -1;
-                            if (gyroZ < 20)
+                            if (gyroZ < 0.5 * fOmegaPeak * fScale * fOmegaLetter)
                             {
                                 endIndex = sampleDataArray.indexOf(val);
+                                endFlag = true;
                             }
                         }
                         break;
 
                 }
                 fGyroLastZ = gyroZ;
-                if (errorFlag)
+                if (errorFlag || endFlag)
                 {
                     break;
                 }
@@ -2165,18 +2176,28 @@ public class SensorFusion {
                 }
             }
 
-            // check action time
-            if (sampleDataArray.size() > 50 || sampleDataArray.size() < 15)
+            // check action time and action interval time
+            double actionSustainedTime = sampleDataArray.size() * dt;
+            double actionIntervalTime = (sampleDataArray.get(0).uTime - iActionEndTimeLast) * dt;
+            if (actionSustainedTime > 0.5 || actionSustainedTime < 0.1 || actionIntervalTime < 0.5)
             {
-                // abnormal case: action time larger than 0.5s
+                // abnormal case:
+                // 1. action sustained time < 0.1s
+                // 2. action sustained time > 0.5s
+                // 3. action interval time < 0.5s
                 uActionComplete = false;
                 sampleDataArray.clear();
+
+                return;
             }
         }
         else
         {
             // push the ball, which cannot use the gyro to refine
         }
+
+        // record the last action end time
+        iActionEndTimeLast = sampleDataArray.get(sampleDataArray.size() - 1).uTime;
     }
 }
 
