@@ -2191,10 +2191,12 @@ public class SensorFusion {
                 break;
             }
         }
-        arraySize = sampleDataArray.size();
-        for (int i = 0; i < arraySize - endIndex + 1; i++)
+        if (endIndex > 0)
         {
-            sampleDataArray.remove(sampleDataArray.size() - 1);
+            arraySize = sampleDataArray.size();
+            for (int i = 0; i < arraySize - endIndex + 1; i++) {
+                sampleDataArray.remove(sampleDataArray.size() - 1);
+            }
         }
 
         // check action time and action interval time
