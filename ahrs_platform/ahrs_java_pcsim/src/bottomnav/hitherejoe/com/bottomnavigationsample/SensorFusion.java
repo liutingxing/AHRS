@@ -2034,6 +2034,7 @@ public class SensorFusion {
         double fOmegaMin = 100;
         double fOmegaPeak = 0;
         double fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
+        double fOmegaLast = sampleDataArray.get(sampleDataArray.size() - 1).fOmegaB[CHZ];
         double fOmegaLetter = 0;
         double fScale = 10;
         int startIndex = 0;
@@ -2074,12 +2075,12 @@ public class SensorFusion {
             }
         }
 
-        if (fOmegaFirst < fOmegaMax)
+        if (fOmegaMax > 0 && fOmegaMax > fOmegaFirst && fOmegaMax > fOmegaLast)
         {
             fOmegaPeak = fOmegaMax;
             fOmegaLetter = 1;
         }
-        else if (fOmegaFirst > fOmegaMin)
+        else if (fOmegaMin < 0 && fOmegaMin < fOmegaFirst && fOmegaMin < fOmegaLast)
         {
             fOmegaPeak = fOmegaMin;
             fOmegaLetter = -1;
