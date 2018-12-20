@@ -2030,8 +2030,8 @@ public class SensorFusion {
 
     private void refineSampleData(ArrayList<SampleData> sampleDataArray)
     {
-        double fOmegaMax = 0;
-        double fOmegaMin = 0;
+        double fOmegaMax = -100;
+        double fOmegaMin = 100;
         double fOmegaPeak = 0;
         double fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
         double fOmegaLetter = 0;
@@ -2192,6 +2192,8 @@ public class SensorFusion {
         else
         {
             // push the ball, which cannot use the gyro to refine
+            startIndex = fAccMaxIndex;
+            endIndex = fAccMinIndex;
         }
 
         // refine the sample data array
