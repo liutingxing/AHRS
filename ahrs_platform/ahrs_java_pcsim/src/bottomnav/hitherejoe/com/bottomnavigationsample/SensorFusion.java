@@ -2038,11 +2038,17 @@ public class SensorFusion {
         double fScale = 10;
         int startIndex = 0;
         int endIndex = 0;
+        double fAccMaxX = 0;
+        double fAccMinX = 0;
+        int fAccMaxIndex = 0;
+        int fAccMinIndex = 0;
         int arraySize = 0;
 
-        // calculate the max/min omega
+        // calculate the max/min omega and acc
         for(SampleData val:sampleDataArray)
         {
+            double linerAccX = 0;
+
             if (val.fOmegaB[2] > fOmegaMax)
             {
                 fOmegaMax = val.fOmegaB[2];
@@ -2051,6 +2057,20 @@ public class SensorFusion {
             if (val.fOmegaB[2]  < fOmegaMin)
             {
                 fOmegaMin = val.fOmegaB[2];
+            }
+
+            // calculate the liner accelerate along the x axis
+            linerAccX = val.fAccelerate[0]*val.fCbnPlat[0][0] + val.fAccelerate[1]*val.fCbnPlat[0][1] + val.fAccelerate[2]*val.fCbnPlat[0][2];
+            if (linerAccX > fAccMaxX)
+            {
+                fAccMaxX = linerAccX;
+                fAccMaxIndex = sampleDataArray.indexOf(val);
+            }
+
+            if (linerAccX < fAccMinX)
+            {
+                fAccMinX = linerAccX;
+                fAccMinIndex = sampleDataArray.indexOf(val);
             }
         }
 
@@ -2157,6 +2177,16 @@ public class SensorFusion {
                 sampleDataArray.clear();
 
                 return;
+            }
+
+            // sample data array must including the max and min liner acc
+            if (startIndex > fAccMaxIndex)
+            {
+                startIndex = fAccMaxIndex;
+            }
+            if (endIndex < fAccMinIndex)
+            {
+                endIndex = fAccMinIndex;
             }
         }
         else
