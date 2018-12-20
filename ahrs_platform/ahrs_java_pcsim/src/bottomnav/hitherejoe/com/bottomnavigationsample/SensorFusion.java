@@ -2212,7 +2212,10 @@ public class SensorFusion {
             }
         }
 
+        // calculate the ins info firstly
+        insStrapdownMechanization(dt, sampleDataArray);
         // remove the backward action
+        endIndex = 0;
         for(SampleData val:sampleDataArray)
         {
             if (val.fPosN < 0)
