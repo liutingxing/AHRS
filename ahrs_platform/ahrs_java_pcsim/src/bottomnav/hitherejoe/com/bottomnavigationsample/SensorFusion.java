@@ -2036,6 +2036,9 @@ public class SensorFusion {
         double fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
         double fOmegaLetter = 0;
         double fScale = 10;
+        int startIndex = 0;
+        int endIndex = 0;
+        int arraySize = 0;
 
         // calculate the max/min omega
         for(SampleData val:sampleDataArray)
@@ -2074,8 +2077,6 @@ public class SensorFusion {
             final int UP = 1;
             final int DOWN = 2;
             int condition = START;
-            int startIndex = 0;
-            int endIndex = 0;
             boolean errorFlag = false;
             boolean endFlag = false;
 
@@ -2157,43 +2158,58 @@ public class SensorFusion {
 
                 return;
             }
-
-            // refine the sample data array
-            if (startIndex > 0)
-            {
-                for (int i = 0; i < startIndex; i++)
-                {
-                    sampleDataArray.remove(0);
-                    endIndex--;
-                }
-            }
-
-            if (endIndex > 0)
-            {
-                for (int i = 0; i < sampleDataArray.size() - endIndex; i++)
-                {
-                    sampleDataArray.remove(sampleDataArray.size() - 1);
-                }
-            }
-
-            // check action time and action interval time
-            double actionSustainedTime = sampleDataArray.size() * dt;
-            double actionIntervalTime = (sampleDataArray.get(0).uTime - iActionEndTimeLast) * dt;
-            if (actionSustainedTime > 0.5 || actionSustainedTime < 0.1 || actionIntervalTime < 0.5)
-            {
-                // abnormal case:
-                // 1. action sustained time < 0.1s
-                // 2. action sustained time > 0.5s
-                // 3. action interval time < 0.5s
-                uActionComplete = false;
-                sampleDataArray.clear();
-
-                return;
-            }
         }
         else
         {
             // push the ball, which cannot use the gyro to refine
+        }
+
+        // refine the sample data array
+        if (startIndex > 0)
+        {
+            for (int i = 0; i < startIndex; i++)
+            {
+                sampleDataArray.remove(0);
+                endIndex--;
+            }
+        }
+        if (endIndex > 0)
+        {
+            arraySize = sampleDataArray.size();
+            for (int i = 0; i < arraySize - endIndex; i++)
+            {
+                sampleDataArray.remove(sampleDataArray.size() - 1);
+            }
+        }
+
+        // remove the backward action
+        for(SampleData val:sampleDataArray)
+        {
+            if (val.fPosN < 0)
+            {
+                endIndex = sampleDataArray.indexOf(val);
+                break;
+            }
+        }
+        arraySize = sampleDataArray.size();
+        for (int i = 0; i < arraySize - endIndex + 1; i++)
+        {
+            sampleDataArray.remove(sampleDataArray.size() - 1);
+        }
+
+        // check action time and action interval time
+        double actionSustainedTime = sampleDataArray.size() * dt;
+        double actionIntervalTime = (sampleDataArray.get(0).uTime - iActionEndTimeLast) * dt;
+        if (actionSustainedTime > 0.5 || actionSustainedTime < 0.1 || actionIntervalTime < 0.5)
+        {
+            // abnormal case:
+            // 1. action sustained time < 0.1s
+            // 2. action sustained time > 0.5s
+            // 3. action interval time < 0.5s
+            uActionComplete = false;
+            sampleDataArray.clear();
+
+            return;
         }
 
         // record the last action end time
