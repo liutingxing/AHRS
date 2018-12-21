@@ -2090,7 +2090,7 @@ public class SensorFusion {
             // abnormal case
         }
 
-        if (Math.abs(fOmegaMin) * fScale > 30 || fOmegaMax * fScale > 30)
+        if (fOmegaPeak * fScale * fOmegaLetter > 30)
         {
             double fGyroLastZ = 0;
             int slop = 0;
@@ -2108,7 +2108,7 @@ public class SensorFusion {
                 switch(condition)
                 {
                     case START:
-                        if (gyroZ > 20)
+                        if (gyroZ > 10)
                         {
                             condition = UP;
                             startIndex = sampleDataArray.indexOf(val);
@@ -2193,7 +2193,7 @@ public class SensorFusion {
         else
         {
             // push the ball, which cannot use the gyro to refine
-            startIndex = fAccMaxIndex;
+            //startIndex = fAccMaxIndex;
             endIndex = fAccMinIndex;
         }
 
@@ -2209,7 +2209,7 @@ public class SensorFusion {
         if (endIndex > 0)
         {
             arraySize = sampleDataArray.size();
-            for (int i = 0; i < arraySize - endIndex; i++)
+            for (int i = 0; i < arraySize - endIndex - 1; i++)
             {
                 sampleDataArray.remove(sampleDataArray.size() - 1);
             }
@@ -2221,7 +2221,8 @@ public class SensorFusion {
         endIndex = 0;
         for(SampleData val:sampleDataArray)
         {
-            if (val.fPosN < 0)
+            int lastIndex = sampleDataArray.indexOf(val) - 1;
+            if (lastIndex > 0 && val.fPosN < sampleDataArray.get(lastIndex).fPosN)
             {
                 endIndex = sampleDataArray.indexOf(val);
                 break;
@@ -2230,7 +2231,7 @@ public class SensorFusion {
         if (endIndex > 0)
         {
             arraySize = sampleDataArray.size();
-            for (int i = 0; i < arraySize - endIndex + 1; i++) {
+            for (int i = 0; i < arraySize - endIndex; i++) {
                 sampleDataArray.remove(sampleDataArray.size() - 1);
             }
         }
@@ -2238,7 +2239,7 @@ public class SensorFusion {
         // check action time and action interval time
         double actionSustainedTime = sampleDataArray.size() * dt;
         double actionIntervalTime = (sampleDataArray.get(0).uTime - iActionEndTimeLast) * dt;
-        if (actionSustainedTime > 0.5 || actionSustainedTime < 0.1 || actionIntervalTime < 0.5)
+        if (actionSustainedTime > 0.7 || actionSustainedTime < 0.1 || actionIntervalTime < 0.2)
         {
             // abnormal case:
             // 1. action sustained time < 0.1s
