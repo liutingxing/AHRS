@@ -372,8 +372,6 @@ public class SensorFusion {
         sAttitude.append(" ");
         sAttitude.append(String.valueOf(fqPlPlat[3]));
         sAttitude.append(" ");
-        sAttitude.append(String.valueOf(fLinerAccXLast));
-        sAttitude.append(" ");
         sAttitude.append("x");
 
         return String.valueOf(sAttitude);

@@ -64,11 +64,3 @@ title('roll');
 xlabel('sample point');
 ylabel('roll (degree)');
 
-% linerAccX
-figure;
-plot(linerAccX, 'r');
-grid on;
-title('liner acc X');
-xlabel('sample point');
-ylabel('acc (m/s2)');
-
