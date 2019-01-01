@@ -4,7 +4,7 @@ clc;
 %% load SENSOR data
 
 data = load('.\sensorData.txt');
-Mag = data(:, 7:9);
+Mag = data(:, 8:10);
 
 %% least square
 
