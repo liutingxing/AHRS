@@ -19,14 +19,12 @@ while ~feof(fin)
     q1 = char(entries(6));
     q2 = char(entries(7));
     q3 = char(entries(8));
-    accX = char(entries(9));
     
     time = str2num(time);
     q0 = str2num(q0);
     q1 = str2num(q1);
     q2 = str2num(q2);
     q3 = str2num(q3);
-    linerAccX(time) = str2num(accX);
     
     % convert the left hand frame to right hand frame
     q1 = -q1;
