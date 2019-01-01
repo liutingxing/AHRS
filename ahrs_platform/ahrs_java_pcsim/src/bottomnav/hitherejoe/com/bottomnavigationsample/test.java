@@ -228,9 +228,9 @@ public class test {
                 fGyro[0] = Math.toRadians(gyrox/16.4); // rad/s
                 fGyro[1] = Math.toRadians(gyroy/16.4); // rad/s
                 fGyro[2] = Math.toRadians(gyroz/16.4); // rad/s
-                fMag[0] = magx*0.6; // uT
-                fMag[1] = magy*0.6; // uT
-                fMag[2] = magz*0.6; // uT
+                fMag[0] = magx*0.15; // uT
+                fMag[1] = magy*0.15; // uT
+                fMag[2] = magz*0.15; // uT
                 fAudio = audio; // count
 
                 // sensor hal: sensor frame(xyz) -> device frame(XYZ)

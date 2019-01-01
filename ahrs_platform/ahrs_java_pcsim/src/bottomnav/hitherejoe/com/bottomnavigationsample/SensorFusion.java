@@ -220,7 +220,7 @@ public class SensorFusion {
                 if (magCalibration(mag) == true)
                 {
                     // mag calibration process complete
-                    if (fGeoB > 10 && fGeoB < 200 && fResidual < 10)
+                    if (fGeoB > 10 && fGeoB < 100 && fResidual < 10)
                     {
                         iStatus = Alignment;
                         CalibrationProgress = 100;
@@ -1615,7 +1615,7 @@ public class SensorFusion {
             calibration4INV();
         }
 
-        if (ftrFitErrorpc <= MAGFITERROR && ftrB > 10 && ftrB < 200)
+        if (ftrFitErrorpc <= MAGFITERROR && ftrB > 10 && ftrB < 100)
         {
             if (iValidMagCal == false || ftrFitErrorpc <= fFitErrorpc || ftrFitErrorpc <= 5.0F)
             {
