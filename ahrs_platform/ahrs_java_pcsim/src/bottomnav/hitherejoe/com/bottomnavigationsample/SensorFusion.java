@@ -660,7 +660,7 @@ public class SensorFusion {
         qDot[3] =  (gyro[2] * fqPl[0] + gyro[1] * fqPl[1] - gyro[0] * fqPl[2]) / 2.0;
 
         accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
-        if (accNorm > 8.0 && accNorm < 12.0) {
+        if (true) {
             // execute the acc aid process
             double diff = 0;
             double[] gEstimate = new double[3];
@@ -696,23 +696,12 @@ public class SensorFusion {
             qDotError[1] += step.get(1, 0);
             qDotError[2] += step.get(2, 0);
             qDotError[3] += step.get(3, 0);
-
-            diff = F.norm2();
-            if (diff < 0.1) {
-                gyroMeasError = 3 * Math.PI / 180;
-                beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
-            }
-            else
-            {
-                gyroMeasError = 10 * Math.PI / 180;
-                beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
-            }
         }
 
         if (MAG_SUPPORT == 1)
         {
             double magNorm = Math.sqrt(mag[0]*mag[0] + mag[1]*mag[1] + mag[2]*mag[2]);
-            if (magNorm > fB * 0.8 && magNorm < fB * 1.2)
+            if (true)
             {
                 // execute the acc aid process
                 double diff = 0;
@@ -764,17 +753,17 @@ public class SensorFusion {
                 qDotError[1] += step.get(1, 0);
                 qDotError[2] += step.get(2, 0);
                 qDotError[3] += step.get(3, 0);
-                if (diff < 0.1) {
-                    gyroMeasError = 10 * Math.PI / 180;
-                    beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
-                }
-                else
-                {
-                    gyroMeasError = 40 * Math.PI / 180;
-                    beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
-                }
             }
         }
+
+        if (accNorm > 10.5 || accNorm < 9.5) {
+            gyroMeasError = 60 * Math.PI / 180;
+        }
+        else
+        {
+            gyroMeasError = 5 * Math.PI / 180;
+        }
+        beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
 
         double qDotErrorNorm = Math.sqrt(qDotError[0] * qDotError[0] + qDotError[1] * qDotError[1] + qDotError[2] * qDotError[2] + qDotError[3] * qDotError[3]);
         if (qDotErrorNorm > 0)
