@@ -18,7 +18,7 @@ typedef     unsigned int            uint32_t;                /* Unsigned 32 bits
 
 #define  ACC_SENSITIVITY    (1.0/2048)
 #define  GYRO_SENSITIVITY   (1.0/16.4)
-#define  MAG_SENSITIVITY    (0.6)
+#define  MAG_SENSITIVITY    (0.15)
 #define  MaxBufferSize      (1024)
 
 typedef enum parserStatus

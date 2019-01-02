@@ -176,7 +176,7 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
         if (magCalibration(mag) == true)
         {
             // mag calibration process complete
-            if (fGeoB > 10 && fGeoB < 200 && fResidual < 10)
+            if (fGeoB > 10 && fGeoB < 100 && fResidual < 10)
             {
                 iStatus = Alignment;
                 CalibrationProgress = 100;
@@ -1867,7 +1867,7 @@ int SensorFusion::magCalibrationExec()
         calibration4INV();
     }
 
-    if (ftrFitErrorpc <= MAGFITERROR && ftrB > 10 && ftrB < 300)
+    if (ftrFitErrorpc <= MAGFITERROR && ftrB > 10 && ftrB < 100)
     {
         if (iValidMagCal == false || ftrFitErrorpc <= fFitErrorpc || ftrFitErrorpc <= 2.0F)
         {
