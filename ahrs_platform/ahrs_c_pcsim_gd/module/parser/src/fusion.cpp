@@ -1045,7 +1045,7 @@ void SensorFusion::calibration4InvRaw(vector<shared_ptr<double>>& magArray)
     // correct the hard iron estimate for FMATRIXSCALING and the offsets applied (result in uT)
     for (l = CHX; l <= CHZ; l++)
     {
-        ftrV[l] = (float)(ftrV[l] * DEFAULTB + fOffset[l]);
+        ftrV[l] = ftrV[l] * DEFAULTB + fOffset[l];
     }
 
     // correct the geomagnetic field strength B to correct scaling (result in uT)
@@ -2035,7 +2035,7 @@ void SensorFusion::calibration4INV()
     // correct the hard iron estimate for FMATRIXSCALING and the offsets applied (result in uT)
     for (l = CHX; l <= CHZ; l++)
     {
-        ftrV[l] = (float)(ftrV[l] * DEFAULTB + iOffset[l] * 1.0 * fuTPerCount);
+        ftrV[l] = ftrV[l] * DEFAULTB + iOffset[l] * 1.0 * fuTPerCount;
     }
 
     // correct the geomagnetic field strength B to correct scaling (result in uT)
