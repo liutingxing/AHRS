@@ -7,7 +7,7 @@
 #include "fusion.h"
 #include "Eigen/Dense"
 
-SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100), CALIBRATION_NUM(500)
+SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100), CALIBRATION_NUM(500), dt(1.0/SAMPLE_RATE)
 {
     Matrix3d temp;
 
@@ -59,6 +59,7 @@ SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100)
     iCurveCondition = Peace;
     CalibrationProgress = 0;
     magCalibrationInit();
+    iActionEndTimeLast = 0;
 }
 
 int SensorFusion::resetSensorFusion()
@@ -117,6 +118,7 @@ int SensorFusion::resetSensorFusion()
     fAlignGyroArray.clear();
     fAlignAccArray.clear();
     fAlignMagArray.clear();
+    iActionEndTimeLast = 0;
 
     return 0;
 }
@@ -129,15 +131,6 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     double fMagRaw[3];
 
     uTime = time;
-
-    for (int i = CHX; i <= CHZ; i++)
-    {
-        fGyroRaw[i] = fOmegaB[i] = gyro[i];
-        fAccRaw[i] = fAccelerate[i] = acc[i];
-        fMagRaw[i] = fMagnetic[i] = mag[i];
-    }
-
-    fAudio = audio;
 
     if (uActionComplete == true)
     {
@@ -153,8 +146,30 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
         cSampleDataArray.clear();
     }
 
+    // data filter
+    gyroFilter(gyro); // 4Hz cutoff frequency
+    accFilter(acc);   // 4Hz cutoff frequency
+
+    // recording the raw data
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        fGyroRaw[i] = gyro[i];
+        fAccRaw[i] = acc[i];
+        fMagRaw[i] = mag[i];
+    }
+
     // data correction
     sensorDataCorrection(gyro, acc, mag);
+
+    // recording the calibrated data
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        fOmegaB[i] = gyro[i];
+        fAccelerate[i] = acc[i];
+        fMagnetic[i] = mag[i];
+    }
+    fAudio = audio;
+
     // static detection
     staticDetectUpdate(fGyroRaw, fAccRaw, fMagRaw);
 
@@ -248,12 +263,15 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     {
         shared_ptr<SampleData> pSampleData = make_shared<SampleData>();
 
-        // ins mechanization
-        insStrapdownMechanization(dt, acc);
-
         // copy sample data into array list
         copyInSampleData(this, pSampleData.get());
         cSampleDataArray.push_back(pSampleData);
+    }
+
+    // refine the sample data array
+    if (uActionComplete == true)
+    {
+        refineSampleData(cSampleDataArray);
     }
 
     // record the attitude and trajectory
@@ -266,17 +284,6 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
         {
             trainData.bValid = false;
             trainData.uActionCount--;
-
-            uActionComplete = false;
-            fLinerAccXLast = 0;
-            fPlatformOmegaMaxZ = 0;
-            fPlatformOmegaMinZ = 0;
-            fRangeMax = 0.0;
-            fVelocityMax = 0.0;
-            fAudioMax = 0.0;
-            strikeIndex = 0;
-
-            cSampleDataArray.clear();
         }
     }
 
@@ -295,8 +302,6 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     sAttitude.append(to_string(-fqPlPlat[2]));
     sAttitude.append(" ");
     sAttitude.append(to_string(fqPlPlat[3]));
-    sAttitude.append(" ");
-    sAttitude.append(to_string(fLinerAccXLast));
     sAttitude.append(" ");
     sAttitude.append("x");
 
@@ -336,6 +341,13 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
     int count = 0;
     string trajectory;
     SampleData* value;
+
+    if (sampleDataArray.size() == 0)
+    {
+        return -1;
+    }
+
+    insStrapdownMechanization(dt, sampleDataArray);
 
     for (auto p : sampleDataArray)
     {
@@ -504,7 +516,7 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
     return 0;
 }
 
-void SensorFusion::insStrapdownMechanization(double dt, double acc[])
+void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<SampleData>> sampleDataArray)
 {
 
     int i;
@@ -515,46 +527,68 @@ void SensorFusion::insStrapdownMechanization(double dt, double acc[])
     double deltaN = 0.0;
     double deltaE = 0.0;
     double deltaD = 0.0;
-    double velCurrent = 0.0;
+    shared_ptr<SampleData> valLast = make_shared<SampleData>();
+    int index = 0;
 
-    for (i = 0; i < 3; i++)
-    {
-        linerAccIBP[i] = acc[0] * fCbnPlat[i][0] + acc[1] * fCbnPlat[i][1] + acc[2] * fCbnPlat[i][2];
-    }
+    for (auto p : sampleDataArray) {
+        SampleData *val = p.get();
 
-    linerAccIBP[2] += GRAVITY;
-
-    // static constrain
-    for (i = 0; i < 3; i++)
-    {
-        if (abs(linerAccIBP[i]) < 1)
+        for (i = 0; i < 3; i++)
         {
-            linerAccIBP[i] = 0;
+            linerAccIBP[i] = val->fAccelerate[0] * val->fCbnPlat[i][0] +
+                             val->fAccelerate[1] * val->fCbnPlat[i][1] +
+                             val->fAccelerate[2] * val->fCbnPlat[i][2];
         }
+        linerAccIBP[2] += GRAVITY;
+
+        // static constrain
+        for (i = 0; i < 3; i++)
+        {
+            if (abs(linerAccIBP[i]) < 1)
+            {
+                linerAccIBP[i] = 0;
+            }
+        }
+
+        if (index == 0)
+        {
+            valLast->fLinerAccN = 0;
+            valLast->fLinerAccE = 0;
+            valLast->fLinerAccD = 0;
+            valLast->fVelN = 0;
+            valLast->fVelE = 0;
+            valLast->fVelD = 0;
+            valLast->fPosN = 0;
+            valLast->fPosE = 0;
+            valLast->fPosD = 0;
+        } else{
+            valLast = sampleDataArray.at(index - 1);
+        }
+        index ++;
+
+        linerAccAve[0] = (linerAccIBP[0] + valLast->fLinerAccN) / 2.0;
+        linerAccAve[1] = (linerAccIBP[1] + valLast->fLinerAccE) / 2.0;
+        linerAccAve[2] = (linerAccIBP[2] + valLast->fLinerAccD) / 2.0;
+        velIBP[0] = valLast->fVelN + linerAccAve[0] * dt;
+        velIBP[1] = valLast->fVelE + linerAccAve[1] * dt;
+        velIBP[2] = valLast->fVelD + linerAccAve[2] * dt;
+        velAve[0] = (valLast->fVelN + velIBP[0]) / 2.0;
+        velAve[1] = (valLast->fVelE + velIBP[1]) / 2.0;
+        velAve[2] = (valLast->fVelD + velIBP[2]) / 2.0;
+
+        val->fLinerAccN = linerAccIBP[0];
+        val->fLinerAccE = linerAccIBP[1];
+        val->fLinerAccD = linerAccIBP[2];
+        val->fVelN = velIBP[0];
+        val->fVelE = velIBP[1];
+        val->fVelD = velIBP[2];
+        deltaN = velAve[0] * dt;
+        deltaE = velAve[1] * dt;
+        deltaD = velAve[2] * dt;
+        val->fPosN = valLast->fPosN + deltaN;
+        val->fPosE = valLast->fPosE + deltaE;
+        val->fPosD = valLast->fPosD + deltaD;
     }
-
-    linerAccAve[0] = (linerAccIBP[0] + fLinerAccN) / 2.0;
-    linerAccAve[1] = (linerAccIBP[1] + fLinerAccE) / 2.0;
-    linerAccAve[2] = (linerAccIBP[2] + fLinerAccD) / 2.0;
-    velIBP[0] = fVelN + linerAccAve[0] * dt;
-    velIBP[1] = fVelE + linerAccAve[1] * dt;
-    velIBP[2] = fVelD + linerAccAve[2] * dt;
-    velAve[0] = (fVelN + velIBP[0]) / 2.0;
-    velAve[1] = (fVelE + velIBP[1]) / 2.0;
-    velAve[2] = (fVelD + velIBP[2]) / 2.0;
-
-    fLinerAccN = linerAccIBP[0];
-    fLinerAccE = linerAccIBP[1];
-    fLinerAccD = linerAccIBP[2];
-    fVelN = velIBP[0];
-    fVelE = velIBP[1];
-    fVelD = velIBP[2];
-    deltaN = velAve[0] * dt;
-    deltaE = velAve[1] * dt;
-    deltaD = velAve[2] * dt;
-    fPosN += deltaN;
-    fPosE += deltaE;
-    fPosD += deltaD;
 }
 
 void SensorFusion::systemConditionSet()
@@ -570,17 +604,6 @@ void SensorFusion::systemConditionSet()
         uMechanizationFlag = false;
         uKalmanFusionFlag = true;
 
-        // clear ins data
-        fLinerAccN = 0;
-        fLinerAccE = 0;
-        fLinerAccD = 0;
-        fVelN = 0;
-        fVelE = 0;
-        fVelD = 0;
-        fPosN = 0;
-        fPosE = 0;
-        fPosD = 0;
-
         // clear sample data
         cSampleDataArray.clear();
     }
@@ -594,17 +617,6 @@ void SensorFusion::systemConditionSet()
         // one action complete, report and reset ins data
         uMechanizationFlag = false;
         uKalmanFusionFlag = true;
-
-        // clear ins data
-        fLinerAccN = 0;
-        fLinerAccE = 0;
-        fLinerAccD = 0;
-        fVelN = 0;
-        fVelE = 0;
-        fVelD = 0;
-        fPosN = 0;
-        fPosE = 0;
-        fPosD = 0;
     }
 }
 
@@ -698,6 +710,15 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
         break;
 
     case Step1:
+        if (actionTime == 0)
+        {
+            if (linerAccX < fLinerAccXLast)
+            {
+                // abnormal case
+                iCurveCondition = Peace;
+                uActionStartFlag = false;
+            }
+        }
         actionTime += dt;
 
         if (linerAccX > fLinerAccXLast)
@@ -730,46 +751,26 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
         actionTime += dt;
         downTime += dt;
 
-        if (downTime > 0.3)
+        if (linerAccX > fLinerAccXLast)
         {
-            iCurveCondition = Peace;
-            uActionStartFlag = false;
-        }
-        else
-        {
-            if (linerAccX > fLinerAccXLast)
+            slop = 1;
+            // reach the trough
+            if (fLinerAccXLast > 0.5 * peakValue)
             {
-                slop = 1;
-
-                // reach the trough
-                if (fLinerAccXLast > 0.5 * peakValue && peakValue < 30)
-                {
-                    // maybe there is false peak in the step1
-                    if (downTime > 0.05)
-                    {
-                        // there is a false peak in the step1
-                        iCurveCondition = Peace;
-                        uActionStartFlag = false;
-                    }
-                    else
-                    {
-                        //the following peak is false peak
-                    }
-                }
-                else if (fLinerAccXLast > -5)
-                {
-                    // false trough
-                    // no action, because it is normal
-                }
-                else
-                {
-                    iCurveCondition = Step3;
-                }
+                // there are 2 kind of false peak:
+                // 1. first peak is false peak
+                // 2. the following peak is false peak
+                // we recording the two kinds of false peak for the following refine
             }
-            else
+            else if (fLinerAccXLast > -12)
             {
-                slop = -1;
+                // false trough
+                // no action, because it is normal
+            } else{
+                iCurveCondition = Step3;
             }
+        } else{
+            slop = -1;
         }
 
         break;
@@ -788,15 +789,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
 
         if (linerAccX > -10 && linerAccX < 10)
         {
-            if (actionTime > 0.1 && actionTime < 0.6)
-            {
-                uActionEndFlag = true;
-            }
-            else
-            {
-                uActionStartFlag = false;
-            }
-
+            uActionEndFlag = true;
             iCurveCondition = Peace;
         }
 
@@ -2049,6 +2042,267 @@ void SensorFusion::calibration4INV()
 
     // correct the geomagnetic field strength B to correct scaling (result in uT)
     ftrB *= DEFAULTB;
+}
+
+void SensorFusion::gyroFilter(double gyro[])
+{
+    int i;
+    double temp;
+
+    for (i = CHX; i <= CHZ; i++)
+    {
+        temp = LpfGyroB[0] * gyro[i] + LpfGyroB[1] * LpfGyroX[i][0] + LpfGyroB[2] * LpfGyroX[i][1]
+               - LpfGyroA[1] * LpfGyroY[i][0] - LpfGyroA[2] * LpfGyroY[i][1];
+        LpfGyroX[i][1] = LpfGyroX[i][0];
+        LpfGyroX[i][0] = gyro[i];
+        LpfGyroY[i][1] = LpfGyroY[i][0];
+        LpfGyroY[i][0] = temp;
+        gyro[i] = temp;
+    }
+}
+
+void SensorFusion::accFilter(double acc[]) {
+    int i;
+    double temp;
+
+    for (i = CHX; i <= CHZ; i++)
+    {
+        temp = LpfAccB[0] * acc[i] + LpfAccB[1] * LpfAccX[i][0] + LpfAccB[2] * LpfAccX[i][1]
+               - LpfAccA[1] * LpfAccY[i][0] - LpfAccA[2] * LpfAccY[i][1];
+        LpfAccX[i][1] = LpfAccX[i][0];
+        LpfAccX[i][0] = acc[i];
+        LpfAccY[i][1] = LpfAccY[i][0];
+        LpfAccY[i][0] = temp;
+        acc[i] = temp;
+    }
+}
+
+void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataArray)
+{
+    double fOmegaMax = -100;
+    double fOmegaMin = 100;
+    double fOmegaPeak = 0;
+    double fOmegaFirst = 0;
+    double fOmegaLast = 0;
+    double fOmegaLetter = 0;
+    double fScale = 10;
+    int startIndex = 0;
+    int endIndex = 0;
+    double fAccMaxX = 0;
+    double fAccMinX = 0;
+    int fAccMaxIndex = 0;
+    int fAccMinIndex = 0;
+    int arraySize = 0;
+    int index = 0;
+
+    if (sampleDataArray.size() == 0)
+    {
+        return;
+    }
+
+    fOmegaFirst = sampleDataArray.at(0)->fOmegaB[CHZ];
+    fOmegaLast = sampleDataArray.at(sampleDataArray.size() - 1)->fOmegaB[CHZ];
+    for (auto p : sampleDataArray) {
+        SampleData *val = p.get();
+        double linerAccX = 0;
+
+        if (val->fOmegaB[2] > fOmegaMax)
+        {
+            fOmegaMax = val->fOmegaB[2];
+        }
+
+        if (val->fOmegaB[2]  < fOmegaMin)
+        {
+            fOmegaMin = val->fOmegaB[2];
+        }
+
+        // calculate the liner accelerate along the x axis
+        linerAccX = val->fAccelerate[0]*val->fCbnPlat[0][0] + val->fAccelerate[1]*val->fCbnPlat[0][1] + val->fAccelerate[2]*val->fCbnPlat[0][2];
+        if (linerAccX > fAccMaxX)
+        {
+            fAccMaxX = linerAccX;
+            fAccMaxIndex = index;
+        }
+
+        if (linerAccX < fAccMinX)
+        {
+            fAccMinX = linerAccX;
+            fAccMinIndex = index;
+        }
+        index ++;
+    }
+
+    if (fOmegaMax > 0 && fOmegaMax > fOmegaFirst && fOmegaMax > fOmegaLast)
+    {
+        fOmegaPeak = fOmegaMax;
+        fOmegaLetter = 1;
+    }
+    else if (fOmegaMin < 0 && fOmegaMin < fOmegaFirst && fOmegaMin < fOmegaLast)
+    {
+        fOmegaPeak = fOmegaMin;
+        fOmegaLetter = -1;
+    }
+    else
+    {
+        // abnormal case
+    }
+
+    if (fOmegaPeak * fScale * fOmegaLetter > 30) {
+        double fGyroLastZ = 0;
+        int slop = 0;
+        const int START = 0;
+        const int UP = 1;
+        const int DOWN = 2;
+        int condition = START;
+        bool errorFlag = false;
+        bool endFlag = false;
+
+        index = 0;
+        for (auto p : sampleDataArray) {
+            SampleData *val = p.get();
+            double gyroZ = val->fOmegaB[2] * fOmegaLetter * fScale;
+
+            switch(condition)
+            {
+                case START:
+                    if (gyroZ > 10)
+                    {
+                        condition = UP;
+                        startIndex = index;
+                    }
+                    break;
+                case UP:
+                    if (slop == 0)
+                    {
+                        if (gyroZ < fGyroLastZ)
+                        {
+                            // it will happen: gyro z may decrease firstly and then increase.
+                        } else{
+                            slop = 1;
+                        }
+                    } else{
+                        if (gyroZ < fGyroLastZ)
+                        {
+                            // peak
+                            if (fGyroLastZ > 0.9 * fOmegaPeak * fOmegaLetter * fScale)
+                            {
+                                // true peak
+                                slop = -1;
+                                condition = DOWN;
+                            } else{
+                                // normal case
+                                slop = 1;
+                            }
+                        }
+                    }
+                    break;
+                case DOWN:
+                    if (gyroZ > fGyroLastZ)
+                    {
+                        // trough (never happen)
+                        slop = 1;
+                    } else{
+                        // normal case
+                        slop = -1;
+                        if (gyroZ < 0.5 * fOmegaPeak * fScale * fOmegaLetter)
+                        {
+                            endIndex = index;
+                            endFlag = true;
+                        }
+                    }
+                    break;
+            }
+            index ++;
+            fGyroLastZ = gyroZ;
+            if (errorFlag || endFlag)
+            {
+                break;
+            }
+        }
+
+        if (errorFlag || condition != DOWN)
+        {
+            uActionComplete = false;
+            sampleDataArray.clear();
+
+            return;
+        }
+
+        // sample data array must including the max and min liner acc
+        if (startIndex > fAccMaxIndex)
+        {
+            startIndex = fAccMaxIndex;
+        }
+        if (endIndex < fAccMinIndex)
+        {
+            endIndex = fAccMinIndex;
+        }
+
+    } else{
+        // push the ball, which cannot use the gyro to refine
+        //startIndex = fAccMaxIndex;
+        endIndex = fAccMinIndex;
+    }
+
+    // refine the sample data array
+    if (startIndex > 0)
+    {
+        for (int i = 0; i < startIndex; i++)
+        {
+            sampleDataArray.erase(sampleDataArray.begin());
+            endIndex--;
+        }
+    }
+    if (endIndex > 0)
+    {
+        arraySize = sampleDataArray.size();
+        for (int i = 0; i < arraySize - endIndex - 1; i++)
+        {
+            sampleDataArray.erase(sampleDataArray.end());
+        }
+    }
+
+    // calculate the ins info firstly
+    insStrapdownMechanization(dt, sampleDataArray);
+    // remove the backward action
+    endIndex = 0;
+    index = 0;
+    for (auto p : sampleDataArray) {
+        SampleData *val = p.get();
+        int lastIndex = index - 1;
+        if (lastIndex > 0 && val->fPosN < sampleDataArray.at(lastIndex)->fPosN)
+        {
+            endIndex = index;
+            break;
+        }
+        index ++;
+    }
+    if (endIndex > 0)
+    {
+        arraySize = sampleDataArray.size();
+        for (int i = 0; i < arraySize - endIndex; i++)
+        {
+            sampleDataArray.erase(sampleDataArray.end());
+        }
+    }
+
+    // check action time and action interval time
+    double actionSustainedTime = sampleDataArray.size() * dt;
+    double actionIntervalTime = (sampleDataArray.at(0)->uTime - iActionEndTimeLast) * dt;
+    if (actionSustainedTime > 0.7 || actionSustainedTime < 0.1 || actionIntervalTime < 0.2)
+    {
+        // abnormal case:
+        // 1. action sustained time < 0.1s
+        // 2. action sustained time > 0.5s
+        // 3. action interval time < 0.5s
+        uActionComplete = false;
+        sampleDataArray.clear();
+
+        return;
+    }
+
+    // record the last action end time
+    iActionEndTimeLast = sampleDataArray.at(sampleDataArray.size() - 1)->uTime;
 }
 
 void SensorFusion::euler2q(double q[], double fyaw, double fpitch, double froll)

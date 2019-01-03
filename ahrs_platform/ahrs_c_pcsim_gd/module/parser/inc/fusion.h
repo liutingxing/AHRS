@@ -123,6 +123,7 @@ class SensorFusion
         double actionTime;
         double downTime;
         double peakValue;
+        int iActionEndTimeLast;
 
         double fPlatformOmegaMaxZ;
         double fPlatformOmegaMinZ;
@@ -130,6 +131,17 @@ class SensorFusion
         double fVelocityMax;
         double fAudioMax;
         int strikeIndex;
+
+        // low pass filter
+        const int LPF_ORDER = 2;
+        const double LpfGyroA[3] = {1.0, -1.647459981076977, 0.700896781188403};
+        const double LpfGyroB[3] = {0.013359200027856, 0.026718400055713, 0.013359200027856};
+        double LpfGyroX[3][2];
+        double LpfGyroY[3][2];
+        const double LpfAccA[3] = {1.0, -1.647459981076977, 0.700896781188403};;
+        const double LpfAccB[3] = {0.013359200027856, 0.026718400055713, 0.013359200027856};
+        double LpfAccX[3][2];
+        double LpfAccY[3][2];
 
         string sAttitude;
 
@@ -149,17 +161,21 @@ class SensorFusion
         void actionDetect(double dt, double gyro[], double acc[]);
         int copyInSampleData(SensorFusion* src, SampleData* dst);
         void systemConditionSet();
-        void insStrapdownMechanization(double dt, double acc[]);
+        void insStrapdownMechanization(double dt, vector<shared_ptr<SampleData>> sampleDataArray);
         int processSampleData(vector<shared_ptr<SampleData>>& sampleDataArray, PingPongTrainData& data);
         int updateAudioInfo(PingPongTrainData& data);
         bool magCalibration(double mag[]);
         void calibration4InvRaw(vector<shared_ptr<double>>& magArray);
+        void refineSampleData(vector<shared_ptr<SampleData>> &sampleDataArray);
+        void gyroFilter(double gyro[]);
+        void accFilter(double acc[]);
 
     public:
         int uTime;
         bool uActionComplete;
         const double GRAVITY;
         const double SAMPLE_RATE;
+        const double dt;
         PingPongTrainData trainData;
 
         static void euler2q(double q[], double fyaw, double fpitch, double froll);
