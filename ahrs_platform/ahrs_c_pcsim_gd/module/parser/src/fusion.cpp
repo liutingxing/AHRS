@@ -514,7 +514,7 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
     return 0;
 }
 
-void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<SampleData>> sampleDataArray)
+void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<SampleData>> &sampleDataArray)
 {
 
     int i;

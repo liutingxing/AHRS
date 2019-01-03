@@ -161,7 +161,7 @@ class SensorFusion
         void actionDetect(double dt, double gyro[], double acc[]);
         int copyInSampleData(SensorFusion* src, SampleData* dst);
         void systemConditionSet();
-        void insStrapdownMechanization(double dt, vector<shared_ptr<SampleData>> sampleDataArray);
+        void insStrapdownMechanization(double dt, vector<shared_ptr<SampleData>> &sampleDataArray);
         int processSampleData(vector<shared_ptr<SampleData>>& sampleDataArray, PingPongTrainData& data);
         int updateAudioInfo(PingPongTrainData& data);
         bool magCalibration(double mag[]);
