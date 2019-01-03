@@ -2107,8 +2107,7 @@ public class SensorFusion {
                         {
                             if (gyroZ < fGyroLastZ)
                             {
-                                // abnormal case
-                                errorFlag = true;
+                                // it will happen: gyro z may decrease firstly and then increase.
                             }
                             else
                             {
