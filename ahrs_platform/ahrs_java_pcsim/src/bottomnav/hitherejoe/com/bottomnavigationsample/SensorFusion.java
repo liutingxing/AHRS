@@ -342,17 +342,6 @@ public class SensorFusion {
             {
                 trainData.bValid = false;
                 trainData.uActionCount--;
-
-                uActionComplete = false;
-                fLinerAccXLast = 0;
-                fPlatformOmegaMaxZ = 0;
-                fPlatformOmegaMinZ = 0;
-                fRangeMax = 0.0;
-                fVelocityMax = 0.0;
-                fAudioMax = 0.0;
-                strikeIndex = 0;
-
-                cSampleDataArray.clear();
             }
         }
 
@@ -425,6 +414,11 @@ public class SensorFusion {
         int count = 0;
         StringBuffer trajectory = new StringBuffer();
         SampleData value;
+
+        if (sampleDataArray.size() == 0)
+        {
+            return -1;
+        }
 
         insStrapdownMechanization(dt, sampleDataArray);
 
@@ -2020,8 +2014,8 @@ public class SensorFusion {
         double fOmegaMax = -100;
         double fOmegaMin = 100;
         double fOmegaPeak = 0;
-        double fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
-        double fOmegaLast = sampleDataArray.get(sampleDataArray.size() - 1).fOmegaB[CHZ];
+        double fOmegaFirst = 0;
+        double fOmegaLast = 0;
         double fOmegaLetter = 0;
         double fScale = 10;
         int startIndex = 0;
@@ -2032,6 +2026,13 @@ public class SensorFusion {
         int fAccMinIndex = 0;
         int arraySize = 0;
 
+        if (sampleDataArray.size() == 0)
+        {
+            return;
+        }
+
+        fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
+        fOmegaLast = sampleDataArray.get(sampleDataArray.size() - 1).fOmegaB[CHZ];
         // calculate the max/min omega and acc
         for(SampleData val:sampleDataArray)
         {
