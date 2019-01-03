@@ -7,7 +7,7 @@
 #include "fusion.h"
 #include "Eigen/Dense"
 
-SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100), CALIBRATION_NUM(500), dt(1.0/SAMPLE_RATE)
+SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100), CALIBRATION_NUM(500), dt(1.0 / SAMPLE_RATE)
 {
     Matrix3d temp;
 
@@ -166,6 +166,7 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
         fAccelerate[i] = acc[i];
         fMagnetic[i] = mag[i];
     }
+
     fAudio = audio;
 
     // static detection
@@ -514,7 +515,7 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
     return 0;
 }
 
-void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<SampleData>> &sampleDataArray)
+void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<SampleData>>& sampleDataArray)
 {
 
     int i;
@@ -528,8 +529,9 @@ void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<Sample
     shared_ptr<SampleData> valLast = make_shared<SampleData>();
     int index = 0;
 
-    for (auto p : sampleDataArray) {
-        SampleData *val = p.get();
+    for (auto p : sampleDataArray)
+    {
+        SampleData* val = p.get();
 
         for (i = 0; i < 3; i++)
         {
@@ -537,6 +539,7 @@ void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<Sample
                              val->fAccelerate[1] * val->fCbnPlat[i][1] +
                              val->fAccelerate[2] * val->fCbnPlat[i][2];
         }
+
         linerAccIBP[2] += GRAVITY;
 
         // static constrain
@@ -559,9 +562,12 @@ void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<Sample
             valLast->fPosN = 0;
             valLast->fPosE = 0;
             valLast->fPosD = 0;
-        } else{
+        }
+        else
+        {
             valLast = sampleDataArray.at(index - 1);
         }
+
         index ++;
 
         linerAccAve[0] = (linerAccIBP[0] + valLast->fLinerAccN) / 2.0;
@@ -717,6 +723,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
                 uActionStartFlag = false;
             }
         }
+
         actionTime += dt;
 
         if (linerAccX > fLinerAccXLast)
@@ -752,6 +759,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
         if (linerAccX > fLinerAccXLast)
         {
             slop = 1;
+
             // reach the trough
             if (fLinerAccXLast > 0.5 * peakValue)
             {
@@ -764,10 +772,14 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
             {
                 // false trough
                 // no action, because it is normal
-            } else{
+            }
+            else
+            {
                 iCurveCondition = Step3;
             }
-        } else{
+        }
+        else
+        {
             slop = -1;
         }
 
@@ -1226,6 +1238,7 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
     {
         gyroMeasError = 5.0 * PI / 180;
     }
+
     beta = sqrt(3.0 / 4.0) * gyroMeasError;
 
     double qDotErrorNorm = sqrt(qDotError[0] * qDotError[0] + qDotError[1] * qDotError[1] + qDotError[2] * qDotError[2] + qDotError[3] * qDotError[3]);
@@ -2059,7 +2072,8 @@ void SensorFusion::gyroFilter(double gyro[])
     }
 }
 
-void SensorFusion::accFilter(double acc[]) {
+void SensorFusion::accFilter(double acc[])
+{
     int i;
     double temp;
 
@@ -2075,7 +2089,7 @@ void SensorFusion::accFilter(double acc[]) {
     }
 }
 
-void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataArray)
+void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataArray)
 {
     double fOmegaMax = -100;
     double fOmegaMin = 100;
@@ -2100,8 +2114,10 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
 
     fOmegaFirst = sampleDataArray.at(0)->fOmegaB[CHZ];
     fOmegaLast = sampleDataArray.at(sampleDataArray.size() - 1)->fOmegaB[CHZ];
-    for (auto p : sampleDataArray) {
-        SampleData *val = p.get();
+
+    for (auto p : sampleDataArray)
+    {
+        SampleData* val = p.get();
         double linerAccX = 0;
 
         if (val->fOmegaB[2] > fOmegaMax)
@@ -2115,7 +2131,8 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
         }
 
         // calculate the liner accelerate along the x axis
-        linerAccX = val->fAccelerate[0]*val->fCbnPlat[0][0] + val->fAccelerate[1]*val->fCbnPlat[0][1] + val->fAccelerate[2]*val->fCbnPlat[0][2];
+        linerAccX = val->fAccelerate[0] * val->fCbnPlat[0][0] + val->fAccelerate[1] * val->fCbnPlat[0][1] + val->fAccelerate[2] * val->fCbnPlat[0][2];
+
         if (linerAccX > fAccMaxX)
         {
             fAccMaxX = linerAccX;
@@ -2127,6 +2144,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
             fAccMinX = linerAccX;
             fAccMinIndex = index;
         }
+
         index ++;
     }
 
@@ -2145,7 +2163,8 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
         // abnormal case
     }
 
-    if (fOmegaPeak * fScale * fOmegaLetter > 30) {
+    if (fOmegaPeak * fScale * fOmegaLetter > 30)
+    {
         double fGyroLastZ = 0;
         int slop = 0;
         const int START = 0;
@@ -2156,62 +2175,80 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
         bool endFlag = false;
 
         index = 0;
-        for (auto p : sampleDataArray) {
-            SampleData *val = p.get();
+
+        for (auto p : sampleDataArray)
+        {
+            SampleData* val = p.get();
             double gyroZ = val->fOmegaB[2] * fOmegaLetter * fScale;
 
-            switch(condition)
+            switch (condition)
             {
-                case START:
-                    if (gyroZ > 10)
+            case START:
+                if (gyroZ > 10)
+                {
+                    condition = UP;
+                    startIndex = index;
+                }
+
+                break;
+
+            case UP:
+                if (slop == 0)
+                {
+                    if (gyroZ < fGyroLastZ)
                     {
-                        condition = UP;
-                        startIndex = index;
+                        // it will happen: gyro z may decrease firstly and then increase.
                     }
-                    break;
-                case UP:
-                    if (slop == 0)
+                    else
                     {
-                        if (gyroZ < fGyroLastZ)
+                        slop = 1;
+                    }
+                }
+                else
+                {
+                    if (gyroZ < fGyroLastZ)
+                    {
+                        // peak
+                        if (fGyroLastZ > 0.9 * fOmegaPeak * fOmegaLetter * fScale)
                         {
-                            // it will happen: gyro z may decrease firstly and then increase.
-                        } else{
+                            // true peak
+                            slop = -1;
+                            condition = DOWN;
+                        }
+                        else
+                        {
+                            // normal case
                             slop = 1;
                         }
-                    } else{
-                        if (gyroZ < fGyroLastZ)
-                        {
-                            // peak
-                            if (fGyroLastZ > 0.9 * fOmegaPeak * fOmegaLetter * fScale)
-                            {
-                                // true peak
-                                slop = -1;
-                                condition = DOWN;
-                            } else{
-                                // normal case
-                                slop = 1;
-                            }
-                        }
                     }
-                    break;
-                case DOWN:
-                    if (gyroZ > fGyroLastZ)
+                }
+
+                break;
+
+            case DOWN:
+                if (gyroZ > fGyroLastZ)
+                {
+                    // trough (never happen)
+                    slop = 1;
+                }
+                else
+                {
+                    // normal case
+                    slop = -1;
+
+                    if (gyroZ < 0.5 * fOmegaPeak * fScale * fOmegaLetter)
                     {
-                        // trough (never happen)
-                        slop = 1;
-                    } else{
-                        // normal case
-                        slop = -1;
-                        if (gyroZ < 0.5 * fOmegaPeak * fScale * fOmegaLetter)
-                        {
-                            endIndex = index;
-                            endFlag = true;
-                        }
+                        endIndex = index;
+                        endFlag = true;
                     }
-                    break;
+                }
+
+                break;
             }
+
             index ++;
             fGyroLastZ = gyroZ;
+
             if (errorFlag || endFlag)
             {
                 break;
@@ -2231,12 +2268,15 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
         {
             startIndex = fAccMaxIndex;
         }
+
         if (endIndex < fAccMinIndex)
         {
             endIndex = fAccMinIndex;
         }
 
-    } else{
+    }
+    else
+    {
         // push the ball, which cannot use the gyro to refine
         //startIndex = fAccMaxIndex;
         endIndex = fAccMinIndex;
@@ -2251,9 +2291,11 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
             endIndex--;
         }
     }
+
     if (endIndex > 0)
     {
         arraySize = sampleDataArray.size();
+
         for (int i = 0; i < arraySize - endIndex - 1; i++)
         {
             sampleDataArray.erase(sampleDataArray.end());
@@ -2265,19 +2307,25 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
     // remove the backward action
     endIndex = 0;
     index = 0;
-    for (auto p : sampleDataArray) {
-        SampleData *val = p.get();
+
+    for (auto p : sampleDataArray)
+    {
+        SampleData* val = p.get();
         int lastIndex = index - 1;
+
         if (lastIndex > 0 && val->fPosN < sampleDataArray.at(lastIndex)->fPosN)
         {
             endIndex = index;
             break;
         }
+
         index ++;
     }
+
     if (endIndex > 0)
     {
         arraySize = sampleDataArray.size();
+
         for (int i = 0; i < arraySize - endIndex; i++)
         {
             sampleDataArray.erase(sampleDataArray.end());
@@ -2287,10 +2335,12 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
     // check action time and action interval time
     double actionSustainedTime = sampleDataArray.size() * dt;
     double actionIntervalTime = (sampleDataArray.at(0)->uTime - iActionEndTimeLast) * dt;
+
     if (actionIntervalTime < 0)
     {
         actionIntervalTime = 1.0;
     }
+
     if (actionSustainedTime > 0.7 || actionSustainedTime < 0.1 || actionIntervalTime < 0.2)
     {
         // abnormal case:
