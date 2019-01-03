@@ -2222,6 +2222,10 @@ public class SensorFusion {
         // check action time and action interval time
         double actionSustainedTime = sampleDataArray.size() * dt;
         double actionIntervalTime = (sampleDataArray.get(0).uTime - iActionEndTimeLast) * dt;
+        if (actionIntervalTime < 0)
+        {
+            actionIntervalTime = 1.0;
+        }
         if (actionSustainedTime > 0.7 || actionSustainedTime < 0.1 || actionIntervalTime < 0.2)
         {
             // abnormal case:
