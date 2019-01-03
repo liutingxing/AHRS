@@ -59,7 +59,6 @@ SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100)
     iCurveCondition = Peace;
     CalibrationProgress = 0;
     magCalibrationInit();
-    iActionEndTimeLast = 0;
 }
 
 int SensorFusion::resetSensorFusion()
@@ -118,7 +117,6 @@ int SensorFusion::resetSensorFusion()
     fAlignGyroArray.clear();
     fAlignAccArray.clear();
     fAlignMagArray.clear();
-    iActionEndTimeLast = 0;
 
     return 0;
 }
@@ -2289,6 +2287,10 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>> &sampleDataAr
     // check action time and action interval time
     double actionSustainedTime = sampleDataArray.size() * dt;
     double actionIntervalTime = (sampleDataArray.at(0)->uTime - iActionEndTimeLast) * dt;
+    if (actionIntervalTime < 0)
+    {
+        actionIntervalTime = 1.0;
+    }
     if (actionSustainedTime > 0.7 || actionSustainedTime < 0.1 || actionIntervalTime < 0.2)
     {
         // abnormal case:
