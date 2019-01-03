@@ -215,7 +215,7 @@ public class SensorFusion {
 
         // mag buffer update
         if (MAG_SUPPORT == 1) {
-            if (uStaticFlag == 0 && iStatus == Calibration && mag[0] != 0 && mag[1] != 0 && mag[2] != 0)
+            if (uStaticFlag == 0 && iStatus == Calibration)
             {
                 if (magCalibration(mag) == true)
                 {
@@ -253,7 +253,7 @@ public class SensorFusion {
 
         if (MAG_SUPPORT == 1)
         {
-            if (uStaticFlag == 0 && mag[0] != 0 && mag[1] != 0 && mag[2] != 0) {
+            if (uStaticFlag == 0) {
                 magBufferUpdate(fMagRaw, mag, time);
             }
             if (time % 100 == 0) // 1Hz calibration frequency
@@ -1804,15 +1804,11 @@ public class SensorFusion {
         {
             return false;
         }
-        if (fCalibrationMagArray.size() < CALIBRATION_NUM)
-        {
-            fCalibrationMagArray.add(new double[]{mag[0], mag[1], mag[2]});
-        }
-        else
+        if (fCalibrationMagArray.size() >= CALIBRATION_NUM)
         {
             fCalibrationMagArray.remove(0);
-            fCalibrationMagArray.add(new double[]{mag[0], mag[1], mag[2]});
         }
+        fCalibrationMagArray.add(new double[]{mag[0], mag[1], mag[2]});
 
         if (fCalibrationMagArray.size() == CALIBRATION_NUM)
         {
