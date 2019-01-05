@@ -2298,7 +2298,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
 
         for (int i = 0; i < arraySize - endIndex - 1; i++)
         {
-            sampleDataArray.erase(sampleDataArray.end());
+            sampleDataArray.erase(sampleDataArray.end() - 1);
         }
     }
 
@@ -2328,7 +2328,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
 
         for (int i = 0; i < arraySize - endIndex; i++)
         {
-            sampleDataArray.erase(sampleDataArray.end());
+            sampleDataArray.erase(sampleDataArray.end() - 1);
         }
     }
 
