@@ -134,7 +134,6 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     {
         uActionComplete = false;
         trainData.bValid = false;
-        fLinerAccXLast = 0;
         fPlatformOmegaMaxZ = 0;
         fPlatformOmegaMinZ = 0;
         fRangeMax = 0.0;
@@ -721,11 +720,17 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
                 // abnormal case
                 iCurveCondition = Peace;
                 uActionStartFlag = false;
+                break;
             }
         }
 
         actionTime += dt;
-
+        if (actionTime > 0.5)
+        {
+            iCurveCondition = Peace;
+            uActionStartFlag = false;
+            break;
+        }
         if (linerAccX > fLinerAccXLast)
         {
             slop = 1;
@@ -755,7 +760,12 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
     case Step2:
         actionTime += dt;
         downTime += dt;
-
+        if (actionTime > 0.5 || downTime > 0.3)
+        {
+            iCurveCondition = Peace;
+            uActionStartFlag = false;
+            break;
+        }
         if (linerAccX > fLinerAccXLast)
         {
             slop = 1;
@@ -787,7 +797,12 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
 
     case Step3:
         actionTime += dt;
-
+        if (actionTime > 0.5)
+        {
+            iCurveCondition = Peace;
+            uActionStartFlag = false;
+            break;
+        }
         if (linerAccX > fLinerAccXLast)
         {
             slop = 1;
