@@ -750,7 +750,7 @@ public class SensorFusion {
         }
 
         if (accNorm > 10.5 || accNorm < 9.5) {
-            gyroMeasError = 60 * Math.PI / 180;
+            gyroMeasError = 100 * Math.PI / 180;
         }
         else
         {
