@@ -181,7 +181,6 @@ public class SensorFusion {
         if (uActionComplete == true)
         {
             uActionComplete = false;
-            fLinerAccXLast = 0;
             fPlatformOmegaMaxZ = 0;
             fPlatformOmegaMinZ = 0;
             fRangeMax = 0.0;
@@ -937,9 +936,16 @@ public class SensorFusion {
                         // abnormal case
                         iCurveCondition = Peace;
                         uActionStartFlag = false;
+                        break;
                     }
                 }
                 actionTime += dt;
+                if (actionTime > 0.5)
+                {
+                    iCurveCondition = Peace;
+                    uActionStartFlag = false;
+                    break;
+                }
                 if (linerAccX > fLinerAccXLast){
                     slop = 1;
                 }else{
@@ -961,6 +967,12 @@ public class SensorFusion {
             case Step2:
                 actionTime += dt;
                 downTime += dt;
+                if (actionTime > 0.5 || downTime > 0.3)
+                {
+                    iCurveCondition = Peace;
+                    uActionStartFlag = false;
+                    break;
+                }
                 if (linerAccX > fLinerAccXLast){
                     slop = 1;
                     // reach the trough
@@ -984,6 +996,12 @@ public class SensorFusion {
 
             case Step3:
                 actionTime += dt;
+                if (actionTime > 0.5)
+                {
+                    iCurveCondition = Peace;
+                    uActionStartFlag = false;
+                    break;
+                }
                 if (linerAccX > fLinerAccXLast){
                     slop = 1;
                 }else {
