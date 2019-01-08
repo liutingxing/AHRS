@@ -181,13 +181,6 @@ public class SensorFusion {
         if (uActionComplete == true)
         {
             uActionComplete = false;
-            fPlatformOmegaMaxZ = 0;
-            fPlatformOmegaMinZ = 0;
-            fRangeMax = 0.0;
-            fVelocityMax = 0.0;
-            fAudioMax = 0.0;
-            strikeIndex = 0;
-
             cSampleDataArray.clear();
         }
 
@@ -413,6 +406,13 @@ public class SensorFusion {
         int count = 0;
         StringBuffer trajectory = new StringBuffer();
         SampleData value;
+
+        fPlatformOmegaMaxZ = 0;
+        fPlatformOmegaMinZ = 0;
+        fRangeMax = 0.0;
+        fVelocityMax = 0.0;
+        fAudioMax = 0.0;
+        strikeIndex = 0;
 
         if (sampleDataArray.size() == 0)
         {
@@ -2034,55 +2034,79 @@ public class SensorFusion {
             return;
         }
 
-        fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
-        fOmegaLast = sampleDataArray.get(sampleDataArray.size() - 1).fOmegaB[CHZ];
-        // calculate the max/min omega and acc
+        // check the action type roughly
+        fPlatformOmegaMaxZ = 0;
+        fPlatformOmegaMinZ = 0;
         for(SampleData val:sampleDataArray)
         {
-            double linerAccX = 0;
-
-            if (val.fOmegaB[2] > fOmegaMax)
-            {
-                fOmegaMax = val.fOmegaB[2];
+            // platform omega
+            if (val.fOmegaN[CHZ] > fPlatformOmegaMaxZ) {
+                fPlatformOmegaMaxZ = val.fOmegaN[CHZ];
             }
 
-            if (val.fOmegaB[2]  < fOmegaMin)
-            {
-                fOmegaMin = val.fOmegaB[2];
-            }
-
-            // calculate the liner accelerate along the x axis
-            linerAccX = val.fAccelerate[0]*val.fCbnPlat[0][0] + val.fAccelerate[1]*val.fCbnPlat[0][1] + val.fAccelerate[2]*val.fCbnPlat[0][2];
-            if (linerAccX > fAccMaxX)
-            {
-                fAccMaxX = linerAccX;
-                fAccMaxIndex = sampleDataArray.indexOf(val);
-            }
-
-            if (linerAccX < fAccMinX)
-            {
-                fAccMinX = linerAccX;
-                fAccMinIndex = sampleDataArray.indexOf(val);
+            if (val.fOmegaN[CHZ] < fPlatformOmegaMinZ) {
+                fPlatformOmegaMinZ = val.fOmegaN[CHZ];
             }
         }
 
-        if (fOmegaMax > 0 && fOmegaMax > fOmegaFirst && fOmegaMax > fOmegaLast)
+        if (fPlatformOmegaMaxZ < 5 && Math.abs(fPlatformOmegaMinZ) < 5)
         {
-            fOmegaPeak = fOmegaMax;
-            fOmegaLetter = 1;
+            // no rotation, it is push
         }
-        else if (fOmegaMin < 0 && fOmegaMin < fOmegaFirst && fOmegaMin < fOmegaLast)
+        else if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
         {
-            fOmegaPeak = fOmegaMin;
-            fOmegaLetter = -1;
+            // backhand action
         }
         else
         {
-            // abnormal case
-        }
+            // forehand action
+            fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
+            fOmegaLast = sampleDataArray.get(sampleDataArray.size() - 1).fOmegaB[CHZ];
+            // calculate the max/min omega and acc
+            for(SampleData val:sampleDataArray)
+            {
+                double linerAccX = 0;
 
-        if (fOmegaPeak * fScale * fOmegaLetter > 30)
-        {
+                if (val.fOmegaB[2] > fOmegaMax)
+                {
+                    fOmegaMax = val.fOmegaB[2];
+                }
+
+                if (val.fOmegaB[2]  < fOmegaMin)
+                {
+                    fOmegaMin = val.fOmegaB[2];
+                }
+
+                // calculate the liner accelerate along the x axis
+                linerAccX = val.fAccelerate[0]*val.fCbnPlat[0][0] + val.fAccelerate[1]*val.fCbnPlat[0][1] + val.fAccelerate[2]*val.fCbnPlat[0][2];
+                if (linerAccX > fAccMaxX)
+                {
+                    fAccMaxX = linerAccX;
+                    fAccMaxIndex = sampleDataArray.indexOf(val);
+                }
+
+                if (linerAccX < fAccMinX)
+                {
+                    fAccMinX = linerAccX;
+                    fAccMinIndex = sampleDataArray.indexOf(val);
+                }
+            }
+
+            if (fOmegaMax > 0 && fOmegaMax > fOmegaFirst && fOmegaMax > fOmegaLast)
+            {
+                fOmegaPeak = fOmegaMax;
+                fOmegaLetter = 1;
+            }
+            else if (fOmegaMin < 0 && fOmegaMin < fOmegaFirst && fOmegaMin < fOmegaLast)
+            {
+                fOmegaPeak = fOmegaMin;
+                fOmegaLetter = -1;
+            }
+            else
+            {
+                // abnormal case
+            }
+
             double fGyroLastZ = 0;
             int slop = 0;
             final int START = 0;
@@ -2179,50 +2203,44 @@ public class SensorFusion {
             {
                 endIndex = fAccMinIndex;
             }
-        }
-        else
-        {
-            // push the ball, which cannot use the gyro to refine
-            //startIndex = fAccMaxIndex;
-            endIndex = fAccMinIndex;
-        }
 
-        // refine the sample data array
-        if (startIndex > 0)
-        {
-            for (int i = 0; i < startIndex; i++)
+            // refine the sample data array
+            if (startIndex > 0)
             {
-                sampleDataArray.remove(0);
-                endIndex--;
+                for (int i = 0; i < startIndex; i++)
+                {
+                    sampleDataArray.remove(0);
+                    endIndex--;
+                }
             }
-        }
-        if (endIndex > 0)
-        {
-            arraySize = sampleDataArray.size();
-            for (int i = 0; i < arraySize - endIndex - 1; i++)
+            if (endIndex > 0)
             {
-                sampleDataArray.remove(sampleDataArray.size() - 1);
+                arraySize = sampleDataArray.size();
+                for (int i = 0; i < arraySize - endIndex - 1; i++)
+                {
+                    sampleDataArray.remove(sampleDataArray.size() - 1);
+                }
             }
-        }
 
-        // calculate the ins info firstly
-        insStrapdownMechanization(dt, sampleDataArray);
-        // remove the backward action
-        endIndex = 0;
-        for(SampleData val:sampleDataArray)
-        {
-            int lastIndex = sampleDataArray.indexOf(val) - 1;
-            if (lastIndex > 0 && val.fPosN < sampleDataArray.get(lastIndex).fPosN)
+            // calculate the ins info firstly
+            insStrapdownMechanization(dt, sampleDataArray);
+            // remove the backward action
+            endIndex = 0;
+            for(SampleData val:sampleDataArray)
             {
-                endIndex = sampleDataArray.indexOf(val);
-                break;
+                int lastIndex = sampleDataArray.indexOf(val) - 1;
+                if (lastIndex > 0 && val.fPosN < sampleDataArray.get(lastIndex).fPosN)
+                {
+                    endIndex = sampleDataArray.indexOf(val);
+                    break;
+                }
             }
-        }
-        if (endIndex > 0)
-        {
-            arraySize = sampleDataArray.size();
-            for (int i = 0; i < arraySize - endIndex; i++) {
-                sampleDataArray.remove(sampleDataArray.size() - 1);
+            if (endIndex > 0)
+            {
+                arraySize = sampleDataArray.size();
+                for (int i = 0; i < arraySize - endIndex; i++) {
+                    sampleDataArray.remove(sampleDataArray.size() - 1);
+                }
             }
         }
 
