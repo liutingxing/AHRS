@@ -2144,6 +2144,26 @@ public class SensorFusion {
         else if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
         {
             // backhand action
+            // calculate the ins info firstly
+            insStrapdownMechanization(dt, sampleDataArray);
+            // remove the negative position action
+            endIndex = 0;
+            for(SampleData val:sampleDataArray)
+            {
+                int lastIndex = sampleDataArray.indexOf(val) - 1;
+                if (lastIndex > 0 && val.fPosN < 0)
+                {
+                    endIndex = sampleDataArray.indexOf(val);
+                    break;
+                }
+            }
+            if (endIndex > 0)
+            {
+                arraySize = sampleDataArray.size();
+                for (int i = 0; i < arraySize - endIndex; i++) {
+                    sampleDataArray.remove(sampleDataArray.size() - 1);
+                }
+            }
         }
         else
         {
