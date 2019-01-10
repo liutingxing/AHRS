@@ -2267,6 +2267,44 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
     else if (abs(fPlatformOmegaMaxZ) > abs(fPlatformOmegaMinZ))
     {
         // backhand action
+        fOmegaFirst = sampleDataArray.at(0)->fOmegaB[CHZ];
+        fOmegaLast = sampleDataArray.at(sampleDataArray.size() - 1)->fOmegaB[CHZ];
+
+        if (fOmegaMax > 0 && fOmegaMax > fOmegaFirst && fOmegaMax > fOmegaLast)
+        {
+            fOmegaPeak = fOmegaMax;
+            fOmegaLetter = 1;
+        }
+        else if (fOmegaMin < 0 && fOmegaMin < fOmegaFirst && fOmegaMin < fOmegaLast)
+        {
+            fOmegaPeak = fOmegaMin;
+            fOmegaLetter = -1;
+        }
+        else
+        {
+            // abnormal case
+        }
+
+        // remove the negative gyro Z actions
+        for (int i = 0; i < sampleDataArray.size(); i++)
+        {
+            if (sampleDataArray.at(sampleDataArray.size() - 1 - i)->fOmegaB[CHZ] * fOmegaLetter > 0)
+            {
+                endIndex = sampleDataArray.size() - 1 - i;
+                break;
+            }
+        }
+
+        if (endIndex > 0)
+        {
+            arraySize = sampleDataArray.size();
+
+            for (int i = 0; i < arraySize - endIndex; i++)
+            {
+                sampleDataArray.erase(sampleDataArray.end() - 1);
+            }
+        }
+
         // calculate the ins info firstly
         insStrapdownMechanization(dt, sampleDataArray);
         // remove the negative position action
