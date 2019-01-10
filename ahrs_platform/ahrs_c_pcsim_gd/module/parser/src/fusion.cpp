@@ -2138,13 +2138,15 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
     fPlatformOmegaMinZ = 0;
 
     index = 0;
+
     for (auto p : sampleDataArray)
     {
         SampleData* val = p.get();
         double linerAccX = 0;
 
         // calculate the liner accelerate along the x axis
-        linerAccX = val->fAccelerate[0]*val->fCbnPlat[0][0] + val->fAccelerate[1]*val->fCbnPlat[0][1] + val->fAccelerate[2]*val->fCbnPlat[0][2];
+        linerAccX = val->fAccelerate[0] * val->fCbnPlat[0][0] + val->fAccelerate[1] * val->fCbnPlat[0][1] + val->fAccelerate[2] * val->fCbnPlat[0][2];
+
         if (linerAccX > fAccMaxX)
         {
             fAccMaxX = linerAccX;
@@ -2190,9 +2192,9 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
         bool bCurveRising = true;
         index = 0;
 
-        for(auto p : sampleDataArray)
+        for (auto p : sampleDataArray)
         {
-            SampleData *val = p.get();
+            SampleData* val = p.get();
             double linerAccX = val->fLinerAccN;
 
             if (linerAccX < fLastLinerAccX && bCurveRising)
@@ -2217,6 +2219,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
                     bCurveRising = true;
                 }
             }
+
             fLastLinerAccX = linerAccX;
             index++;
         }
@@ -2230,6 +2233,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
                 endIndex--;
             }
         }
+
         // calculate the ins info firstly
         insStrapdownMechanization(dt, sampleDataArray);
         // remove the backward action
@@ -2324,6 +2328,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
         bool endFlag = false;
 
         index = 0;
+
         for (auto p : sampleDataArray)
         {
             SampleData* val = p.get();
