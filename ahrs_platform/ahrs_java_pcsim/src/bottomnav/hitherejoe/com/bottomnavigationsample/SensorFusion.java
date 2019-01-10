@@ -951,7 +951,7 @@ public class SensorFusion {
                 }else{
                     slop = -1;
                     // reach the up peak
-                    if (fLinerAccXLast < 8){
+                    if (fLinerAccXLast < 8 && Math.abs(gyro[CHZ]) < 10){
                         // false peak
                         iCurveCondition = Peace;
                         uActionStartFlag = false;
@@ -967,7 +967,7 @@ public class SensorFusion {
             case Step2:
                 actionTime += dt;
                 downTime += dt;
-                if (actionTime > 1.0 || downTime > 0.5)
+                if (actionTime > 1.5 || downTime > 1.0)
                 {
                     iCurveCondition = Peace;
                     uActionStartFlag = false;
@@ -982,7 +982,7 @@ public class SensorFusion {
                         // 2. the following peak is false peak
                         // we recording the two kinds of false peak for the following refine
                     }
-                    else if(fLinerAccXLast > -12){
+                    else if(fLinerAccXLast > -8){
                         // false trough
                         // no action, because it is normal
                     }
@@ -996,7 +996,7 @@ public class SensorFusion {
 
             case Step3:
                 actionTime += dt;
-                if (actionTime > 1.0)
+                if (actionTime > 2.0)
                 {
                     iCurveCondition = Peace;
                     uActionStartFlag = false;
@@ -1007,7 +1007,7 @@ public class SensorFusion {
                 }else {
                     slop = -1;
                 }
-                if (linerAccX > -10 && linerAccX < 10){
+                if (linerAccX > -5 && linerAccX < 5){
                     uActionEndFlag = true;
                     iCurveCondition = Peace;
                 }
@@ -2039,6 +2039,22 @@ public class SensorFusion {
         fPlatformOmegaMinZ = 0;
         for(SampleData val:sampleDataArray)
         {
+            double linerAccX = 0;
+
+            // calculate the liner accelerate along the x axis
+            linerAccX = val.fAccelerate[0]*val.fCbnPlat[0][0] + val.fAccelerate[1]*val.fCbnPlat[0][1] + val.fAccelerate[2]*val.fCbnPlat[0][2];
+            if (linerAccX > fAccMaxX)
+            {
+                fAccMaxX = linerAccX;
+                fAccMaxIndex = sampleDataArray.indexOf(val);
+            }
+
+            if (linerAccX < fAccMinX)
+            {
+                fAccMinX = linerAccX;
+                fAccMinIndex = sampleDataArray.indexOf(val);
+            }
+
             // platform omega
             if (val.fOmegaN[CHZ] > fPlatformOmegaMaxZ) {
                 fPlatformOmegaMaxZ = val.fOmegaN[CHZ];
@@ -2047,31 +2063,22 @@ public class SensorFusion {
             if (val.fOmegaN[CHZ] < fPlatformOmegaMinZ) {
                 fPlatformOmegaMinZ = val.fOmegaN[CHZ];
             }
-        }
 
-        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8)
-        {
-            // no rotation, it is push
-            // calculate the max/min acc x
-            for(SampleData val:sampleDataArray)
+            // body omega
+            if (val.fOmegaB[2] > fOmegaMax)
             {
-                double linerAccX = 0;
-
-                // calculate the liner accelerate along the x axis
-                linerAccX = val.fAccelerate[0]*val.fCbnPlat[0][0] + val.fAccelerate[1]*val.fCbnPlat[0][1] + val.fAccelerate[2]*val.fCbnPlat[0][2];
-                if (linerAccX > fAccMaxX)
-                {
-                    fAccMaxX = linerAccX;
-                    fAccMaxIndex = sampleDataArray.indexOf(val);
-                }
-
-                if (linerAccX < fAccMinX)
-                {
-                    fAccMinX = linerAccX;
-                    fAccMinIndex = sampleDataArray.indexOf(val);
-                }
+                fOmegaMax = val.fOmegaB[2];
             }
 
+            if (val.fOmegaB[2]  < fOmegaMin)
+            {
+                fOmegaMin = val.fOmegaB[2];
+            }
+        }
+
+        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 3 && Math.abs(fOmegaMin) < 3)
+        {
+            // no rotation, it is push
             // remove the false peak
             double fLastLinerAccX = 0;
             boolean bCurveRising = true;
@@ -2143,35 +2150,6 @@ public class SensorFusion {
             // forehand action
             fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
             fOmegaLast = sampleDataArray.get(sampleDataArray.size() - 1).fOmegaB[CHZ];
-            // calculate the max/min omega and acc
-            for(SampleData val:sampleDataArray)
-            {
-                double linerAccX = 0;
-
-                if (val.fOmegaB[2] > fOmegaMax)
-                {
-                    fOmegaMax = val.fOmegaB[2];
-                }
-
-                if (val.fOmegaB[2]  < fOmegaMin)
-                {
-                    fOmegaMin = val.fOmegaB[2];
-                }
-
-                // calculate the liner accelerate along the x axis
-                linerAccX = val.fAccelerate[0]*val.fCbnPlat[0][0] + val.fAccelerate[1]*val.fCbnPlat[0][1] + val.fAccelerate[2]*val.fCbnPlat[0][2];
-                if (linerAccX > fAccMaxX)
-                {
-                    fAccMaxX = linerAccX;
-                    fAccMaxIndex = sampleDataArray.indexOf(val);
-                }
-
-                if (linerAccX < fAccMinX)
-                {
-                    fAccMinX = linerAccX;
-                    fAccMinIndex = sampleDataArray.indexOf(val);
-                }
-            }
 
             if (fOmegaMax > 0 && fOmegaMax > fOmegaFirst && fOmegaMax > fOmegaLast)
             {
