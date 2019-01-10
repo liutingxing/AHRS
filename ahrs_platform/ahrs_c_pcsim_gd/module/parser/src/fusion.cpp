@@ -742,7 +742,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
             slop = -1;
 
             // reach the up peak
-            if (fLinerAccXLast < 8)
+            if (fLinerAccXLast < 8 && abs(gyro[CHZ]) < 10)
             {
                 // false peak
                 iCurveCondition = Peace;
@@ -763,7 +763,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
         actionTime += dt;
         downTime += dt;
 
-        if (actionTime > 1.0 || downTime > 0.5)
+        if (actionTime > 1.5 || downTime > 1.0)
         {
             iCurveCondition = Peace;
             uActionStartFlag = false;
@@ -782,7 +782,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
                 // 2. the following peak is false peak
                 // we recording the two kinds of false peak for the following refine
             }
-            else if (fLinerAccXLast > -12)
+            else if (fLinerAccXLast > -8)
             {
                 // false trough
                 // no action, because it is normal
@@ -802,7 +802,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
     case Step3:
         actionTime += dt;
 
-        if (actionTime > 1.0)
+        if (actionTime > 2.0)
         {
             iCurveCondition = Peace;
             uActionStartFlag = false;
@@ -818,7 +818,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
             slop = -1;
         }
 
-        if (linerAccX > -10 && linerAccX < 10)
+        if (linerAccX > -5 && linerAccX < 5)
         {
             uActionEndFlag = true;
             iCurveCondition = Peace;
@@ -2137,9 +2137,25 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
     fPlatformOmegaMaxZ = 0;
     fPlatformOmegaMinZ = 0;
 
+    index = 0;
     for (auto p : sampleDataArray)
     {
         SampleData* val = p.get();
+        double linerAccX = 0;
+
+        // calculate the liner accelerate along the x axis
+        linerAccX = val->fAccelerate[0]*val->fCbnPlat[0][0] + val->fAccelerate[1]*val->fCbnPlat[0][1] + val->fAccelerate[2]*val->fCbnPlat[0][2];
+        if (linerAccX > fAccMaxX)
+        {
+            fAccMaxX = linerAccX;
+            fAccMaxIndex = index;
+        }
+
+        if (linerAccX < fAccMinX)
+        {
+            fAccMinX = linerAccX;
+            fAccMinIndex = index;
+        }
 
         // platform omega
         if (val->fOmegaN[CHZ] > fPlatformOmegaMaxZ)
@@ -2151,34 +2167,24 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
         {
             fPlatformOmegaMinZ = val->fOmegaN[CHZ];
         }
-    }
 
-    if (fPlatformOmegaMaxZ < 8 && abs(fPlatformOmegaMinZ) < 8)
-    {
-        // no rotation, it is push
-        // calculate the max/min acc x
-        index = 0;
-        for (auto p : sampleDataArray)
+        // body omega
+        if (val->fOmegaB[2] > fOmegaMax)
         {
-            SampleData *val = p.get();
-            double linerAccX = 0;
-
-            // calculate the liner accelerate along the x axis
-            linerAccX = val->fAccelerate[0]*val->fCbnPlat[0][0] + val->fAccelerate[1]*val->fCbnPlat[0][1] + val->fAccelerate[2]*val->fCbnPlat[0][2];
-            if (linerAccX > fAccMaxX)
-            {
-                fAccMaxX = linerAccX;
-                fAccMaxIndex = index;
-            }
-
-            if (linerAccX < fAccMinX)
-            {
-                fAccMinX = linerAccX;
-                fAccMinIndex = index;
-            }
-            index++;
+            fOmegaMax = val->fOmegaB[2];
         }
 
+        if (val->fOmegaB[2]  < fOmegaMin)
+        {
+            fOmegaMin = val->fOmegaB[2];
+        }
+
+        index++;
+    }
+
+    if (fPlatformOmegaMaxZ < 8 && abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 3 && abs(fOmegaMin) < 3)
+    {
+        // no rotation, it is push
         // remove the false peak
         double fLastLinerAccX = 0;
         bool bCurveRising = true;
@@ -2263,40 +2269,6 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
         // forehand action
         fOmegaFirst = sampleDataArray.at(0)->fOmegaB[CHZ];
         fOmegaLast = sampleDataArray.at(sampleDataArray.size() - 1)->fOmegaB[CHZ];
-        index = 0;
-
-        for (auto p : sampleDataArray)
-        {
-            SampleData* val = p.get();
-            double linerAccX = 0;
-
-            if (val->fOmegaB[2] > fOmegaMax)
-            {
-                fOmegaMax = val->fOmegaB[2];
-            }
-
-            if (val->fOmegaB[2]  < fOmegaMin)
-            {
-                fOmegaMin = val->fOmegaB[2];
-            }
-
-            // calculate the liner accelerate along the x axis
-            linerAccX = val->fAccelerate[0] * val->fCbnPlat[0][0] + val->fAccelerate[1] * val->fCbnPlat[0][1] + val->fAccelerate[2] * val->fCbnPlat[0][2];
-
-            if (linerAccX > fAccMaxX)
-            {
-                fAccMaxX = linerAccX;
-                fAccMaxIndex = index;
-            }
-
-            if (linerAccX < fAccMinX)
-            {
-                fAccMinX = linerAccX;
-                fAccMinIndex = index;
-            }
-
-            index ++;
-        }
 
         if (fOmegaMax > 0 && fOmegaMax > fOmegaFirst && fOmegaMax > fOmegaLast)
         {
@@ -2323,7 +2295,6 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
         bool endFlag = false;
 
         index = 0;
-
         for (auto p : sampleDataArray)
         {
             SampleData* val = p.get();
