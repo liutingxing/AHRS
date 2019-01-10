@@ -21,15 +21,15 @@ using namespace Eigen;
 #define CHZ             2
 
 #ifndef     PI
-#define     PI              ((float)3.14159265358979323846)
+#define     PI              ((double)3.14159265358979323846)
 #endif
 
 #ifndef     DEG2RAD
-#define     DEG2RAD         ((float)PI/(float)180.0)
+#define     DEG2RAD         ((double)PI/(double)180.0)
 #endif
 
 #ifndef     RAD2DEG
-#define     RAD2DEG         ((float)180.0/(float)PI)
+#define     RAD2DEG         ((double)180.0/(double)PI)
 #endif
 
 #define     MAGSENSITIVE    (0.01F)
