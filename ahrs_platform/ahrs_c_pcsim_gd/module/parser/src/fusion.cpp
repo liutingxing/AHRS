@@ -2263,6 +2263,35 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
     else if (abs(fPlatformOmegaMaxZ) > abs(fPlatformOmegaMinZ))
     {
         // backhand action
+        // calculate the ins info firstly
+        insStrapdownMechanization(dt, sampleDataArray);
+        // remove the negative position action
+        endIndex = 0;
+        index = 0;
+
+        for (auto p : sampleDataArray)
+        {
+            SampleData* val = p.get();
+            int lastIndex = index - 1;
+
+            if (lastIndex > 0 && val->fPosN < 0)
+            {
+                endIndex = index;
+                break;
+            }
+
+            index ++;
+        }
+
+        if (endIndex > 0)
+        {
+            arraySize = sampleDataArray.size();
+
+            for (int i = 0; i < arraySize - endIndex; i++)
+            {
+                sampleDataArray.erase(sampleDataArray.end() - 1);
+            }
+        }
     }
     else
     {
