@@ -750,7 +750,7 @@ public class SensorFusion {
         }
 
         if (accNorm > 10.5 || accNorm < 9.5) {
-            gyroMeasError = 100 * Math.PI / 180;
+            gyroMeasError = 60 * Math.PI / 180;
         }
         else
         {
@@ -951,7 +951,7 @@ public class SensorFusion {
                 }else{
                     slop = -1;
                     // reach the up peak
-                    if (fLinerAccXLast < 8 && Math.abs(gyro[CHZ]) < 10){
+                    if (fLinerAccXLast < 6 && Math.abs(gyro[CHZ]) < 10){
                         // false peak
                         iCurveCondition = Peace;
                         uActionStartFlag = false;
@@ -982,7 +982,7 @@ public class SensorFusion {
                         // 2. the following peak is false peak
                         // we recording the two kinds of false peak for the following refine
                     }
-                    else if(fLinerAccXLast > -8){
+                    else if(fLinerAccXLast > -6){
                         // false trough
                         // no action, because it is normal
                     }
@@ -2076,12 +2076,13 @@ public class SensorFusion {
             }
         }
 
-        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 3 && Math.abs(fOmegaMin) < 3)
+        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 5 && Math.abs(fOmegaMin) < 5)
         {
             // no rotation, it is push
             // remove the false peak
             double fLastLinerAccX = 0;
             boolean bCurveRising = true;
+            int tempIndex = 0;
             for(SampleData val:sampleDataArray)
             {
                 double linerAccX = val.fLinerAccN;
@@ -2091,20 +2092,29 @@ public class SensorFusion {
                     // reach the peak and check the peak
                     if (Math.abs(fLastLinerAccX - fAccMaxX) < 0.01)
                     {
-                        // the true peak
-                        break;
+                        // the max peak
+                        startIndex = tempIndex;
                     }
                     else
                     {
-                        bCurveRising = false;
+                        // check the peak value
+                        if (fLastLinerAccX > 0.5 * fAccMaxX)
+                        {
+                            startIndex = tempIndex;
+                        }
                     }
+                    bCurveRising = false;
                 }
 
                 if (!bCurveRising)
                 {
+                    if (linerAccX < 0)
+                    {
+                        break;
+                    }
                     if (linerAccX > fLastLinerAccX)
                     {
-                        startIndex = sampleDataArray.indexOf(val) - 1;
+                        tempIndex = sampleDataArray.indexOf(val) - 1;
                         bCurveRising = true;
                     }
                 }
@@ -2363,11 +2373,11 @@ public class SensorFusion {
         {
             actionIntervalTime = 1.0;
         }
-        if (actionSustainedTime > 0.5 || actionSustainedTime < 0.1 || actionIntervalTime < 0.2)
+        if (actionSustainedTime > 0.6 || actionSustainedTime < 0.1 || actionIntervalTime < 0.2)
         {
             // abnormal case:
             // 1. action sustained time < 0.1s
-            // 2. action sustained time > 0.5s
+            // 2. action sustained time > 0.6s
             // 3. action interval time < 0.2s
             uActionComplete = false;
             sampleDataArray.clear();
