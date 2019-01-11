@@ -742,7 +742,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
             slop = -1;
 
             // reach the up peak
-            if (fLinerAccXLast < 8 && abs(gyro[CHZ]) < 10)
+            if (fLinerAccXLast < 6 && abs(gyro[CHZ]) < 10)
             {
                 // false peak
                 iCurveCondition = Peace;
@@ -782,7 +782,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
                 // 2. the following peak is false peak
                 // we recording the two kinds of false peak for the following refine
             }
-            else if (fLinerAccXLast > -8)
+            else if (fLinerAccXLast > -6)
             {
                 // false trough
                 // no action, because it is normal
@@ -818,7 +818,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
             slop = -1;
         }
 
-        if (linerAccX > -5 && linerAccX < 5)
+        if (linerAccX > -10 && linerAccX < 10)
         {
             uActionEndFlag = true;
             iCurveCondition = Peace;
@@ -1253,7 +1253,7 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
 
     if (accNorm > 10.5 || accNorm < 9.5)
     {
-        gyroMeasError = 100 * PI / 180;
+        gyroMeasError = 60 * PI / 180;
     }
     else
     {
@@ -2184,55 +2184,68 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
         index++;
     }
 
-    if (fPlatformOmegaMaxZ < 8 && abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 3 && abs(fOmegaMin) < 3)
+    // general refine:
+    // remove the false peak
+    double fLastLinerAccX = 0;
+    bool bCurveRising = true;
+    int tempIndex = 0;
+    index = 0;
+
+    for (auto p : sampleDataArray)
+    {
+        SampleData* val = p.get();
+        double linerAccX = val->fLinerAccN;
+
+        if (linerAccX < fLastLinerAccX && bCurveRising)
+        {
+            // reach the peak and check the peak
+            if (abs(fLastLinerAccX - fAccMaxX) < 0.01)
+            {
+                // the max peak
+                startIndex = tempIndex;
+            }
+            else
+            {
+                // check the peak value
+                if (fLastLinerAccX > 0.5 * fAccMaxX)
+                {
+                    startIndex = tempIndex;
+                }
+            }
+            bCurveRising = false;
+        }
+
+        if (!bCurveRising)
+        {
+            if (linerAccX < 0)
+            {
+                break;
+            }
+            if (linerAccX > fLastLinerAccX)
+            {
+                tempIndex = index - 1;
+                bCurveRising = true;
+            }
+        }
+
+        fLastLinerAccX = linerAccX;
+        index++;
+    }
+
+    // refine the sample data array
+    if (startIndex > 0)
+    {
+        for (int i = 0; i < startIndex; i++)
+        {
+            sampleDataArray.erase(sampleDataArray.begin());
+            endIndex--;
+        }
+    }
+
+    // special refine:
+    if (fPlatformOmegaMaxZ < 8 && abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 5 && abs(fOmegaMin) < 5)
     {
         // no rotation, it is push
-        // remove the false peak
-        double fLastLinerAccX = 0;
-        bool bCurveRising = true;
-        index = 0;
-
-        for (auto p : sampleDataArray)
-        {
-            SampleData* val = p.get();
-            double linerAccX = val->fLinerAccN;
-
-            if (linerAccX < fLastLinerAccX && bCurveRising)
-            {
-                // reach the peak and check the peak
-                if (abs(fLastLinerAccX - fAccMaxX) < 0.01)
-                {
-                    // the true peak
-                    break;
-                }
-                else
-                {
-                    bCurveRising = false;
-                }
-            }
-
-            if (!bCurveRising)
-            {
-                if (linerAccX > fLastLinerAccX)
-                {
-                    startIndex = index - 1;
-                    bCurveRising = true;
-                }
-            }
-
-            fLastLinerAccX = linerAccX;
-            index++;
-        }
-
-        // refine the sample data array
-        if (startIndex > 0)
-        {
-            for (int i = 0; i < startIndex; i++)
-            {
-                sampleDataArray.erase(sampleDataArray.begin());
-                endIndex--;
-            }
-        }
 
         // calculate the ins info firstly
         insStrapdownMechanization(dt, sampleDataArray);
@@ -2525,11 +2538,11 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
         actionIntervalTime = 1.0;
     }
 
-    if (actionSustainedTime > 0.5 || actionSustainedTime < 0.1 || actionIntervalTime < 0.2)
+    if (actionSustainedTime > 0.6 || actionSustainedTime < 0.1 || actionIntervalTime < 0.2)
     {
         // abnormal case:
         // 1. action sustained time < 0.1s
-        // 2. action sustained time > 0.5s
+        // 2. action sustained time > 0.6s
         // 3. action interval time < 0.2s
         uActionComplete = false;
         sampleDataArray.clear();
