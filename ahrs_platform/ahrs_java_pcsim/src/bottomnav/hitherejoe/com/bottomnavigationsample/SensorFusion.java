@@ -1007,7 +1007,7 @@ public class SensorFusion {
                 }else {
                     slop = -1;
                 }
-                if (linerAccX > -5 && linerAccX < 5){
+                if (linerAccX > -10 && linerAccX < 10){
                     uActionEndFlag = true;
                     iCurveCondition = Peace;
                 }
@@ -2076,60 +2076,64 @@ public class SensorFusion {
             }
         }
 
-        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 5 && Math.abs(fOmegaMin) < 5)
+        // general refine:
+        // remove the false peak
+        double fLastLinerAccX = 0;
+        boolean bCurveRising = true;
+        int tempIndex = 0;
+        for(SampleData val:sampleDataArray)
         {
-            // no rotation, it is push
-            // remove the false peak
-            double fLastLinerAccX = 0;
-            boolean bCurveRising = true;
-            int tempIndex = 0;
-            for(SampleData val:sampleDataArray)
-            {
-                double linerAccX = val.fLinerAccN;
+            double linerAccX = val.fLinerAccN;
 
-                if (linerAccX < fLastLinerAccX && bCurveRising)
+            if (linerAccX < fLastLinerAccX && bCurveRising)
+            {
+                // reach the peak and check the peak
+                if (Math.abs(fLastLinerAccX - fAccMaxX) < 0.01)
                 {
-                    // reach the peak and check the peak
-                    if (Math.abs(fLastLinerAccX - fAccMaxX) < 0.01)
+                    // the max peak
+                    startIndex = tempIndex;
+                }
+                else
+                {
+                    // check the peak value
+                    if (fLastLinerAccX > 0.5 * fAccMaxX)
                     {
-                        // the max peak
                         startIndex = tempIndex;
                     }
-                    else
-                    {
-                        // check the peak value
-                        if (fLastLinerAccX > 0.5 * fAccMaxX)
-                        {
-                            startIndex = tempIndex;
-                        }
-                    }
-                    bCurveRising = false;
                 }
-
-                if (!bCurveRising)
-                {
-                    if (linerAccX < 0)
-                    {
-                        break;
-                    }
-                    if (linerAccX > fLastLinerAccX)
-                    {
-                        tempIndex = sampleDataArray.indexOf(val) - 1;
-                        bCurveRising = true;
-                    }
-                }
-                fLastLinerAccX = linerAccX;
+                bCurveRising = false;
             }
 
-            // refine the sample data array
-            if (startIndex > 0)
+            if (!bCurveRising)
             {
-                for (int i = 0; i < startIndex; i++)
+                if (linerAccX < 0)
                 {
-                    sampleDataArray.remove(0);
-                    endIndex--;
+                    break;
+                }
+                if (linerAccX > fLastLinerAccX)
+                {
+                    tempIndex = sampleDataArray.indexOf(val) - 1;
+                    bCurveRising = true;
                 }
             }
+            fLastLinerAccX = linerAccX;
+        }
+
+        // refine the sample data array
+        if (startIndex > 0)
+        {
+            for (int i = 0; i < startIndex; i++)
+            {
+                sampleDataArray.remove(0);
+                endIndex--;
+            }
+        }
+
+        // special refine:
+        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 5 && Math.abs(fOmegaMin) < 5)
+        {
+            // no rotation, it is push action
+
             // calculate the ins info firstly
             insStrapdownMechanization(dt, sampleDataArray);
             // remove the backward action
