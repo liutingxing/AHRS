@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 include_directories(
     ./inc
-    ../../lib/eigen
+    ../../lib
 )
 
 set(

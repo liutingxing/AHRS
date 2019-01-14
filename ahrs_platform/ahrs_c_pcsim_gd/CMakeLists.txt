@@ -7,7 +7,7 @@ add_subdirectory(./module/parser)
 
 include_directories(
     ./module/parser/inc
-    ./lib/eigen
+    ./lib
 )
 
 set(
