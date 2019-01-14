@@ -3,8 +3,8 @@ clc;
 
 %% load SENSOR data
 
-data = load('.\actionData.txt');
-Mag = data(:, 12:14);
+data = load('.\sensorData.txt');
+Mag = data(:, 8:10);
 
 %% least square
 
