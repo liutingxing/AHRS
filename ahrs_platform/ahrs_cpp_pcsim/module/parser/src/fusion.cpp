@@ -262,6 +262,7 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     // refine the sample data array
     if (uActionComplete == true)
     {
+        outlierCompensate(cSampleDataArray);
         refineSampleData(cSampleDataArray);
     }
 
@@ -2110,6 +2111,71 @@ void SensorFusion::accFilter(double acc[])
         LpfAccY[i][1] = LpfAccY[i][0];
         LpfAccY[i][0] = temp;
         acc[i] = temp;
+    }
+}
+
+#define OMEGA_MARGIN (10)
+void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataArray)
+{
+    int left_index = -1;
+    int right_index = -1;
+    int index = 0;
+    bool outlier_flag = false;
+
+    index = 0;
+    for (auto p : sampleDataArray)
+    {
+        SampleData *val = p.get();
+        if (left_index == -1)
+        {
+            if (abs(val->fOmegaBRaw[CHZ]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
+            {
+                left_index = index;
+            }
+        }
+        else
+        {
+            if (right_index == -1)
+            {
+                if (abs(val->fOmegaBRaw[CHZ]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
+                {
+                    right_index = index - 1;
+                    outlier_flag = true;
+                }
+            }
+        }
+
+        if (outlier_flag)
+        {
+            break;
+        }
+        index++;
+    }
+
+    if (outlier_flag)
+    {
+        // estimate the outlier value
+        Eigen::VectorXd xvals(6);
+        Eigen::VectorXd yvals(xvals.rows());
+        int seq_left = left_index - 1;
+        int seq_right = right_index + 1;
+
+        xvals << seq_left-2, seq_left-1, seq_left, seq_right, seq_right+1, seq_right+2;
+        yvals << cSampleDataArray.at(seq_left-2)->fOmegaBRaw[CHZ],
+                 cSampleDataArray.at(seq_left-1)->fOmegaBRaw[CHZ],
+                 cSampleDataArray.at(seq_left)->fOmegaBRaw[CHZ],
+                 cSampleDataArray.at(seq_right)->fOmegaBRaw[CHZ],
+                 cSampleDataArray.at(seq_right+1)->fOmegaBRaw[CHZ],
+                 cSampleDataArray.at(seq_right+2)->fOmegaBRaw[CHZ];
+
+        SplineFunction s(xvals, yvals);
+        for (int i = left_index; i <= right_index; i++)
+        {
+            cSampleDataArray.at(i)->fOmegaBRaw[CHZ] = s(i);
+        }
+
+    } else{
+        return;
     }
 }
 

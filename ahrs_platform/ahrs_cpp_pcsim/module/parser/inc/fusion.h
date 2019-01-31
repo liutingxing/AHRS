@@ -39,6 +39,8 @@ using namespace Eigen;
 #define     MESHDELTAUT     (5)
 #define     MAGFITERROR     (5)
 
+#define     MAX_OMEGA_DEG   (2000)
+
 class SensorFusion
 {
     private:
@@ -172,6 +174,7 @@ class SensorFusion
         void refineSampleData(vector<shared_ptr<SampleData>>& sampleDataArray);
         void gyroFilter(double gyro[]);
         void accFilter(double acc[]);
+        void outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataArray);
 
     public:
         int uTime;
