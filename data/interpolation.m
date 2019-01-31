@@ -48,8 +48,9 @@ x = [x_left x_right];
 y = curve(x);
 xx = x_left_index:x_right_index;
 yy = spline(x,y,xx);
-plot(x,y,'r o',xx,yy,'r');
-legend('real data', 'cut off', 'sample data', 'spline data');
+yyy = [1028, 1056.91, 1087.23, 1120.74, 1137.88, 1118.94, 1064]
+plot(x,y,'r o',xx,yy,'r', xx,yyy,'g');
+legend('real data', 'cut off', 'sample data', 'spline data (matlab)', 'spline data (eigen)');
 
 %% filter the real data and interpolation data
 [b, a] = butter(2, 4/(100/2), 'low');

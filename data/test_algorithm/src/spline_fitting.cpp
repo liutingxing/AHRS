@@ -1,40 +1,71 @@
-//
-// Created by jiangtianyu on 2019/1/30.
-//
-#include <iostream>
 #include <Eigen/Core>
 #include <unsupported/Eigen/Splines>
 
-using namespace Eigen;
+#include <iostream>
 
-double uvalue(double x, double low, double high)
-{
-    return (x - low)/(high-low);
-}
+class SplineFunction {
+public:
+    SplineFunction(Eigen::VectorXd const &x_vec,
+                   Eigen::VectorXd const &y_vec)
+            : x_min(x_vec.minCoeff()),
+              x_max(x_vec.maxCoeff()),
+            // Spline fitting here. X values are scaled down to [0, 1] for this.
+              spline_(Eigen::SplineFitting<Eigen::Spline<double, 1>>::Interpolate(
+                      y_vec.transpose(),
+                      // No more than cubic spline, but accept short vectors.
 
-VectorXd uvalues(VectorXd xvals)
-{
-    const double low = xvals.minCoeff();
-    const double high = xvals.maxCoeff();
-    for (int i=0; i<xvals.size(); ++i)
-    {
-        xvals(i) = uvalue(xvals(i), low, high);
+                      std::min<int>(x_vec.rows() - 1, 3),
+                      scaled_values(x_vec)))
+    { }
+
+    double operator()(double x) const {
+        // x values need to be scaled down in extraction as well.
+        return spline_(scaled_value(x))(0);
     }
-    return xvals;
-}
 
-int main(int argc, char* argv[])
-{
-    typedef Spline<double,1> Spline2d;
-
-    const VectorXd xvals = (VectorXd(5) << 1,2,3,4,6).finished();
-    const VectorXd yvals = xvals.array().square();
-    const Spline2d spline = SplineFitting<Spline2d>::Interpolate(yvals.transpose(), 3, uvalues(xvals).transpose());
-
-    const double step = 0.1;
-    for (double x = 1; x < 6 + 0.5*step; x += step)
-    {
-        std::cout << "(" << x << "," << spline(uvalue(x, xvals.minCoeff(), xvals.maxCoeff())).transpose() << ")\n";
+private:
+    // Helpers to scale X values down to [0, 1]
+    double scaled_value(double x) const {
+        return (x - x_min) / (x_max - x_min);
     }
-    std::cout << std::endl;
+
+    Eigen::RowVectorXd scaled_values(Eigen::VectorXd const &x_vec) const {
+        return x_vec.unaryExpr([this](double x) { return scaled_value(x); }).transpose();
+    }
+
+    double x_min;
+    double x_max;
+
+    // Spline of one-dimensional "points."
+    Eigen::Spline<double, 1> spline_;
+};
+
+int main(int argc, char const* argv[])
+{
+    Eigen::VectorXd xvals(6);
+    Eigen::VectorXd yvals(xvals.rows());
+
+    xvals << 1455, 1456, 1457, 1463, 1464, 1465;
+    yvals << 911.8, 984.9, 1028, 1064, 985.9, 897.7;
+
+    SplineFunction s(xvals, yvals);
+
+    /*
+     * Matlab Test
+     *
+     * X    -> Y
+     * 1458 -> 1067
+     * 1459 -> 1101
+     * 1460 -> 1124
+     * 1461 -> 1130
+     * 1462 -> 1112
+     *
+     */
+    std::cout << s(1457) << std::endl;
+    std::cout << s(1458) << std::endl;
+    std::cout << s(1459) << std::endl;
+    std::cout << s(1460) << std::endl;
+    std::cout << s(1461) << std::endl;
+    std::cout << s(1462) << std::endl;
+    std::cout << s(1463) << std::endl;
 }
