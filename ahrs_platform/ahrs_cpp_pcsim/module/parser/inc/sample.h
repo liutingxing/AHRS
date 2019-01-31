@@ -26,6 +26,9 @@ class SampleData
         double       fOmegaB[3];
         double       fAccelerate[3];
         double       fMagnetic[3];
+        double       fOmegaBRaw[3];
+        double       fAccelerateRaw[3];
+        double       fMagneticRaw[3];
         double       fAudio;
         double       fVel;
         double       fOmegaN[3];

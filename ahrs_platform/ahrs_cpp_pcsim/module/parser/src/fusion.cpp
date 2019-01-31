@@ -130,6 +130,13 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     double fMagRaw[3];
 
     uTime = time;
+    // recording the raw data
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        fOmegaBRaw[i] = fGyroRaw[i] = gyro[i];
+        fAccelerateRaw[i] = fAccRaw[i] = acc[i];
+        fMagneticRaw[i] = fMagRaw[i] = mag[i];
+    }
 
     if (uActionComplete == true)
     {
@@ -140,14 +147,6 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     // data filter
     gyroFilter(gyro); // 4Hz cutoff frequency
     accFilter(acc);   // 4Hz cutoff frequency
-
-    // recording the raw data
-    for (int i = CHX; i <= CHZ; i++)
-    {
-        fGyroRaw[i] = gyro[i];
-        fAccRaw[i] = acc[i];
-        fMagRaw[i] = mag[i];
-    }
 
     // data correction
     sensorDataCorrection(gyro, acc, mag);
@@ -660,6 +659,9 @@ int SensorFusion::copyInSampleData(SensorFusion* src, SampleData* dst)
         dst->fOmegaB[i] = src->fOmegaB[i];
         dst->fAccelerate[i] = src->fAccelerate[i];
         dst->fMagnetic[i] = src->fMagnetic[i];
+        dst->fOmegaBRaw[i] = src->fOmegaBRaw[i];
+        dst->fAccelerateRaw[i] = src->fAccelerateRaw[i];
+        dst->fMagneticRaw[i] = src->fMagneticRaw[i];
     }
 
     dst->fAudio = src->fAudio;
