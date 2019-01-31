@@ -5,6 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include "fusion.h"
+#include "fitting.h"
 #include "Eigen/Dense"
 
 SensorFusion::SensorFusion(): ALIGN_NUM(100), GRAVITY(9.80665), SAMPLE_RATE(100), CALIBRATION_NUM(500), dt(1.0 / SAMPLE_RATE)
