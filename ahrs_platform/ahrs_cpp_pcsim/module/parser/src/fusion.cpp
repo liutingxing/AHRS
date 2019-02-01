@@ -262,7 +262,7 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     // refine the sample data array
     if (uActionComplete == true)
     {
-        outlierCompensate(cSampleDataArray);
+        outlierCompensate(cSampleDataArray, gyro);
         refineSampleData(cSampleDataArray);
     }
 
@@ -2115,7 +2115,7 @@ void SensorFusion::accFilter(double acc[])
 }
 
 #define OMEGA_MARGIN (10)
-void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataArray)
+void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataArray, double gyro[])
 {
     int left_index = -1;
     int right_index = -1;
@@ -2173,6 +2173,45 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
         {
             cSampleDataArray.at(i)->fOmegaBRaw[CHZ] = s(i);
         }
+
+        // recompute the past filtered gyro value
+        double lpfGyroX[2];
+        double lpfGyroY[2];
+        //left_index = 2;
+        lpfGyroX[0] = cSampleDataArray.at(left_index-1)->fOmegaBRaw[CHZ];
+        lpfGyroX[1] = cSampleDataArray.at(left_index-2)->fOmegaBRaw[CHZ];
+        lpfGyroY[0] = cSampleDataArray.at(left_index-1)->fOmegaB[CHZ]+fGyroBias[CHZ];
+        lpfGyroY[1] = cSampleDataArray.at(left_index-2)->fOmegaB[CHZ]+fGyroBias[CHZ];
+
+        for (int i = left_index; i < cSampleDataArray.size(); i++)
+        {
+            double gyroZ = cSampleDataArray.at(i)->fOmegaBRaw[CHZ];
+            double temp = LpfGyroB[0] * gyroZ + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
+                        - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
+            lpfGyroX[1] = lpfGyroX[0];
+            lpfGyroX[0] = gyroZ;
+            lpfGyroY[1] = lpfGyroY[0];
+            lpfGyroY[0] = temp;
+            temp -= fGyroBias[CHZ];
+            cSampleDataArray.at(i)->fOmegaB[CHZ] = temp;
+        }
+        // recompute the current filtered gyro value
+        double gyroZ = fOmegaBRaw[CHZ];
+        double temp = LpfGyroB[0] * gyroZ + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
+                      - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
+        lpfGyroX[1] = lpfGyroX[0];
+        lpfGyroX[0] = gyroZ;
+        lpfGyroY[1] = lpfGyroY[0];
+        lpfGyroY[0] = temp;
+        temp -= fGyroBias[CHZ];
+        fOmegaB[CHZ] = gyro[CHZ] = temp;
+        // store the new filter parameters
+        LpfGyroX[CHZ][1] = lpfGyroX[1];
+        LpfGyroX[CHZ][0] = lpfGyroX[0];
+        LpfGyroY[CHZ][1] = lpfGyroY[1];
+        LpfGyroY[CHZ][0] = lpfGyroY[0];
+        // recompute the past attitude
+
 
     } else{
         return;

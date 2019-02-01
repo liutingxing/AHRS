@@ -174,7 +174,7 @@ class SensorFusion
         void refineSampleData(vector<shared_ptr<SampleData>>& sampleDataArray);
         void gyroFilter(double gyro[]);
         void accFilter(double acc[]);
-        void outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataArray);
+        void outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataArray, double gyro[]);
 
     public:
         int uTime;
