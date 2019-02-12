@@ -2194,6 +2194,12 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
             lpfGyroY[0] = temp;
             temp -= fGyroBias[CHZ];
             cSampleDataArray.at(i)->fOmegaB[CHZ] = temp;
+            //Todo: remove it if integrated in iOS
+            extern FILE* fpGyroCali;
+            extern FILE* fpGyroRaw;
+            fprintf(fpGyroCali, "$%d, %f, %f, %f\n", cSampleDataArray.at(i)->uTime, cSampleDataArray.at(i)->fOmegaB[CHX], cSampleDataArray.at(i)->fOmegaB[CHY], cSampleDataArray.at(i)->fOmegaB[CHZ]);
+            fprintf(fpGyroRaw, "$%d, %f, %f, %f\n", cSampleDataArray.at(i)->uTime, cSampleDataArray.at(i)->fOmegaBRaw[CHX], cSampleDataArray.at(i)->fOmegaBRaw[CHY], cSampleDataArray.at(i)->fOmegaBRaw[CHZ]);
+            //Todo: remove it if integrated in iOS
         }
         // recompute the current filtered gyro value
         double gyroZ = fOmegaBRaw[CHZ];

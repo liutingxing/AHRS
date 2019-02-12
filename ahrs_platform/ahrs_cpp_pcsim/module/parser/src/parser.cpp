@@ -242,11 +242,16 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
             fMag[1] = ftemp;
 
             sensorFusion.uTime++;
+            //Todo: remove it if integrated in iOS
+            extern FILE* fpGyroRaw;
+            fprintf(fpGyroRaw, "%d, %f, %f, %f\n", sensorFusion.uTime, fGyro[CHX], fGyro[CHY], fGyro[CHZ]);
+            //Todo: remove it if integrated in iOS
             sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
 
             //Todo: remove it if integrated in iOS
             extern FILE* fpOutput;
-
+            extern FILE* fpGyroCali;
+            fprintf(fpGyroCali, "%d, %f, %f, %f\n", sensorFusion.uTime, fGyro[CHX], fGyro[CHY], fGyro[CHZ]);
             if (!sAttitude.empty())
             {
                 fputs(sAttitude.c_str(), fpOutput);
