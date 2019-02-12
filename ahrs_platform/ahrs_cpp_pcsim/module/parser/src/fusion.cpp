@@ -1255,9 +1255,9 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
 
 #endif
 
-    if (accNorm > 10.5 || accNorm < 9.5)
+    if (accNorm > 8.0 && accNorm < 12.0)
     {
-        gyroMeasError = 60 * PI / 180;
+        gyroMeasError = 60.0 * PI / 180;
     }
     else
     {
@@ -2154,38 +2154,44 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
 
     if (outlier_flag)
     {
-        // estimate the outlier value
+        /* estimate the outlier value */
         Eigen::VectorXd xvals(6);
         Eigen::VectorXd yvals(xvals.rows());
         int seq_left = left_index - 1;
         int seq_right = right_index + 1;
 
+        // check the index valid
+        if (seq_left-2 < 0 || seq_right+2 > sampleDataArray.size()-1)
+        {
+            return;
+        }
+
         xvals << seq_left-2, seq_left-1, seq_left, seq_right, seq_right+1, seq_right+2;
-        yvals << cSampleDataArray.at(seq_left-2)->fOmegaBRaw[CHZ],
-                 cSampleDataArray.at(seq_left-1)->fOmegaBRaw[CHZ],
-                 cSampleDataArray.at(seq_left)->fOmegaBRaw[CHZ],
-                 cSampleDataArray.at(seq_right)->fOmegaBRaw[CHZ],
-                 cSampleDataArray.at(seq_right+1)->fOmegaBRaw[CHZ],
-                 cSampleDataArray.at(seq_right+2)->fOmegaBRaw[CHZ];
+        yvals << sampleDataArray.at(seq_left-2)->fOmegaBRaw[CHZ],
+                 sampleDataArray.at(seq_left-1)->fOmegaBRaw[CHZ],
+                 sampleDataArray.at(seq_left)->fOmegaBRaw[CHZ],
+                 sampleDataArray.at(seq_right)->fOmegaBRaw[CHZ],
+                 sampleDataArray.at(seq_right+1)->fOmegaBRaw[CHZ],
+                 sampleDataArray.at(seq_right+2)->fOmegaBRaw[CHZ];
 
         SplineFunction s(xvals, yvals);
         for (int i = left_index; i <= right_index; i++)
         {
-            cSampleDataArray.at(i)->fOmegaBRaw[CHZ] = s(i);
+            sampleDataArray.at(i)->fOmegaBRaw[CHZ] = s(i);
         }
 
-        // recompute the past filtered gyro value
+        /* recompute the past filtered gyro value */
         double lpfGyroX[2];
         double lpfGyroY[2];
         //left_index = 2;
-        lpfGyroX[0] = cSampleDataArray.at(left_index-1)->fOmegaBRaw[CHZ];
-        lpfGyroX[1] = cSampleDataArray.at(left_index-2)->fOmegaBRaw[CHZ];
-        lpfGyroY[0] = cSampleDataArray.at(left_index-1)->fOmegaB[CHZ]+fGyroBias[CHZ];
-        lpfGyroY[1] = cSampleDataArray.at(left_index-2)->fOmegaB[CHZ]+fGyroBias[CHZ];
+        lpfGyroX[0] = sampleDataArray.at(left_index-1)->fOmegaBRaw[CHZ];
+        lpfGyroX[1] = sampleDataArray.at(left_index-2)->fOmegaBRaw[CHZ];
+        lpfGyroY[0] = sampleDataArray.at(left_index-1)->fOmegaB[CHZ]+fGyroBias[CHZ];
+        lpfGyroY[1] = sampleDataArray.at(left_index-2)->fOmegaB[CHZ]+fGyroBias[CHZ];
 
-        for (int i = left_index; i < cSampleDataArray.size(); i++)
+        for (int i = left_index; i < sampleDataArray.size(); i++)
         {
-            double gyroZ = cSampleDataArray.at(i)->fOmegaBRaw[CHZ];
+            double gyroZ = sampleDataArray.at(i)->fOmegaBRaw[CHZ];
             double temp = LpfGyroB[0] * gyroZ + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
                         - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
             lpfGyroX[1] = lpfGyroX[0];
@@ -2193,15 +2199,16 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
             lpfGyroY[1] = lpfGyroY[0];
             lpfGyroY[0] = temp;
             temp -= fGyroBias[CHZ];
-            cSampleDataArray.at(i)->fOmegaB[CHZ] = temp;
+            sampleDataArray.at(i)->fOmegaB[CHZ] = temp;
             //Todo: remove it if integrated in iOS
             extern FILE* fpGyroCali;
             extern FILE* fpGyroRaw;
-            fprintf(fpGyroCali, "$%d, %f, %f, %f\n", cSampleDataArray.at(i)->uTime, cSampleDataArray.at(i)->fOmegaB[CHX], cSampleDataArray.at(i)->fOmegaB[CHY], cSampleDataArray.at(i)->fOmegaB[CHZ]);
-            fprintf(fpGyroRaw, "$%d, %f, %f, %f\n", cSampleDataArray.at(i)->uTime, cSampleDataArray.at(i)->fOmegaBRaw[CHX], cSampleDataArray.at(i)->fOmegaBRaw[CHY], cSampleDataArray.at(i)->fOmegaBRaw[CHZ]);
+            fprintf(fpGyroCali, "$%d, %f, %f, %f\n", sampleDataArray.at(i)->uTime, sampleDataArray.at(i)->fOmegaB[CHX], sampleDataArray.at(i)->fOmegaB[CHY], sampleDataArray.at(i)->fOmegaB[CHZ]);
+            fprintf(fpGyroRaw, "$%d, %f, %f, %f\n", sampleDataArray.at(i)->uTime, sampleDataArray.at(i)->fOmegaBRaw[CHX], sampleDataArray.at(i)->fOmegaBRaw[CHY], sampleDataArray.at(i)->fOmegaBRaw[CHZ]);
             //Todo: remove it if integrated in iOS
         }
-        // recompute the current filtered gyro value
+
+        /* recompute the current filtered gyro value */
         double gyroZ = fOmegaBRaw[CHZ];
         double temp = LpfGyroB[0] * gyroZ + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
                       - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
@@ -2216,11 +2223,125 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
         LpfGyroX[CHZ][0] = lpfGyroX[0];
         LpfGyroY[CHZ][1] = lpfGyroY[1];
         LpfGyroY[CHZ][0] = lpfGyroY[0];
-        // recompute the past attitude
+
+        /* recompute the past attitude */
+        Matrix3d cbn;
+        Matrix3d cnp;
+        Matrix3d cbnPlatform;
+        double fEuler[3];
+        double fCbn[3][3];
+        double fqBase[4];
+
+        cbnPlatform << sampleDataArray.at(left_index-1)->fCbnPlat[0][0], sampleDataArray.at(left_index-1)->fCbnPlat[0][1], sampleDataArray.at(left_index-1)->fCbnPlat[0][2],
+                       sampleDataArray.at(left_index-1)->fCbnPlat[1][0], sampleDataArray.at(left_index-1)->fCbnPlat[1][1], sampleDataArray.at(left_index-1)->fCbnPlat[1][2],
+                       sampleDataArray.at(left_index-1)->fCbnPlat[2][0], sampleDataArray.at(left_index-1)->fCbnPlat[2][1], sampleDataArray.at(left_index-1)->fCbnPlat[2][2];
+
+        cnp << fCnp[0][0], fCnp[0][1], fCnp[0][2],
+                fCnp[1][0], fCnp[1][1], fCnp[1][2],
+                fCnp[2][0], fCnp[2][1], fCnp[2][2];
+
+        cnp.transposeInPlace();
+        cbn = cnp * cbnPlatform;
+        for (int i = CHX; i <= CHZ; i++)
+        {
+            for (int j = CHX; j <= CHZ; j++)
+            {
+                fCbn[i][j] = cbn(i, j);
+            }
+        }
+        dcm2euler(fCbn, fEuler);
+        euler2q(fqBase, fEuler[0], fEuler[1], fEuler[2]);
+        for (int k = left_index; k < sampleDataArray.size(); k++)
+        {
+            double fGyro[3] = {sampleDataArray.at(k)->fOmegaB[CHX], sampleDataArray.at(k)->fOmegaB[CHY], sampleDataArray.at(k)->fOmegaB[CHZ]};
+            double fdq[4] {0, 0, 0, 0};
 
 
-    } else{
-        return;
+            fdq[0] = -(fGyro[0] * fqBase[1] + fGyro[1] * fqBase[2] + fGyro[2] * fqBase[3]) / 2.0;
+            fdq[1] = (fGyro[0] * fqBase[0] + fGyro[2] * fqBase[2] - fGyro[1] * fqBase[3]) / 2.0;
+            fdq[2] = (fGyro[1] * fqBase[0] - fGyro[2] * fqBase[1] + fGyro[0] * fqBase[3]) / 2.0;
+            fdq[3] = (fGyro[2] * fqBase[0] + fGyro[1] * fqBase[1] - fGyro[0] * fqBase[2]) / 2.0;
+
+            for (int i = 0; i < 4; i++)
+            {
+                fqBase[i] += fdq[i] * dt;
+            }
+            qNorm(fqBase);
+            q2dcm(fqBase, fCbn);
+            cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
+                    fCbn[1][0], fCbn[1][1], fCbn[1][2],
+                    fCbn[2][0], fCbn[2][1], fCbn[2][2];
+
+            cbnPlatform = cnp * cbn;
+            for (int i = CHX; i <= CHZ; i++)
+            {
+                for (int j = CHX; j <= CHZ; j++)
+                {
+                    sampleDataArray.at(k)->fCbnPlat[i][j] = cbnPlatform(i, j);
+                }
+            }
+            dcm2euler(sampleDataArray.at(k)->fCbnPlat, fEuler);
+            euler2q(sampleDataArray.at(k)->fqPlPlat, fEuler[0], fEuler[1], fEuler[2]);
+            sampleDataArray.at(k)->fPsiPlPlat = fEuler[0];
+            sampleDataArray.at(k)->fThePlPlat = fEuler[1];
+            sampleDataArray.at(k)->fPhiPlPlat = fEuler[2];
+            sampleDataArray.at(k)->fLinerAccN = sampleDataArray.at(k)->fAccelerate[0] * sampleDataArray.at(k)->fCbnPlat[0][0] + sampleDataArray.at(k)->fAccelerate[1] * sampleDataArray.at(k)->fCbnPlat[0][1] + sampleDataArray.at(k)->fAccelerate[2] * sampleDataArray.at(k)->fCbnPlat[0][2];
+            sampleDataArray.at(k)->fLinerAccE = sampleDataArray.at(k)->fAccelerate[0] * sampleDataArray.at(k)->fCbnPlat[1][0] + sampleDataArray.at(k)->fAccelerate[1] * sampleDataArray.at(k)->fCbnPlat[1][1] + sampleDataArray.at(k)->fAccelerate[2] * sampleDataArray.at(k)->fCbnPlat[1][2];
+            sampleDataArray.at(k)->fLinerAccD = sampleDataArray.at(k)->fAccelerate[0] * sampleDataArray.at(k)->fCbnPlat[2][0] + sampleDataArray.at(k)->fAccelerate[1] * sampleDataArray.at(k)->fCbnPlat[2][1] + sampleDataArray.at(k)->fAccelerate[2] * sampleDataArray.at(k)->fCbnPlat[2][2];
+            for (int i = CHX; i <= CHZ; i++)
+            {
+                sampleDataArray.at(k)->fOmegaN[i] = sampleDataArray.at(k)->fCbnPlat[i][0] * sampleDataArray.at(k)->fOmegaB[0] + sampleDataArray.at(k)->fCbnPlat[i][1] * sampleDataArray.at(k)->fOmegaB[1] + sampleDataArray.at(k)->fCbnPlat[i][2] * sampleDataArray.at(k)->fOmegaB[2];
+            }
+        }
+
+        /* recompute the current attitude */
+        double fGyro[3] = {fOmegaB[CHX], fOmegaB[CHY], fOmegaB[CHZ]};
+        double fdq[4] {0, 0, 0, 0};
+        Matrix3d cnbTemp;
+
+        fdq[0] = -(fGyro[0] * fqBase[1] + fGyro[1] * fqBase[2] + fGyro[2] * fqBase[3]) / 2.0;
+        fdq[1] = (fGyro[0] * fqBase[0] + fGyro[2] * fqBase[2] - fGyro[1] * fqBase[3]) / 2.0;
+        fdq[2] = (fGyro[1] * fqBase[0] - fGyro[2] * fqBase[1] + fGyro[0] * fqBase[3]) / 2.0;
+        fdq[3] = (fGyro[2] * fqBase[0] + fGyro[1] * fqBase[1] - fGyro[0] * fqBase[2]) / 2.0;
+
+        for (int i = 0; i < 4; i++)
+        {
+            fqBase[i] += fdq[i] * dt;
+        }
+        qNorm(fqBase);
+        q2dcm(fqBase, fCbn);
+        cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
+                fCbn[1][0], fCbn[1][1], fCbn[1][2],
+                fCbn[2][0], fCbn[2][1], fCbn[2][2];
+
+        cbnPlatform = cnp * cbn;
+        cnbTemp << fCbn[0][0], fCbn[0][1], fCbn[0][2],
+                fCbn[1][0], fCbn[1][1], fCbn[1][2],
+                fCbn[2][0], fCbn[2][1], fCbn[2][2];
+        cnbTemp.transposeInPlace();
+
+        for (int i = CHX; i <= CHZ; i++)
+        {
+            for (int j = CHX; j <= CHZ; j++)
+            {
+                fCbnPlat[i][j] = cbnPlatform(i, j);
+                this->fCbn[i][j] = fCbn[i][j];
+                this->fCnb[i][j] = cnbTemp(i, j);
+            }
+        }
+        dcm2euler(fCbn, fEuler);
+        fPsiPl = fEuler[0];
+        fThePl = fEuler[1];
+        fPhiPl = fEuler[2];
+        for (int i = 0; i < 4; i++)
+        {
+            this->fqPl[i] = fqBase[i];
+        }
+        dcm2euler(fCbnPlat, fEuler);
+        fPsiPlPlat = fEuler[0];
+        fThePlPlat = fEuler[1];
+        fPhiPlPlat = fEuler[2];
+        euler2q(fqPlPlat, fEuler[0], fEuler[1], fEuler[2]);
     }
 }
 
