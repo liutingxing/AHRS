@@ -133,6 +133,13 @@ public class SensorFusion {
     public double[] extLinerAccIBP = new double[]{0, 0, 0};
     public double[] extPlatQ = new double[]{0, 0, 0, 0};
 
+    public native double splineFitting(double[] x0, double[] y0, int num, double x);
+
+    static
+    {
+        System.loadLibrary("fitting");
+    }
+
     public SensorFusion()
     {
         uTime = 0;
