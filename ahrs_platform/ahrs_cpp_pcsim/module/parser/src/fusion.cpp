@@ -2251,7 +2251,7 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
         }
         dcm2euler(fCbn, fEuler);
         euler2q(fqBase, fEuler[0], fEuler[1], fEuler[2]);
-        for (int k = left_index; k < sampleDataArray.size(); k++)
+        for (int k = 0; k < sampleDataArray.size(); k++)
         {
             double fGyro[3] = {sampleDataArray.at(k)->fOmegaB[CHX], sampleDataArray.at(k)->fOmegaB[CHY], sampleDataArray.at(k)->fOmegaB[CHZ]};
             double fdq[4] {0, 0, 0, 0};
