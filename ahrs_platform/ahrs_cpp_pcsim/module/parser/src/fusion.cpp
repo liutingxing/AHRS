@@ -822,7 +822,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
             slop = -1;
         }
 
-        if (linerAccX > -10 && linerAccX < 10 && abs(gyro[CHZ]) < 10)
+        if (linerAccX > -10 && linerAccX < 10 && abs(gyro[CHZ]) < 1.5)
         {
             uActionEndFlag = true;
             iCurveCondition = Peace;
