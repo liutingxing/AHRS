@@ -19,6 +19,9 @@ public class SampleData {
     public double[]     fOmegaB;
     public double[]     fAccelerate;
     public double[]     fMagnetic;
+    public double[]     fOmegaBRaw;
+    public double[]     fAccelerateRaw;
+    public double[]     fMagneticRaw;
     public double       fAudio;
     public double       fVel;
     public double[]     fOmegaN = new double[3];

@@ -38,6 +38,9 @@ public class SensorFusion {
     private double[]     fOmegaB;
     private double[]     fAccelerate;
     private double[]     fMagnetic;
+    private double[]     fOmegaBRaw;
+    private double[]     fAccelerateRaw;
+    private double[]     fMagneticRaw;
     private double       fAudio;
 
     private double       fB;
@@ -133,6 +136,8 @@ public class SensorFusion {
     public double[] extLinerAccIBP = new double[]{0, 0, 0};
     public double[] extPlatQ = new double[]{0, 0, 0, 0};
 
+    private final static double MAX_OMEGA_DEG = 2000;
+    private final static double OMEGA_MARGIN = 10;
     public native double splineFitting(double[] x0, double[] y0, int num, double x);
 
     static
@@ -191,14 +196,19 @@ public class SensorFusion {
             cSampleDataArray.clear();
         }
 
+        // recording the raw data
+        double[] fGyroRaw = new double[]{gyro[0], gyro[1], gyro[2]};
+        double[] fAccRaw = new double[]{acc[0], acc[1], acc[2]};
+        double[] fMagRaw = new double[]{mag[0], mag[1], mag[2]};
+        fOmegaBRaw = fGyroRaw;
+        fAccelerateRaw = fAccRaw;
+        fMagneticRaw = fMagRaw;
+
         // data filter
         gyroFilter(gyro); // 4Hz cutoff frequency
         accFilter(acc);   // 4Hz cutoff frequency
 
         // data correction
-        double[] fGyroRaw = new double[]{gyro[0], gyro[1], gyro[2]};
-        double[] fAccRaw = new double[]{acc[0], acc[1], acc[2]};
-        double[] fMagRaw = new double[]{mag[0], mag[1], mag[2]};
         sensorDataCorrection(gyro, acc, mag);
 
         // static detection
@@ -328,6 +338,7 @@ public class SensorFusion {
         // refine the sample data array
         if (uActionComplete == true)
         {
+            outlierCompensate(cSampleDataArray, gyro);
             refineSampleData(cSampleDataArray);
         }
 
@@ -635,6 +646,9 @@ public class SensorFusion {
         dst.fOmegaB = Arrays.copyOf(src.fOmegaB, src.fOmegaB.length);
         dst.fAccelerate = Arrays.copyOf(src.fAccelerate, src.fAccelerate.length);
         dst.fMagnetic = Arrays.copyOf(src.fMagnetic, src.fMagnetic.length);
+        dst.fOmegaBRaw = Arrays.copyOf(src.fOmegaBRaw, src.fOmegaBRaw.length);
+        dst.fAccelerateRaw = Arrays.copyOf(src.fAccelerateRaw, src.fAccelerateRaw.length);
+        dst.fMagneticRaw = Arrays.copyOf(src.fMagneticRaw, src.fMagneticRaw.length);
         dst.fAudio = src.fAudio;
         for (i = 0; i < 3; i++)
         {
@@ -756,7 +770,7 @@ public class SensorFusion {
             }
         }
 
-        if (accNorm > 10.5 || accNorm < 9.5) {
+        if (accNorm > 8.0 && accNorm < 12.0){
             gyroMeasError = 60 * Math.PI / 180;
         }
         else
@@ -2016,6 +2030,74 @@ public class SensorFusion {
             LpfAccY[i][1] = LpfAccY[i][0];
             LpfAccY[i][0] = temp;
             acc[i] = temp;
+        }
+    }
+
+    private void outlierCompensate(ArrayList<SampleData> sampleDataArray, double[] gyro)
+    {
+        int left_index = -1;
+        int right_index = -1;
+        int index = 0;
+        boolean outlier_flag = false;
+
+        index = 0;
+        for(SampleData val:sampleDataArray)
+        {
+            if (left_index == -1)
+            {
+                if (Math.abs(val.fOmegaBRaw[CHZ]) > Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN))
+                {
+                    left_index = index;
+                }
+            }
+            else
+            {
+                if (right_index == -1)
+                {
+                    if (Math.abs(val.fOmegaBRaw[CHZ]) < Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN))
+                    {
+                        right_index = index - 1;
+                        outlier_flag = true;
+                    }
+                }
+            }
+
+            if (outlier_flag)
+            {
+                break;
+            }
+            index++;
+        }
+
+        if (outlier_flag)
+        {
+            /* estimate the outlier value */
+            double[] x0 = new double[6];
+            double[] y0 = new double[6];
+            int seq_left = left_index - 1;
+            int seq_right = right_index + 1;
+
+            // check the index valid
+            if (seq_left-2 < 0 || seq_right+2 > sampleDataArray.size()-1)
+            {
+                return;
+            }
+            x0[0] = seq_left-2;
+            x0[1] = seq_left-1;
+            x0[2] = seq_left;
+            x0[3] = seq_right;
+            x0[4] = seq_right+1;
+            x0[5] = seq_right+2;
+            for (int i = 0; i < 6; i++)
+            {
+                y0[i] = sampleDataArray.get((int)x0[i]).fOmegaBRaw[CHZ];
+            }
+            for (int i = left_index; i <= right_index; i++)
+            {
+                sampleDataArray.get(i).fOmegaBRaw[CHZ] = splineFitting(x0, y0, 6, i);
+            }
+
+            /* recompute the past filtered gyro value */
         }
     }
 
