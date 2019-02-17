@@ -2271,7 +2271,9 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
             cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
                     fCbn[1][0], fCbn[1][1], fCbn[1][2],
                     fCbn[2][0], fCbn[2][1], fCbn[2][2];
-
+            cnp << fCnp[0][0], fCnp[0][1], fCnp[0][2],
+                    fCnp[1][0], fCnp[1][1], fCnp[1][2],
+                    fCnp[2][0], fCnp[2][1], fCnp[2][2];
             cbnPlatform = cnp * cbn;
             for (int i = CHX; i <= CHZ; i++)
             {
@@ -2313,7 +2315,9 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
         cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
                 fCbn[1][0], fCbn[1][1], fCbn[1][2],
                 fCbn[2][0], fCbn[2][1], fCbn[2][2];
-
+        cnp << fCnp[0][0], fCnp[0][1], fCnp[0][2],
+                fCnp[1][0], fCnp[1][1], fCnp[1][2],
+                fCnp[2][0], fCnp[2][1], fCnp[2][2];
         cbnPlatform = cnp * cbn;
         cnbTemp << fCbn[0][0], fCbn[0][1], fCbn[0][2],
                 fCbn[1][0], fCbn[1][1], fCbn[1][2],
