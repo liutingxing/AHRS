@@ -2098,6 +2098,122 @@ public class SensorFusion {
             }
 
             /* recompute the past filtered gyro value */
+            double[] lpfGyroX = new double[2];
+            double[] lpfGyroY = new double[2];
+            //left_index = 2;
+            lpfGyroX[0] = sampleDataArray.get(left_index-1).fOmegaBRaw[CHZ];
+            lpfGyroX[1] = sampleDataArray.get(left_index-2).fOmegaBRaw[CHZ];
+            lpfGyroY[0] = sampleDataArray.get(left_index-1).fOmegaB[CHZ]+fGyroBias[CHZ];
+            lpfGyroY[1] = sampleDataArray.get(left_index-2).fOmegaB[CHZ]+fGyroBias[CHZ];
+
+            for (int i = left_index; i < sampleDataArray.size(); i++)
+            {
+                double gyroZ = sampleDataArray.get(i).fOmegaBRaw[CHZ];
+                double temp = LpfGyroB[0] * gyroZ + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
+                        - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
+                lpfGyroX[1] = lpfGyroX[0];
+                lpfGyroX[0] = gyroZ;
+                lpfGyroY[1] = lpfGyroY[0];
+                lpfGyroY[0] = temp;
+                temp -= fGyroBias[CHZ];
+                sampleDataArray.get(i).fOmegaB[CHZ] = temp;
+            }
+
+            /* recompute the current filtered gyro value */
+            double gyroZ = fOmegaBRaw[CHZ];
+            double temp = LpfGyroB[0] * gyroZ + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
+                    - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
+            lpfGyroX[1] = lpfGyroX[0];
+            lpfGyroX[0] = gyroZ;
+            lpfGyroY[1] = lpfGyroY[0];
+            lpfGyroY[0] = temp;
+            temp -= fGyroBias[CHZ];
+            fOmegaB[CHZ] = gyro[CHZ] = temp;
+            // store the new filter parameters
+            LpfGyroX[CHZ][1] = lpfGyroX[1];
+            LpfGyroX[CHZ][0] = lpfGyroX[0];
+            LpfGyroY[CHZ][1] = lpfGyroY[1];
+            LpfGyroY[CHZ][0] = lpfGyroY[0];
+
+            /* recompute the past attitude */
+            Matrix cbn = new Matrix(3, 3);
+            Matrix cnp = new Matrix(fCnp);
+            Matrix cbnPlatform = new Matrix(sampleDataArray.get(left_index-1).fCbnPlat);
+            double[] fEuler = new double[3];
+            double[][] fCbn = new double[3][3];
+            double[] fqBase = new double[4];
+
+            cbn = cnp.transpose().times(cbnPlatform);
+            fCbn = cbn.getArray();
+            fEuler = dcm2euler(fCbn);
+            euler2q(fqBase, fEuler[0], fEuler[1], fEuler[2]);
+            for (int k = 0; k < sampleDataArray.size(); k++)
+            {
+                double[] fGyro = new double[]{sampleDataArray.get(k).fOmegaB[CHX], sampleDataArray.get(k).fOmegaB[CHY], sampleDataArray.get(k).fOmegaB[CHZ]};
+                double[] fdq = new double[4];
+
+
+                fdq[0] = -(fGyro[0] * fqBase[1] + fGyro[1] * fqBase[2] + fGyro[2] * fqBase[3]) / 2.0;
+                fdq[1] = (fGyro[0] * fqBase[0] + fGyro[2] * fqBase[2] - fGyro[1] * fqBase[3]) / 2.0;
+                fdq[2] = (fGyro[1] * fqBase[0] - fGyro[2] * fqBase[1] + fGyro[0] * fqBase[3]) / 2.0;
+                fdq[3] = (fGyro[2] * fqBase[0] + fGyro[1] * fqBase[1] - fGyro[0] * fqBase[2]) / 2.0;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    fqBase[i] += fdq[i] * dt;
+                }
+                qNorm(fqBase);
+                q2dcm(fqBase, fCbn);
+                cbn = new Matrix(fCbn);
+                cnp = new Matrix(fCnp);
+                cbnPlatform = cnp.times(cbn);
+                sampleDataArray.get(k).fCbnPlat = cbnPlatform.getArray();
+                fEuler = dcm2euler(sampleDataArray.get(k).fCbnPlat);
+                euler2q(sampleDataArray.get(k).fqPlPlat, fEuler[0], fEuler[1], fEuler[2]);
+                sampleDataArray.get(k).fPsiPlPlat = fEuler[0];
+                sampleDataArray.get(k).fThePlPlat = fEuler[1];
+                sampleDataArray.get(k).fPhiPlPlat = fEuler[2];
+                sampleDataArray.get(k).fLinerAccN = sampleDataArray.get(k).fAccelerate[0] * sampleDataArray.get(k).fCbnPlat[0][0] + sampleDataArray.get(k).fAccelerate[1] * sampleDataArray.get(k).fCbnPlat[0][1] + sampleDataArray.get(k).fAccelerate[2] * sampleDataArray.get(k).fCbnPlat[0][2];
+                sampleDataArray.get(k).fLinerAccE = sampleDataArray.get(k).fAccelerate[0] * sampleDataArray.get(k).fCbnPlat[1][0] + sampleDataArray.get(k).fAccelerate[1] * sampleDataArray.get(k).fCbnPlat[1][1] + sampleDataArray.get(k).fAccelerate[2] * sampleDataArray.get(k).fCbnPlat[1][2];
+                sampleDataArray.get(k).fLinerAccD = sampleDataArray.get(k).fAccelerate[0] * sampleDataArray.get(k).fCbnPlat[2][0] + sampleDataArray.get(k).fAccelerate[1] * sampleDataArray.get(k).fCbnPlat[2][1] + sampleDataArray.get(k).fAccelerate[2] * sampleDataArray.get(k).fCbnPlat[2][2];
+                for (int i = CHX; i <= CHZ; i++)
+                {
+                    sampleDataArray.get(k).fOmegaN[i] = sampleDataArray.get(k).fCbnPlat[i][0] * sampleDataArray.get(k).fOmegaB[0] + sampleDataArray.get(k).fCbnPlat[i][1] * sampleDataArray.get(k).fOmegaB[1] + sampleDataArray.get(k).fCbnPlat[i][2] * sampleDataArray.get(k).fOmegaB[2];
+                }
+            }
+
+            /* recompute the current attitude */
+            double[] fGyro = new double[]{fOmegaB[CHX], fOmegaB[CHY], fOmegaB[CHZ]};
+            double[] fdq = new double[4];
+            Matrix cnbTemp;
+
+            fdq[0] = -(fGyro[0] * fqBase[1] + fGyro[1] * fqBase[2] + fGyro[2] * fqBase[3]) / 2.0;
+            fdq[1] = (fGyro[0] * fqBase[0] + fGyro[2] * fqBase[2] - fGyro[1] * fqBase[3]) / 2.0;
+            fdq[2] = (fGyro[1] * fqBase[0] - fGyro[2] * fqBase[1] + fGyro[0] * fqBase[3]) / 2.0;
+            fdq[3] = (fGyro[2] * fqBase[0] + fGyro[1] * fqBase[1] - fGyro[0] * fqBase[2]) / 2.0;
+            for (int i = 0; i < 4; i++)
+            {
+                fqBase[i] += fdq[i] * dt;
+            }
+            qNorm(fqBase);
+            q2dcm(fqBase, fCbn);
+            cbn = new Matrix(fCbn);
+            cnp = new Matrix(fCnp);
+            cbnPlatform = cnp.times(cbn);
+            cnbTemp = new Matrix(fCbn).transpose();
+            fCbnPlat = cbnPlatform.getArray();
+            this.fCbn = fCbn;
+            this.fCnb = cnbTemp.getArray();
+            fEuler = dcm2euler(fCbn);
+            fPsiPl = fEuler[0];
+            fThePl = fEuler[1];
+            fPhiPl = fEuler[2];
+            this.fqPl = fqBase;
+            fEuler = dcm2euler(fCbnPlat);
+            fPsiPlPlat = fEuler[0];
+            fThePlPlat = fEuler[1];
+            fPhiPlPlat = fEuler[2];
+            euler2q(fqPlPlat, fEuler[0], fEuler[1], fEuler[2]);
         }
     }
 
