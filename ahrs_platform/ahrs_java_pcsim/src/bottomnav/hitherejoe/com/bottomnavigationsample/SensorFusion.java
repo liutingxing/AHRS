@@ -2147,7 +2147,7 @@ public class SensorFusion {
             fCbn = cbn.getArray();
             fEuler = dcm2euler(fCbn);
             euler2q(fqBase, fEuler[0], fEuler[1], fEuler[2]);
-            for (int k = 0; k < sampleDataArray.size(); k++)
+            for (int k = left_index; k < sampleDataArray.size(); k++)
             {
                 double[] fGyro = new double[]{sampleDataArray.get(k).fOmegaB[CHX], sampleDataArray.get(k).fOmegaB[CHY], sampleDataArray.get(k).fOmegaB[CHZ]};
                 double[] fdq = new double[4];
