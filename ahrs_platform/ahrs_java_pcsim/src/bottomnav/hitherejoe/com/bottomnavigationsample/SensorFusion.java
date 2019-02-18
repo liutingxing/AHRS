@@ -1248,6 +1248,7 @@ public class SensorFusion {
             fThePl = euler[1];
             fPhiPl = euler[2];
             euler2q(fqPl, fPsiPl, fThePl, fPhiPl);
+            euler2dcm(fCnp, 0, 0, 0);
 
             return true;
         }
