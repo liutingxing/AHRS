@@ -5,6 +5,17 @@ import java.util.*;
 
 public class test {
 
+    private final boolean Data_Compensate = true;
+    private ArrayList<double[]> GyroDataPool = new ArrayList<>(20);
+    private ArrayList<double[]> AccDataPool = new ArrayList<>(20);
+    private ArrayList<double[]> MagDataPool = new ArrayList<>(20);
+    private ArrayList<Double> AudioDataPool = new ArrayList<>(20);
+    private double[][] GyroLast = new double[3][3];
+    private final int Outlier_Peace = 0;
+    private final int Outlier_Start = 1;
+    private final int Outlier_End = 2;
+    private int Outlier_Detect_Status = Outlier_Peace;
+    private int Outlier_ExtData_Count = 0;
     private ArrayList<Byte> byteArray = new ArrayList<Byte>();
     private final int Delimiter_Detect = 0;
     private final int Data_Save = 1;
@@ -157,6 +168,7 @@ public class test {
         double[] fAcc = new double[3];
         double[] fGyro = new double[3];
         double[] fMag = new double[3];
+        double[][] fGyroLast = new double[3][3];
         double fAudio;
         double ftemp;
         byte type = dataArray.get(1).byteValue();
@@ -246,39 +258,89 @@ public class test {
                 fMag[0] = fMag[1];
                 fMag[1] = ftemp;
 
-                sensorFusion.uTime++;
-                try {
-                    sensorDataWriter.write(String.valueOf(sensorFusion.uTime) + " " +
-                                               String.valueOf(fGyro[0]) + " " + String.valueOf(fGyro[1]) + " " + String.valueOf(fGyro[2]) + " " +
-                                               String.valueOf(fAcc[0]) + " " + String.valueOf(fAcc[1]) + " " + String.valueOf(fAcc[2]) + " " +
-                                               String.valueOf(fMag[0]) + " " + String.valueOf(fMag[1]) + " " + String.valueOf(fMag[2]) +  " " +
-                                               String.valueOf(fAudio) + "\n");
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
-                sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
-                try {
-                    if (sAttitude != null) {
-                        writer.write(sAttitude + "\r\n");
-                    }
-                    extraDataWriter.write(String.valueOf(sensorFusion.uTime) + " " +
-                                              String.valueOf(sensorFusion.extLinerAccIBP[0]) + " " +
-                                              String.valueOf(sensorFusion.extLinerAccIBP[1]) + " " +
-                                              String.valueOf(sensorFusion.extLinerAccIBP[2]) + " " +
-                                              String.valueOf(sensorFusion.extPlatQ[0]) + " " +
-                                              String.valueOf(sensorFusion.extPlatQ[1]) + " " +
-                                              String.valueOf(sensorFusion.extPlatQ[2]) + " " +
-                                              String.valueOf(sensorFusion.extPlatQ[3]) + " " +"\n");
-                }
-                catch (IOException e) {
-                    e.printStackTrace();
-                }
-                if (sensorFusion.uActionComplete == true)
+                if (!Data_Compensate)
                 {
-                    System.out.println("-------------------------------------------------------------------------------------------------------------------------------------");
-                    System.out.println(sensorFusion.trainData.sTrajectory);
-                    System.out.println("-------------------------------------------------------------------------------------------------------------------------------------");
+                    sensorFusionEntry(fGyro, fAcc, fMag, fAudio);
+                }
+                else
+                {
+                    switch (Outlier_Detect_Status)
+                    {
+                        case Outlier_Peace:
+                            if (Math.abs(fGyro[0]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) ||
+                                Math.abs(fGyro[1]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) ||
+                                Math.abs(fGyro[2]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN))
+                            {
+                                // outlier data happens
+                                for (int j = 0; j < 3; j++)
+                                {
+                                    GyroLast[0][j] = fGyroLast[0][j];
+                                    GyroLast[1][j] = fGyroLast[1][j];
+                                    GyroLast[2][j] = fGyroLast[2][j];
+                                }
+                                GyroDataPool.add(new double[]{fGyro[0], fGyro[1], fGyro[2]});
+                                AccDataPool.add(new double[]{fAcc[0], fAcc[1], fAcc[2]});
+                                MagDataPool.add(new double[]{fMag[0], fMag[1], fMag[2]});
+                                AudioDataPool.add(fAudio);
+                                Outlier_Detect_Status = Outlier_Start;
+                            }
+                            else
+                            {
+                                sensorFusionEntry(fGyro, fAcc, fMag, fAudio);
+                            }
+                            break;
+
+                        case Outlier_Start:
+                            GyroDataPool.add(new double[]{fGyro[0], fGyro[1], fGyro[2]});
+                            AccDataPool.add(new double[]{fAcc[0], fAcc[1], fAcc[2]});
+                            MagDataPool.add(new double[]{fMag[0], fMag[1], fMag[2]});
+                            AudioDataPool.add(fAudio);
+                            if (Math.abs(fGyro[0]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) &&
+                                Math.abs(fGyro[1]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) &&
+                                Math.abs(fGyro[2]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN))
+                            {
+                                // outlier data disappear
+                                Outlier_Detect_Status = Outlier_End;
+                                Outlier_ExtData_Count = 1;
+                            }
+                            break;
+
+                        case Outlier_End:
+                            GyroDataPool.add(new double[]{fGyro[0], fGyro[1], fGyro[2]});
+                            AccDataPool.add(new double[]{fAcc[0], fAcc[1], fAcc[2]});
+                            MagDataPool.add(new double[]{fMag[0], fMag[1], fMag[2]});
+                            AudioDataPool.add(fAudio);
+                            Outlier_ExtData_Count++;
+                            if (Outlier_ExtData_Count >= 3)
+                            {
+                                // start process outlier data
+                                if (Data_Compensate)
+                                {
+                                    outlierDataProcess(GyroLast, GyroDataPool);
+                                }
+
+                                // restart the sensor fusion entry
+                                for (int i = 0; i < GyroDataPool.size(); i++)
+                                {
+                                    sensorFusionEntry(GyroDataPool.get(i), AccDataPool.get(i), MagDataPool.get(i), AudioDataPool.get(i));
+                                }
+
+                                // clear the status
+                                GyroDataPool.clear();
+                                AccDataPool.clear();
+                                MagDataPool.clear();
+                                AudioDataPool.clear();
+                                Outlier_Detect_Status = Outlier_Peace;
+                            }
+
+                    }
+                    // record the last gyro data
+                    for (int i = 0; i <3; i++)
+                    {
+                        fGyroLast[0][i] = fGyroLast[1][i];
+                        fGyroLast[1][i] = fGyroLast[2][i];
+                        fGyroLast[2][i] = fGyro[i];
+                    }
                 }
                 break;
             }
@@ -286,6 +348,49 @@ public class test {
             case (byte) 0x82:
                 byte power = dataArray.get(4).byteValue();
                 break;
+        }
+    }
+
+    private void outlierDataProcess(double[][] gyroLast, ArrayList<double[]> gyroDataPool)
+    {
+
+    }
+
+    private void sensorFusionEntry(double[] fGyro, double[] fAcc, double[] fMag, double fAudio)
+    {
+        sensorFusion.uTime++;
+        try {
+            sensorDataWriter.write(String.valueOf(sensorFusion.uTime) + " " +
+                    String.valueOf(fGyro[0]) + " " + String.valueOf(fGyro[1]) + " " + String.valueOf(fGyro[2]) + " " +
+                    String.valueOf(fAcc[0]) + " " + String.valueOf(fAcc[1]) + " " + String.valueOf(fAcc[2]) + " " +
+                    String.valueOf(fMag[0]) + " " + String.valueOf(fMag[1]) + " " + String.valueOf(fMag[2]) +  " " +
+                    String.valueOf(fAudio) + "\n");
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
+        try {
+            if (sAttitude != null) {
+                writer.write(sAttitude + "\r\n");
+            }
+            extraDataWriter.write(String.valueOf(sensorFusion.uTime) + " " +
+                    String.valueOf(sensorFusion.extLinerAccIBP[0]) + " " +
+                    String.valueOf(sensorFusion.extLinerAccIBP[1]) + " " +
+                    String.valueOf(sensorFusion.extLinerAccIBP[2]) + " " +
+                    String.valueOf(sensorFusion.extPlatQ[0]) + " " +
+                    String.valueOf(sensorFusion.extPlatQ[1]) + " " +
+                    String.valueOf(sensorFusion.extPlatQ[2]) + " " +
+                    String.valueOf(sensorFusion.extPlatQ[3]) + " " +"\n");
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        if (sensorFusion.uActionComplete == true)
+        {
+            System.out.println("-------------------------------------------------------------------------------------------------------------------------------------");
+            System.out.println(sensorFusion.trainData.sTrajectory);
+            System.out.println("-------------------------------------------------------------------------------------------------------------------------------------");
         }
     }
 

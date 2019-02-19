@@ -136,8 +136,8 @@ public class SensorFusion {
     public double[] extLinerAccIBP = new double[]{0, 0, 0};
     public double[] extPlatQ = new double[]{0, 0, 0, 0};
 
-    private final static double MAX_OMEGA_DEG = 2000;
-    private final static double OMEGA_MARGIN = 10;
+    public final static double MAX_OMEGA_DEG = 2000;
+    public final static double OMEGA_MARGIN = 10;
     public native double splineFitting(double[] x0, double[] y0, int num, double x);
 
     static
