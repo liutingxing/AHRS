@@ -2036,110 +2036,105 @@ public class SensorFusion {
 
     private void outlierCompensate(ArrayList<SampleData> sampleDataArray, double[] gyro)
     {
-        int left_index = -1;
-        int right_index = -1;
-        int index = 0;
-        boolean outlier_flag = false;
+        int[] left_index = new int[]{-1,-1,-1};
+        int[] right_index = new int[]{-1,-1,-1};
+        int index;
+        boolean[] outlier_flag = new boolean[]{false, false, false};
 
-        index = 0;
-        for(SampleData val:sampleDataArray)
-        {
-            if (left_index == -1)
-            {
-                if (Math.abs(val.fOmegaBRaw[CHZ]) > Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN))
-                {
-                    left_index = index;
-                }
-            }
-            else
-            {
-                if (right_index == -1)
-                {
-                    if (Math.abs(val.fOmegaBRaw[CHZ]) < Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN))
-                    {
-                        right_index = index - 1;
-                        outlier_flag = true;
+        for (int i = CHX; i <= CHZ; i++) {
+            index = 0;
+            for (SampleData val : sampleDataArray) {
+                if (left_index[i] == -1) {
+                    if (Math.abs(val.fOmegaBRaw[i]) > Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN)) {
+                        left_index[i] = index;
+                    }
+                } else {
+                    if (right_index[i] == -1) {
+                        if (Math.abs(val.fOmegaBRaw[i]) < Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN)) {
+                            right_index[i] = index - 1;
+                            outlier_flag[i] = true;
+                        }
                     }
                 }
-            }
 
-            if (outlier_flag)
-            {
-                break;
+                if (outlier_flag[i]) {
+                    break;
+                }
+                index++;
             }
-            index++;
         }
 
-        if (outlier_flag)
-        {
-            /* estimate the outlier value */
-            double[] x0 = new double[6];
-            double[] y0 = new double[6];
-            int seq_left = left_index - 1;
-            int seq_right = right_index + 1;
+        for (int channel = CHX; channel <= CHZ; channel++) {
+            if (outlier_flag[channel]) {
+                /* estimate the outlier value */
+                double[] x0 = new double[6];
+                double[] y0 = new double[6];
+                int seq_left = left_index[channel] - 1;
+                int seq_right = right_index[channel] + 1;
 
-            // check the index valid
-            if (seq_left-2 < 0 || seq_right+2 > sampleDataArray.size()-1)
-            {
-                return;
-            }
-            x0[0] = seq_left-2;
-            x0[1] = seq_left-1;
-            x0[2] = seq_left;
-            x0[3] = seq_right;
-            x0[4] = seq_right+1;
-            x0[5] = seq_right+2;
-            for (int i = 0; i < 6; i++)
-            {
-                y0[i] = sampleDataArray.get((int)x0[i]).fOmegaBRaw[CHZ];
-            }
-            for (int i = left_index; i <= right_index; i++)
-            {
-                sampleDataArray.get(i).fOmegaBRaw[CHZ] = splineFitting(x0, y0, 6, i);
-            }
+                // check the index valid
+                if (seq_left - 2 < 0 || seq_right + 2 > sampleDataArray.size() - 1) {
+                    return;
+                }
+                x0[0] = seq_left - 2;
+                x0[1] = seq_left - 1;
+                x0[2] = seq_left;
+                x0[3] = seq_right;
+                x0[4] = seq_right + 1;
+                x0[5] = seq_right + 2;
+                for (int i = 0; i < 6; i++) {
+                    y0[i] = sampleDataArray.get((int) x0[i]).fOmegaBRaw[channel];
+                }
+                for (int i = left_index[channel]; i <= right_index[channel]; i++) {
+                    sampleDataArray.get(i).fOmegaBRaw[channel] = splineFitting(x0, y0, 6, i);
+                }
 
-            /* recompute the past filtered gyro value */
-            double[] lpfGyroX = new double[2];
-            double[] lpfGyroY = new double[2];
-            //left_index = 2;
-            lpfGyroX[0] = sampleDataArray.get(left_index-1).fOmegaBRaw[CHZ];
-            lpfGyroX[1] = sampleDataArray.get(left_index-2).fOmegaBRaw[CHZ];
-            lpfGyroY[0] = sampleDataArray.get(left_index-1).fOmegaB[CHZ]+fGyroBias[CHZ];
-            lpfGyroY[1] = sampleDataArray.get(left_index-2).fOmegaB[CHZ]+fGyroBias[CHZ];
+                /* recompute the past filtered gyro value */
+                double[] lpfGyroX = new double[2];
+                double[] lpfGyroY = new double[2];
+                //left_index = 2;
+                lpfGyroX[0] = sampleDataArray.get(left_index[channel] - 1).fOmegaBRaw[channel];
+                lpfGyroX[1] = sampleDataArray.get(left_index[channel] - 2).fOmegaBRaw[channel];
+                lpfGyroY[0] = sampleDataArray.get(left_index[channel] - 1).fOmegaB[channel] + fGyroBias[channel];
+                lpfGyroY[1] = sampleDataArray.get(left_index[channel] - 2).fOmegaB[channel] + fGyroBias[channel];
 
-            for (int i = left_index; i < sampleDataArray.size(); i++)
-            {
-                double gyroZ = sampleDataArray.get(i).fOmegaBRaw[CHZ];
-                double temp = LpfGyroB[0] * gyroZ + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
+                for (int i = left_index[channel]; i < sampleDataArray.size(); i++) {
+                    double gyroN = sampleDataArray.get(i).fOmegaBRaw[channel];
+                    double temp = LpfGyroB[0] * gyroN + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
+                            - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
+                    lpfGyroX[1] = lpfGyroX[0];
+                    lpfGyroX[0] = gyroN;
+                    lpfGyroY[1] = lpfGyroY[0];
+                    lpfGyroY[0] = temp;
+                    temp -= fGyroBias[channel];
+                    sampleDataArray.get(i).fOmegaB[channel] = temp;
+                }
+
+                /* recompute the current filtered gyro value */
+                double gyroN = fOmegaBRaw[channel];
+                double temp = LpfGyroB[0] * gyroN + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
                         - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
                 lpfGyroX[1] = lpfGyroX[0];
-                lpfGyroX[0] = gyroZ;
+                lpfGyroX[0] = gyroN;
                 lpfGyroY[1] = lpfGyroY[0];
                 lpfGyroY[0] = temp;
-                temp -= fGyroBias[CHZ];
-                sampleDataArray.get(i).fOmegaB[CHZ] = temp;
+                temp -= fGyroBias[channel];
+                fOmegaB[channel] = gyro[channel] = temp;
+                // store the new filter parameters
+                LpfGyroX[channel][1] = lpfGyroX[1];
+                LpfGyroX[channel][0] = lpfGyroX[0];
+                LpfGyroY[channel][1] = lpfGyroY[1];
+                LpfGyroY[channel][0] = lpfGyroY[0];
             }
+        }
 
-            /* recompute the current filtered gyro value */
-            double gyroZ = fOmegaBRaw[CHZ];
-            double temp = LpfGyroB[0] * gyroZ + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
-                    - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
-            lpfGyroX[1] = lpfGyroX[0];
-            lpfGyroX[0] = gyroZ;
-            lpfGyroY[1] = lpfGyroY[0];
-            lpfGyroY[0] = temp;
-            temp -= fGyroBias[CHZ];
-            fOmegaB[CHZ] = gyro[CHZ] = temp;
-            // store the new filter parameters
-            LpfGyroX[CHZ][1] = lpfGyroX[1];
-            LpfGyroX[CHZ][0] = lpfGyroX[0];
-            LpfGyroY[CHZ][1] = lpfGyroY[1];
-            LpfGyroY[CHZ][0] = lpfGyroY[0];
-
+        if (outlier_flag[CHX] || outlier_flag[CHY] || outlier_flag[CHZ])
+        {
+            int left_start = 1;
             /* recompute the past attitude */
             Matrix cbn = new Matrix(3, 3);
             Matrix cnp = new Matrix(fCnp);
-            Matrix cbnPlatform = new Matrix(sampleDataArray.get(left_index-1).fCbnPlat);
+            Matrix cbnPlatform = new Matrix(sampleDataArray.get(left_start - 1).fCbnPlat);
             double[] fEuler = new double[3];
             double[][] fCbn = new double[3][3];
             double[] fqBase = new double[4];
@@ -2148,19 +2143,18 @@ public class SensorFusion {
             fCbn = cbn.getArray();
             fEuler = dcm2euler(fCbn);
             euler2q(fqBase, fEuler[0], fEuler[1], fEuler[2]);
-            for (int k = left_index; k < sampleDataArray.size(); k++)
-            {
+            for (int k = left_start; k < sampleDataArray.size(); k++) {
                 double[] fGyro = new double[]{sampleDataArray.get(k).fOmegaB[CHX], sampleDataArray.get(k).fOmegaB[CHY], sampleDataArray.get(k).fOmegaB[CHZ]};
+                double[] fAcc = new double[]{sampleDataArray.get(k).fAccelerate[CHX], sampleDataArray.get(k).fAccelerate[CHY], sampleDataArray.get(k).fAccelerate[CHZ]};
+                double[] fMag = new double[]{sampleDataArray.get(k).fMagnetic[CHX], sampleDataArray.get(k).fMagnetic[CHY], sampleDataArray.get(k).fMagnetic[CHZ]};
                 double[] fdq = new double[4];
-
 
                 fdq[0] = -(fGyro[0] * fqBase[1] + fGyro[1] * fqBase[2] + fGyro[2] * fqBase[3]) / 2.0;
                 fdq[1] = (fGyro[0] * fqBase[0] + fGyro[2] * fqBase[2] - fGyro[1] * fqBase[3]) / 2.0;
                 fdq[2] = (fGyro[1] * fqBase[0] - fGyro[2] * fqBase[1] + fGyro[0] * fqBase[3]) / 2.0;
                 fdq[3] = (fGyro[2] * fqBase[0] + fGyro[1] * fqBase[1] - fGyro[0] * fqBase[2]) / 2.0;
 
-                for (int i = 0; i < 4; i++)
-                {
+                for (int i = 0; i < 4; i++) {
                     fqBase[i] += fdq[i] * dt;
                 }
                 qNorm(fqBase);
@@ -2177,8 +2171,7 @@ public class SensorFusion {
                 sampleDataArray.get(k).fLinerAccN = sampleDataArray.get(k).fAccelerate[0] * sampleDataArray.get(k).fCbnPlat[0][0] + sampleDataArray.get(k).fAccelerate[1] * sampleDataArray.get(k).fCbnPlat[0][1] + sampleDataArray.get(k).fAccelerate[2] * sampleDataArray.get(k).fCbnPlat[0][2];
                 sampleDataArray.get(k).fLinerAccE = sampleDataArray.get(k).fAccelerate[0] * sampleDataArray.get(k).fCbnPlat[1][0] + sampleDataArray.get(k).fAccelerate[1] * sampleDataArray.get(k).fCbnPlat[1][1] + sampleDataArray.get(k).fAccelerate[2] * sampleDataArray.get(k).fCbnPlat[1][2];
                 sampleDataArray.get(k).fLinerAccD = sampleDataArray.get(k).fAccelerate[0] * sampleDataArray.get(k).fCbnPlat[2][0] + sampleDataArray.get(k).fAccelerate[1] * sampleDataArray.get(k).fCbnPlat[2][1] + sampleDataArray.get(k).fAccelerate[2] * sampleDataArray.get(k).fCbnPlat[2][2];
-                for (int i = CHX; i <= CHZ; i++)
-                {
+                for (int i = CHX; i <= CHZ; i++) {
                     sampleDataArray.get(k).fOmegaN[i] = sampleDataArray.get(k).fCbnPlat[i][0] * sampleDataArray.get(k).fOmegaB[0] + sampleDataArray.get(k).fCbnPlat[i][1] * sampleDataArray.get(k).fOmegaB[1] + sampleDataArray.get(k).fCbnPlat[i][2] * sampleDataArray.get(k).fOmegaB[2];
                 }
             }
@@ -2192,8 +2185,7 @@ public class SensorFusion {
             fdq[1] = (fGyro[0] * fqBase[0] + fGyro[2] * fqBase[2] - fGyro[1] * fqBase[3]) / 2.0;
             fdq[2] = (fGyro[1] * fqBase[0] - fGyro[2] * fqBase[1] + fGyro[0] * fqBase[3]) / 2.0;
             fdq[3] = (fGyro[2] * fqBase[0] + fGyro[1] * fqBase[1] - fGyro[0] * fqBase[2]) / 2.0;
-            for (int i = 0; i < 4; i++)
-            {
+            for (int i = 0; i < 4; i++) {
                 fqBase[i] += fdq[i] * dt;
             }
             qNorm(fqBase);
