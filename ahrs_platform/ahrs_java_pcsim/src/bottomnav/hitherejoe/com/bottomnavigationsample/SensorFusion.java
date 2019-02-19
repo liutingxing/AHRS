@@ -2151,17 +2151,8 @@ public class SensorFusion {
                 double[] fGyro = new double[]{sampleDataArray.get(k).fOmegaB[CHX], sampleDataArray.get(k).fOmegaB[CHY], sampleDataArray.get(k).fOmegaB[CHZ]};
                 double[] fAcc = new double[]{sampleDataArray.get(k).fAccelerate[CHX], sampleDataArray.get(k).fAccelerate[CHY], sampleDataArray.get(k).fAccelerate[CHZ]};
                 double[] fMag = new double[]{sampleDataArray.get(k).fMagnetic[CHX], sampleDataArray.get(k).fMagnetic[CHY], sampleDataArray.get(k).fMagnetic[CHZ]};
-                double[] fdq = new double[4];
 
-                fdq[0] = -(fGyro[0] * fqBase[1] + fGyro[1] * fqBase[2] + fGyro[2] * fqBase[3]) / 2.0;
-                fdq[1] = (fGyro[0] * fqBase[0] + fGyro[2] * fqBase[2] - fGyro[1] * fqBase[3]) / 2.0;
-                fdq[2] = (fGyro[1] * fqBase[0] - fGyro[2] * fqBase[1] + fGyro[0] * fqBase[3]) / 2.0;
-                fdq[3] = (fGyro[2] * fqBase[0] + fGyro[1] * fqBase[1] - fGyro[0] * fqBase[2]) / 2.0;
-
-                for (int i = 0; i < 4; i++) {
-                    fqBase[i] += fdq[i] * dt;
-                }
-                qNorm(fqBase);
+                ahrsFusion(fqBase, dt, fGyro, fAcc, fMag);
                 q2dcm(fqBase, fCbn);
                 cbn = new Matrix(fCbn);
                 cnp = new Matrix(fCnp);
@@ -2182,16 +2173,11 @@ public class SensorFusion {
 
             /* recompute the current attitude */
             double[] fGyro = new double[]{fOmegaB[CHX], fOmegaB[CHY], fOmegaB[CHZ]};
-            double[] fdq = new double[4];
+            double[] fAcc = new double[]{fAccelerate[CHX], fAccelerate[CHY], fAccelerate[CHZ]};
+            double[] fMag = new double[]{fMagnetic[CHX], fMagnetic[CHY], fMagnetic[CHZ]};
             Matrix cnbTemp;
 
-            fdq[0] = -(fGyro[0] * fqBase[1] + fGyro[1] * fqBase[2] + fGyro[2] * fqBase[3]) / 2.0;
-            fdq[1] = (fGyro[0] * fqBase[0] + fGyro[2] * fqBase[2] - fGyro[1] * fqBase[3]) / 2.0;
-            fdq[2] = (fGyro[1] * fqBase[0] - fGyro[2] * fqBase[1] + fGyro[0] * fqBase[3]) / 2.0;
-            fdq[3] = (fGyro[2] * fqBase[0] + fGyro[1] * fqBase[1] - fGyro[0] * fqBase[2]) / 2.0;
-            for (int i = 0; i < 4; i++) {
-                fqBase[i] += fdq[i] * dt;
-            }
+            ahrsFusion(fqBase, dt, fGyro, fAcc, fMag);
             qNorm(fqBase);
             q2dcm(fqBase, fCbn);
             cbn = new Matrix(fCbn);
