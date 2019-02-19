@@ -659,9 +659,8 @@ public class SensorFusion {
         return 0;
     }
 
-    private void ahrsProcess(double dt, double[] gyro, double[] acc, double[] mag)
+    private void ahrsFusion(double[] fq, double dt, double[] gyro, double[] acc, double[] mag)
     {
-        int i = 0;
         double accNorm = 0;
         double[] qDot = new double[]{0, 0, 0, 0};
         double[] qDotError = new double[]{0, 0, 0, 0};
@@ -793,11 +792,16 @@ public class SensorFusion {
         qDot[2] -= beta * qDotError[2];
         qDot[3] -= beta * qDotError[3];
 
-        for (i = 0; i < 4; i++)
+        for (int i = 0; i < 4; i++)
         {
-            fqPl[i] += qDot[i] * dt;
+            fq[i] += qDot[i] * dt;
         }
-        qNorm(fqPl);
+        qNorm(fq);
+    }
+
+    private void ahrsProcess(double dt, double[] gyro, double[] acc, double[] mag)
+    {
+        ahrsFusion(fqPl, dt, gyro, acc, mag);
         q2dcm(fqPl, fCbn);
         double[] euler = dcm2euler(fCbn);
         fPsiPl = euler[0];
