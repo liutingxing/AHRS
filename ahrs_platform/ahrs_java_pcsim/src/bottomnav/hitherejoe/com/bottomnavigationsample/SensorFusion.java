@@ -1028,7 +1028,7 @@ public class SensorFusion {
                 }else {
                     slop = -1;
                 }
-                if (linerAccX > -10 && linerAccX < 10 && Math.abs(gyro[CHZ]) < 1.5){
+                if (linerAccX > -10 && linerAccX < 10 && Math.abs(gyro[CHZ]) < 10){
                     uActionEndFlag = true;
                     iCurveCondition = Peace;
                 }
