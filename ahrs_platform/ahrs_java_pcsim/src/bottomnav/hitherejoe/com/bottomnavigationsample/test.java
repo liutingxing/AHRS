@@ -1,6 +1,7 @@
 package bottomnav.hitherejoe.com.bottomnavigationsample;
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.util.*;
 
 public class test {
@@ -10,7 +11,8 @@ public class test {
     private ArrayList<double[]> AccDataPool = new ArrayList<>(20);
     private ArrayList<double[]> MagDataPool = new ArrayList<>(20);
     private ArrayList<Double> AudioDataPool = new ArrayList<>(20);
-    private double[][] GyroLast = new double[3][3];
+    private double[][] GyroLastCpy = new double[3][3];
+    double[][] GyroLast = new double[3][3];
     private final static int Outlier_Peace = 0;
     private final static int Outlier_Start = 1;
     private final static int Outlier_End = 2;
@@ -19,6 +21,9 @@ public class test {
     private final static int CHX = 0;
     private final static int CHY = 1;
     private final static int CHZ = 2;
+    private final static double MAX_OMEGA_DEG = 2000;
+    private final static double OMEGA_MARGIN = 10;
+
     private ArrayList<Byte> byteArray = new ArrayList<Byte>();
     private final int Delimiter_Detect = 0;
     private final int Data_Save = 1;
@@ -171,7 +176,7 @@ public class test {
         double[] fAcc = new double[3];
         double[] fGyro = new double[3];
         double[] fMag = new double[3];
-        double[][] fGyroLast = new double[3][3];
+        double[] fGyroCpy;
         double fAudio;
         double ftemp;
         byte type = dataArray.get(1).byteValue();
@@ -261,6 +266,10 @@ public class test {
                 fMag[0] = fMag[1];
                 fMag[1] = ftemp;
 
+                // copy the raw gyro data
+                fGyroCpy = new double[]{fGyro[0], fGyro[1], fGyro[2]};
+
+                // outlier data detection
                 if (!Data_Compensate)
                 {
                     sensorFusionEntry(fGyro, fAcc, fMag, fAudio);
@@ -270,16 +279,16 @@ public class test {
                     switch (Outlier_Detect_Status)
                     {
                         case Outlier_Peace:
-                            if (Math.abs(fGyro[CHX]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) ||
-                                Math.abs(fGyro[CHY]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) ||
-                                Math.abs(fGyro[CHZ]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN))
+                            if (Math.abs(fGyro[CHX]) > Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN) ||
+                                Math.abs(fGyro[CHY]) > Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN) ||
+                                Math.abs(fGyro[CHZ]) > Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN))
                             {
                                 // outlier data happens
                                 for (int j = CHX; j <= CHZ; j++)
                                 {
-                                    GyroLast[0][j] = fGyroLast[0][j];
-                                    GyroLast[1][j] = fGyroLast[1][j];
-                                    GyroLast[2][j] = fGyroLast[2][j];
+                                    GyroLastCpy[0][j] = GyroLast[0][j];
+                                    GyroLastCpy[1][j] = GyroLast[1][j];
+                                    GyroLastCpy[2][j] = GyroLast[2][j];
                                 }
                                 GyroDataPool.add(new double[]{fGyro[CHX], fGyro[CHY], fGyro[CHZ]});
                                 AccDataPool.add(new double[]{fAcc[CHX], fAcc[CHY], fAcc[CHZ]});
@@ -298,9 +307,9 @@ public class test {
                             AccDataPool.add(new double[]{fAcc[CHX], fAcc[CHY], fAcc[CHZ]});
                             MagDataPool.add(new double[]{fMag[CHX], fMag[CHY], fMag[CHZ]});
                             AudioDataPool.add(fAudio);
-                            if (Math.abs(fGyro[CHX]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) &&
-                                Math.abs(fGyro[CHY]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) &&
-                                Math.abs(fGyro[CHZ]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN))
+                            if (Math.abs(fGyro[CHX]) < Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN) &&
+                                Math.abs(fGyro[CHY]) < Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN) &&
+                                Math.abs(fGyro[CHZ]) < Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN))
                             {
                                 // outlier data disappear
                                 Outlier_Detect_Status = Outlier_End;
@@ -319,7 +328,7 @@ public class test {
                                 // start process outlier data
                                 if (Data_Compensate)
                                 {
-                                    outlierDataProcess(GyroLast, GyroDataPool);
+                                    outlierDataProcess(GyroLastCpy, GyroDataPool);
                                 }
 
                                 // restart the sensor fusion entry
@@ -340,9 +349,9 @@ public class test {
                     // record the last gyro data
                     for (int i = CHX; i <= CHZ; i++)
                     {
-                        fGyroLast[0][i] = fGyroLast[1][i];
-                        fGyroLast[1][i] = fGyroLast[2][i];
-                        fGyroLast[2][i] = fGyro[i];
+                        GyroLast[0][i] = GyroLast[1][i];
+                        GyroLast[1][i] = GyroLast[2][i];
+                        GyroLast[2][i] = fGyroCpy[i];
                     }
                 }
                 break;
@@ -356,7 +365,64 @@ public class test {
 
     private void outlierDataProcess(double[][] gyroLast, ArrayList<double[]> gyroDataPool)
     {
+        int[] left_index = new int[]{-1,-1,-1};
+        int[] right_index = new int[]{-1,-1,-1};
+        int index;
+        boolean[] outlier_flag = new boolean[]{false, false, false};
 
+        /* determine the outlier data boundary */
+        for (int i = CHX; i <= CHZ; i++) {
+            index = 0;
+            for (double[] val : gyroDataPool) {
+                if (left_index[i] == -1) {
+                    if (Math.abs(val[i]) > Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN)) {
+                        left_index[i] = index;
+                    }
+                } else {
+                    if (right_index[i] == -1) {
+                        if (Math.abs(val[i]) < Math.toRadians(MAX_OMEGA_DEG - OMEGA_MARGIN)) {
+                            right_index[i] = index - 1;
+                            outlier_flag[i] = true;
+                        }
+                    }
+                }
+
+                if (outlier_flag[i]) {
+                    break;
+                }
+                index++;
+            }
+        }
+
+        /* estimate the outlier data */
+        for (int channel = CHX; channel <= CHZ; channel++) {
+            if (outlier_flag[channel]) {
+                double[] x0 = new double[6];
+                double[] y0 = new double[6];
+                int seq_left = left_index[channel] - 1;
+                int seq_right = right_index[channel] + 1;
+
+                x0[0] = seq_left - 2;
+                x0[1] = seq_left - 1;
+                x0[2] = seq_left;
+                x0[3] = seq_right;
+                x0[4] = seq_right + 1;
+                x0[5] = seq_right + 2;
+                for (int i = 0; i < 6; i++) {
+                    if (x0[i] < 0)
+                    {
+                        y0[i] = gyroLast[(int)(x0[i] + 3)][channel];
+                    }
+                    else
+                    {
+                        y0[i] = gyroDataPool.get((int)x0[i])[channel];
+                    }
+                }
+                for (int i = left_index[channel]; i <= right_index[channel]; i++) {
+                    gyroDataPool.get(i)[channel] = sensorFusion.splineFitting(x0, y0, 6, i);
+                }
+            }
+        }
     }
 
     private void sensorFusionEntry(double[] fGyro, double[] fAcc, double[] fMag, double fAudio)
