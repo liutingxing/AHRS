@@ -11,11 +11,14 @@ public class test {
     private ArrayList<double[]> MagDataPool = new ArrayList<>(20);
     private ArrayList<Double> AudioDataPool = new ArrayList<>(20);
     private double[][] GyroLast = new double[3][3];
-    private final int Outlier_Peace = 0;
-    private final int Outlier_Start = 1;
-    private final int Outlier_End = 2;
+    private final static int Outlier_Peace = 0;
+    private final static int Outlier_Start = 1;
+    private final static int Outlier_End = 2;
     private int Outlier_Detect_Status = Outlier_Peace;
     private int Outlier_ExtData_Count = 0;
+    private final static int CHX = 0;
+    private final static int CHY = 1;
+    private final static int CHZ = 2;
     private ArrayList<Byte> byteArray = new ArrayList<Byte>();
     private final int Delimiter_Detect = 0;
     private final int Data_Save = 1;
@@ -267,20 +270,20 @@ public class test {
                     switch (Outlier_Detect_Status)
                     {
                         case Outlier_Peace:
-                            if (Math.abs(fGyro[0]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) ||
-                                Math.abs(fGyro[1]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) ||
-                                Math.abs(fGyro[2]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN))
+                            if (Math.abs(fGyro[CHX]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) ||
+                                Math.abs(fGyro[CHY]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) ||
+                                Math.abs(fGyro[CHZ]) > Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN))
                             {
                                 // outlier data happens
-                                for (int j = 0; j < 3; j++)
+                                for (int j = CHX; j <= CHZ; j++)
                                 {
                                     GyroLast[0][j] = fGyroLast[0][j];
                                     GyroLast[1][j] = fGyroLast[1][j];
                                     GyroLast[2][j] = fGyroLast[2][j];
                                 }
-                                GyroDataPool.add(new double[]{fGyro[0], fGyro[1], fGyro[2]});
-                                AccDataPool.add(new double[]{fAcc[0], fAcc[1], fAcc[2]});
-                                MagDataPool.add(new double[]{fMag[0], fMag[1], fMag[2]});
+                                GyroDataPool.add(new double[]{fGyro[CHX], fGyro[CHY], fGyro[CHZ]});
+                                AccDataPool.add(new double[]{fAcc[CHX], fAcc[CHY], fAcc[CHZ]});
+                                MagDataPool.add(new double[]{fMag[CHX], fMag[CHY], fMag[CHZ]});
                                 AudioDataPool.add(fAudio);
                                 Outlier_Detect_Status = Outlier_Start;
                             }
@@ -291,13 +294,13 @@ public class test {
                             break;
 
                         case Outlier_Start:
-                            GyroDataPool.add(new double[]{fGyro[0], fGyro[1], fGyro[2]});
-                            AccDataPool.add(new double[]{fAcc[0], fAcc[1], fAcc[2]});
-                            MagDataPool.add(new double[]{fMag[0], fMag[1], fMag[2]});
+                            GyroDataPool.add(new double[]{fGyro[CHX], fGyro[CHY], fGyro[CHZ]});
+                            AccDataPool.add(new double[]{fAcc[CHX], fAcc[CHY], fAcc[CHZ]});
+                            MagDataPool.add(new double[]{fMag[CHX], fMag[CHY], fMag[CHZ]});
                             AudioDataPool.add(fAudio);
-                            if (Math.abs(fGyro[0]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) &&
-                                Math.abs(fGyro[1]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) &&
-                                Math.abs(fGyro[2]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN))
+                            if (Math.abs(fGyro[CHX]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) &&
+                                Math.abs(fGyro[CHY]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN) &&
+                                Math.abs(fGyro[CHZ]) < Math.toRadians(sensorFusion.MAX_OMEGA_DEG - sensorFusion.OMEGA_MARGIN))
                             {
                                 // outlier data disappear
                                 Outlier_Detect_Status = Outlier_End;
@@ -306,9 +309,9 @@ public class test {
                             break;
 
                         case Outlier_End:
-                            GyroDataPool.add(new double[]{fGyro[0], fGyro[1], fGyro[2]});
-                            AccDataPool.add(new double[]{fAcc[0], fAcc[1], fAcc[2]});
-                            MagDataPool.add(new double[]{fMag[0], fMag[1], fMag[2]});
+                            GyroDataPool.add(new double[]{fGyro[CHX], fGyro[CHY], fGyro[CHZ]});
+                            AccDataPool.add(new double[]{fAcc[CHX], fAcc[CHY], fAcc[CHZ]});
+                            MagDataPool.add(new double[]{fMag[CHX], fMag[CHY], fMag[CHZ]});
                             AudioDataPool.add(fAudio);
                             Outlier_ExtData_Count++;
                             if (Outlier_ExtData_Count >= 3)
@@ -335,7 +338,7 @@ public class test {
 
                     }
                     // record the last gyro data
-                    for (int i = 0; i <3; i++)
+                    for (int i = CHX; i <= CHZ; i++)
                     {
                         fGyroLast[0][i] = fGyroLast[1][i];
                         fGyroLast[1][i] = fGyroLast[2][i];
