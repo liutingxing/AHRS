@@ -1257,7 +1257,7 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
 
     if (accNorm > 8.0 && accNorm < 12.0)
     {
-        gyroMeasError = 60.0 * PI / 180;
+        gyroMeasError = 10.0 * PI / 180;
     }
     else
     {
