@@ -262,7 +262,7 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     // refine the sample data array
     if (uActionComplete == true)
     {
-        outlierCompensate(cSampleDataArray, gyro);
+        //outlierCompensate(cSampleDataArray, gyro);
         refineSampleData(cSampleDataArray);
     }
 
