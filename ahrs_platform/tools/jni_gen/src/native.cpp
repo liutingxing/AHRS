@@ -7,8 +7,8 @@ using namespace std;
 JNIEXPORT jdouble JNICALL Java_bottomnav_hitherejoe_com_bottomnavigationsample_SensorFusion_splineFitting
 (JNIEnv *env, jobject obj, jdoubleArray arrX, jdoubleArray arrY, jint num, jdouble x)
 {
-    jdouble *carrX = env->GetDoubleArrayElements(arrX, false);
-    jdouble *carrY = env->GetDoubleArrayElements(arrY, false);
+    jdouble *carrX = env->GetDoubleArrayElements(arrX, JNI_FALSE);
+    jdouble *carrY = env->GetDoubleArrayElements(arrY, JNI_FALSE);
     double y = 0;
     Eigen::VectorXd xvals(num);
     Eigen::VectorXd yvals(xvals.rows());
