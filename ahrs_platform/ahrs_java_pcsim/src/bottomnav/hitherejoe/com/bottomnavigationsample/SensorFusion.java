@@ -231,6 +231,11 @@ public class SensorFusion {
                     // mag calibration process complete
                     if (fGeoB > 10 && fGeoB < 100 && fResidual < 10)
                     {
+                        fB = fGeoB;
+                        iValidMagCal = true;
+                        fV[CHX] = fMagBias[CHX];
+                        fV[CHY] = fMagBias[CHY];
+                        fV[CHY] = fMagBias[CHZ];
                         iStatus = Alignment;
                         CalibrationProgress = 100;
                     }
@@ -677,7 +682,7 @@ public class SensorFusion {
         qDot[3] =  (gyro[2] * fq[0] + gyro[1] * fq[1] - gyro[0] * fq[2]) / 2.0;
 
         accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
-        if (true) {
+        if (accNorm > 8 && accNorm < 12) {
             // execute the acc aid process
             double diff = 0;
             double[] gEstimate = new double[3];
@@ -718,7 +723,7 @@ public class SensorFusion {
         if (MAG_SUPPORT == 1)
         {
             double magNorm = Math.sqrt(mag[0]*mag[0] + mag[1]*mag[1] + mag[2]*mag[2]);
-            if (true)
+            if (iValidMagCal)
             {
                 // execute the acc aid process
                 double diff = 0;
