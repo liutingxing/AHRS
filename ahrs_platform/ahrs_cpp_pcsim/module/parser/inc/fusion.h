@@ -160,6 +160,7 @@ class SensorFusion
         double stdCal(vector<shared_ptr<double>>& numList);
         bool sensorAlignment(vector<shared_ptr<double>>& accArray, vector<shared_ptr<double>>& magArray);
         void gyroCalibration(vector<shared_ptr<double>>& gyroArray);
+        void ahrsFusion(double fq[], double dt, double gyro[], double acc[], double mag[]);
         void ahrsProcess(double dt, double gyro[], double acc[], double mag[]);
         void quaternionIntegration(double dt, double gyro[]);
         void platformDataProcess();

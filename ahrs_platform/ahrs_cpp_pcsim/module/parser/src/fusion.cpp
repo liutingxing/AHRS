@@ -184,6 +184,11 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
             // mag calibration process complete
             if (fGeoB > 10 && fGeoB < 100 && fResidual < 10)
             {
+                fB = fGeoB;
+                iValidMagCal = true;
+                fV[CHX] = fMagBias[CHX];
+                fV[CHY] = fMagBias[CHY];
+                fV[CHY] = fMagBias[CHZ];
                 iStatus = Alignment;
                 CalibrationProgress = 100;
             }
@@ -1135,7 +1140,7 @@ void SensorFusion::quaternionIntegration(double dt, double gyro[])
     }
 }
 
-void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double mag[])
+void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[], double mag[])
 {
     int i = 0;
     double accNorm = 0;
@@ -1143,16 +1148,15 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
     double qDotError[4] {0, 0, 0, 0};
     double gyroMeasError = 10 * PI / 180; // gyroscope measurement error in rad/s (shown as 10 deg/s)
     double beta = sqrt(3.0 / 4.0) * gyroMeasError;
-    double euler[3];
 
-    qDot[0] = -(gyro[0] * fqPl[1] + gyro[1] * fqPl[2] + gyro[2] * fqPl[3]) / 2.0;
-    qDot[1] = (gyro[0] * fqPl[0] + gyro[2] * fqPl[2] - gyro[1] * fqPl[3]) / 2.0;
-    qDot[2] = (gyro[1] * fqPl[0] - gyro[2] * fqPl[1] + gyro[0] * fqPl[3]) / 2.0;
-    qDot[3] = (gyro[2] * fqPl[0] + gyro[1] * fqPl[1] - gyro[0] * fqPl[2]) / 2.0;
+    qDot[0] = -(gyro[0] * fq[1] + gyro[1] * fq[2] + gyro[2] * fq[3]) / 2.0;
+    qDot[1] = (gyro[0] * fq[0] + gyro[2] * fq[2] - gyro[1] * fq[3]) / 2.0;
+    qDot[2] = (gyro[1] * fq[0] - gyro[2] * fq[1] + gyro[0] * fq[3]) / 2.0;
+    qDot[3] = (gyro[2] * fq[0] + gyro[1] * fq[1] - gyro[0] * fq[2]) / 2.0;
 
     accNorm = sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
 
-    if (true)
+    if (accNorm > 8 && accNorm < 12)
     {
         // execute the acc aid process
         double diff = 0;
@@ -1165,23 +1169,23 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
         gEstimate[1] = -acc[1] / accNorm;
         gEstimate[2] = -acc[2] / accNorm;
 
-        F(0, 0) = 2 * (fqPl[1] * fqPl[3] - fqPl[0] * fqPl[2]) - gEstimate[0];
-        F(1, 0) = 2 * (fqPl[0] * fqPl[1] + fqPl[2] * fqPl[3]) - gEstimate[1];
-        F(2, 0) = 2 * (0.5 - fqPl[1] * fqPl[1] - fqPl[2] * fqPl[2]) - gEstimate[2];
+        F(0, 0) = 2 * (fq[1] * fq[3] - fq[0] * fq[2]) - gEstimate[0];
+        F(1, 0) = 2 * (fq[0] * fq[1] + fq[2] * fq[3]) - gEstimate[1];
+        F(2, 0) = 2 * (0.5 - fq[1] * fq[1] - fq[2] * fq[2]) - gEstimate[2];
 
-        J(0, 0) = -2 * fqPl[2];
-        J(0, 1) = 2 * fqPl[3];
-        J(0, 2) = -2 * fqPl[0];
-        J(0, 3) = 2 * fqPl[1];
+        J(0, 0) = -2 * fq[2];
+        J(0, 1) = 2 * fq[3];
+        J(0, 2) = -2 * fq[0];
+        J(0, 3) = 2 * fq[1];
 
-        J(1, 0) = 2 * fqPl[1];
-        J(1, 1) = 2 * fqPl[0];
-        J(1, 2) = 2 * fqPl[3];
-        J(1, 3) = 2 * fqPl[2];
+        J(1, 0) = 2 * fq[1];
+        J(1, 1) = 2 * fq[0];
+        J(1, 2) = 2 * fq[3];
+        J(1, 3) = 2 * fq[2];
 
         J(2, 0) = 0;
-        J(2, 1) = -4 * fqPl[1];
-        J(2, 2) = -4 * fqPl[2];
+        J(2, 1) = -4 * fq[1];
+        J(2, 2) = -4 * fq[2];
         J(2, 3) = 0;
 
         step = J.transpose().eval() * F;
@@ -1194,8 +1198,7 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
 
 #if MAG_SUPPORT
     double magNorm = sqrt(mag[0] * mag[0] + mag[1] * mag[1] + mag[2] * mag[2]);
-
-    if (true)
+    if (iValidMagCal)
     {
         // execute the acc aid process
         double diff = 0;
@@ -1209,8 +1212,8 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
         MatrixXd cbn(3, 3);
 
         cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
-            fCbn[1][0], fCbn[1][1], fCbn[1][2],
-            fCbn[2][0], fCbn[2][1], fCbn[2][2];
+                fCbn[1][0], fCbn[1][1], fCbn[1][2],
+                fCbn[2][0], fCbn[2][1], fCbn[2][2];
 
         mEstimate[0] = mag[0] / magNorm;
         mEstimate[1] = mag[1] / magNorm;
@@ -1226,24 +1229,24 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
         b[2] = 0;
         b[3] = h(2, 0);
 
-        F(0, 0) = 2 * b[1] * (0.5 - fqPl[2] * fqPl[2] - fqPl[3] * fqPl[3]) + 2 * b[3] * (fqPl[1] * fqPl[3] - fqPl[0] * fqPl[2]) - mEstimate[0];
-        F(1, 0) = 2 * b[1] * (fqPl[1] * fqPl[2] - fqPl[0] * fqPl[3]) + 2 * b[3] * (fqPl[0] * fqPl[1] + fqPl[2] * fqPl[3]) - mEstimate[1];
-        F(2, 0) = 2 * b[1] * (fqPl[0] * fqPl[2] + fqPl[1] * fqPl[3]) + 2 * b[3] * (0.5 - fqPl[1] * fqPl[1] - fqPl[2] * fqPl[2]) - mEstimate[2];
+        F(0, 0) = 2 * b[1] * (0.5 - fq[2] * fq[2] - fq[3] * fq[3]) + 2 * b[3] * (fq[1] * fq[3] - fq[0] * fq[2]) - mEstimate[0];
+        F(1, 0) = 2 * b[1] * (fq[1] * fq[2] - fq[0] * fq[3]) + 2 * b[3] * (fq[0] * fq[1] + fq[2] * fq[3]) - mEstimate[1];
+        F(2, 0) = 2 * b[1] * (fq[0] * fq[2] + fq[1] * fq[3]) + 2 * b[3] * (0.5 - fq[1] * fq[1] - fq[2] * fq[2]) - mEstimate[2];
 
-        J(0, 0) = -2 * b[3] * fqPl[2];
-        J(0, 1) = 2 * b[3] * fqPl[3];
-        J(0, 2) = -4 * b[1] * fqPl[2] - 2 * b[3] * fqPl[0];
-        J(0, 3) = -4 * b[1] * fqPl[3] + 2 * b[3] * fqPl[1];
+        J(0, 0) = -2 * b[3] * fq[2];
+        J(0, 1) = 2 * b[3] * fq[3];
+        J(0, 2) = -4 * b[1] * fq[2] - 2 * b[3] * fq[0];
+        J(0, 3) = -4 * b[1] * fq[3] + 2 * b[3] * fq[1];
 
-        J(1, 0) = -2 * b[1] * fqPl[3] + 2 * b[3] * fqPl[1];
-        J(1, 1) = 2 * b[1] * fqPl[2] + 2 * b[3] * fqPl[0];
-        J(1, 2) = 2 * b[1] * fqPl[1] + 2 * b[3] * fqPl[3];
-        J(1, 3) = -2 * b[1] * fqPl[0] + 2 * b[3] * fqPl[2];
+        J(1, 0) = -2 * b[1] * fq[3] + 2 * b[3] * fq[1];
+        J(1, 1) = 2 * b[1] * fq[2] + 2 * b[3] * fq[0];
+        J(1, 2) = 2 * b[1] * fq[1] + 2 * b[3] * fq[3];
+        J(1, 3) = -2 * b[1] * fq[0] + 2 * b[3] * fq[2];
 
-        J(2, 0) = 2 * b[1] * fqPl[2];
-        J(2, 1) = 2 * b[1] * fqPl[3] - 4 * b[3] * fqPl[1];
-        J(2, 2) = 2 * b[1] * fqPl[0] - 4 * b[3] * fqPl[2];
-        J(2, 3) = 2 * b[1] * fqPl[1];
+        J(2, 0) = 2 * b[1] * fq[2];
+        J(2, 1) = 2 * b[1] * fq[3] - 4 * b[3] * fq[1];
+        J(2, 2) = 2 * b[1] * fq[0] - 4 * b[3] * fq[2];
+        J(2, 3) = 2 * b[1] * fq[1];
 
         diff = F.norm();
         step = J.transpose() * F;
@@ -1283,10 +1286,17 @@ void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double ma
 
     for (i = 0; i < 4; i++)
     {
-        fqPl[i] += qDot[i] * dt;
+        fq[i] += qDot[i] * dt;
     }
 
-    qNorm(fqPl);
+    qNorm(fq);
+}
+
+void SensorFusion::ahrsProcess(double dt, double gyro[], double acc[], double mag[])
+{
+    double euler[3];
+
+    ahrsFusion(fqPl, dt, gyro, acc, mag);
     q2dcm(fqPl, fCbn);
     dcm2euler(fCbn, euler);
     fPsiPl = euler[0];
