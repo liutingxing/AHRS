@@ -395,6 +395,11 @@ public class SensorFusion {
                     fCbnPlat[i][j] = fCbn[i][j];
                 }
             }
+
+            double[] euler = dcm2euler(fCbnPlat);
+            fPsiPlPlat = euler[0];
+            fThePlPlat = euler[1];
+            fPhiPlPlat = euler[2];
         }
         else
         {
@@ -408,7 +413,6 @@ public class SensorFusion {
             fThePlPlat = euler[1];
             fPhiPlPlat = euler[2];
             euler2q(fqPlPlat, fPsiPlPlat, fThePlPlat, fPhiPlPlat);
-
         }
 
         // record the debug info
