@@ -17,6 +17,8 @@ BleDataParser::BleDataParser()
     ParserReceiveLength = 0;
     ParserReadIndex = 0;
     ParserDelimiterIndex = 0;
+
+    Outlier_Detect_Status = Outlier_Peace;
 }
 
 void BleDataParser::strstrip(char* const str)
@@ -182,10 +184,10 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
     double fAcc[3];
     double fGyro[3];
     double fMag[3];
+    double fGyroCpy[3];
     double fAudio;
     double ftemp;
     uint8_t type = getValueFromBuffer(array, 1);
-    string sAttitude;
 
     switch (type)
     {
@@ -241,32 +243,120 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
             fMag[0] = fMag[1];
             fMag[1] = ftemp;
 
-            sensorFusion.uTime++;
-            //Todo: remove it if integrated in iOS
-            extern FILE* fpGyroRaw;
-            fprintf(fpGyroRaw, "%d, %f, %f, %f\n", sensorFusion.uTime, fGyro[CHX], fGyro[CHY], fGyro[CHZ]);
-            //Todo: remove it if integrated in iOS
-            sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
+            // copy the raw gyro data
+            fGyroCpy[0] = fGyro[0];
+            fGyroCpy[1] = fGyro[1];
+            fGyroCpy[2] = fGyro[2];
 
-            //Todo: remove it if integrated in iOS
-            extern FILE* fpOutput;
-            extern FILE* fpGyroCali;
-            fprintf(fpGyroCali, "%d, %f, %f, %f\n", sensorFusion.uTime, fGyro[CHX], fGyro[CHY], fGyro[CHZ]);
-            if (!sAttitude.empty())
-            {
-                fputs(sAttitude.c_str(), fpOutput);
-                fputs("\r\n", fpOutput);
-            }
+            // outlier data detection
+#if !Data_Compensate
+            sensorFusionEntry(fGyro, fAcc, fMag, fAudio);
+#else
+        switch (Outlier_Detect_Status)
+                    {
+                        case Outlier_Peace:
+                            if (abs(fGyro[CHX]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD ||
+                                abs(fGyro[CHY]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD ||
+                                abs(fGyro[CHZ]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
+                            {
+                                // outlier data happens
+                                for (int j = CHX; j <= CHZ; j++)
+                                {
+                                    GyroLastCpy[0][j] = GyroLast[0][j];
+                                    GyroLastCpy[1][j] = GyroLast[1][j];
+                                    GyroLastCpy[2][j] = GyroLast[2][j];
+                                }
+                                GyroDataPool.push_back(shared_ptr<double>(new double[3] {fGyro[CHX], fGyro[CHY], fGyro[CHZ]}, [](double * p)
+                                {
+                                    delete[] p;
+                                }));
+                                AccDataPool.push_back(shared_ptr<double>(new double[3] {fAcc[CHX], fAcc[CHY], fAcc[CHZ]}, [](double * p)
+                                {
+                                    delete[] p;
+                                }));
+                                MagDataPool.push_back(shared_ptr<double>(new double[3] {fMag[CHX], fMag[CHY], fMag[CHZ]}, [](double * p)
+                                {
+                                    delete[] p;
+                                }));
+                                AudioDataPool.push_back(fAudio);
+                                Outlier_Detect_Status = Outlier_Start;
+                            }
+                            else
+                            {
+                                sensorFusionEntry(fGyro, fAcc, fMag, fAudio);
+                            }
+                            break;
 
-            if (sensorFusion.uActionComplete == true)
-            {
-                cout << "-------------------------------------------------------------------------------------------------------------------------------------\n"
-                     << sensorFusion.trainData.sTrajectory << "\n" <<
-                     "-------------------------------------------------------------------------------------------------------------------------------------\n" << endl;
-            }
+                        case Outlier_Start:
+                            GyroDataPool.push_back(shared_ptr<double>(new double[3] {fGyro[CHX], fGyro[CHY], fGyro[CHZ]}, [](double * p)
+                            {
+                                delete[] p;
+                            }));
+                            AccDataPool.push_back(shared_ptr<double>(new double[3] {fAcc[CHX], fAcc[CHY], fAcc[CHZ]}, [](double * p)
+                            {
+                                delete[] p;
+                            }));
+                            MagDataPool.push_back(shared_ptr<double>(new double[3] {fMag[CHX], fMag[CHY], fMag[CHZ]}, [](double * p)
+                            {
+                                delete[] p;
+                            }));
+                            AudioDataPool.push_back(fAudio);
+                            if (abs(fGyro[CHX]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD &&
+                                abs(fGyro[CHY]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD &&
+                                abs(fGyro[CHZ]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
+                            {
+                                // outlier data disappear
+                                Outlier_Detect_Status = Outlier_End;
+                                Outlier_ExtData_Count = 1;
+                            }
+                            break;
 
-            //Todo: remove it if integrated in iOS
+                        case Outlier_End:
+                            GyroDataPool.push_back(shared_ptr<double>(new double[3] {fGyro[CHX], fGyro[CHY], fGyro[CHZ]}, [](double * p)
+                            {
+                                delete[] p;
+                            }));
+                            AccDataPool.push_back(shared_ptr<double>(new double[3] {fAcc[CHX], fAcc[CHY], fAcc[CHZ]}, [](double * p)
+                            {
+                                delete[] p;
+                            }));
+                            MagDataPool.push_back(shared_ptr<double>(new double[3] {fMag[CHX], fMag[CHY], fMag[CHZ]}, [](double * p)
+                            {
+                                delete[] p;
+                            }));
+                            AudioDataPool.push_back(fAudio);
+                            Outlier_ExtData_Count++;
+                            if (Outlier_ExtData_Count >= 3)
+                            {
+                                // start process outlier data
+                                if (Data_Compensate)
+                                {
+                                    outlierDataProcess(GyroLastCpy, GyroDataPool);
+                                }
 
+                                // restart the sensor fusion entry
+                                for (int i = 0; i < GyroDataPool.size(); i++)
+                                {
+                                    sensorFusionEntry(GyroDataPool.at(i).get(), AccDataPool.at(i).get(), MagDataPool.at(i).get(), AudioDataPool.at(i));
+                                }
+
+                                // clear the status
+                                GyroDataPool.clear();
+                                AccDataPool.clear();
+                                MagDataPool.clear();
+                                AudioDataPool.clear();
+                                Outlier_Detect_Status = Outlier_Peace;
+                            }
+
+                    }
+                    // record the last gyro data
+                    for (int i = CHX; i <= CHZ; i++)
+                    {
+                        GyroLast[0][i] = GyroLast[1][i];
+                        GyroLast[1][i] = GyroLast[2][i];
+                        GyroLast[2][i] = fGyroCpy[i];
+                    }
+#endif
             break;
         }
 
@@ -279,6 +369,109 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
     }
 
     return 1;
+}
+
+void BleDataParser::outlierDataProcess(double gyroLast[][3], vector<shared_ptr<double>>& gyroDataPool)
+{
+    int left_index[3] = {-1, -1, -1};
+    int right_index[3] = {-1, -1, -1};
+    int index;
+    bool outlier_flag[3] = {false, false, false};
+
+    /* determine the outlier data boundary */
+    for (int i = CHX; i <= CHZ; i++) {
+        index = 0;
+        for (auto p : gyroDataPool) {
+            double* val = p.get();
+            if (left_index[i] == -1) {
+                if (abs(val[i]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD) {
+                    left_index[i] = index;
+                }
+            } else {
+                if (right_index[i] == -1) {
+                    if (abs(val[i]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD) {
+                        right_index[i] = index - 1;
+                        outlier_flag[i] = true;
+                    }
+                }
+            }
+
+            if (outlier_flag[i]) {
+                break;
+            }
+            index++;
+        }
+    }
+
+    /* estimate the outlier data */
+    for (int channel = CHX; channel <= CHZ; channel++)
+    {
+        if (outlier_flag[channel])
+        {
+            double x0[6];
+            double y0[6];
+            Eigen::VectorXd xvals(6);
+            Eigen::VectorXd yvals(xvals.rows());
+            int seq_left = left_index[channel] - 1;
+            int seq_right = right_index[channel] + 1;
+
+            x0[0] = seq_left - 2;
+            x0[1] = seq_left - 1;
+            x0[2] = seq_left;
+            x0[3] = seq_right;
+            x0[4] = seq_right + 1;
+            x0[5] = seq_right + 2;
+
+            for (int i = 0; i < 6; i++) {
+                if (x0[i] < 0)
+                {
+                    y0[i] = gyroLast[(int)(x0[i] + 3)][channel];
+                }
+                else
+                {
+                    y0[i] = *(gyroDataPool.at((int)x0[i]).get() + i);
+                }
+            }
+
+            xvals << x0[0], x0[1], x0[2], x0[3], x0[4], x0[5];
+            yvals << y0[0], y0[1], y0[2], y0[3], y0[4], y0[5];
+            SplineFunction s(xvals, yvals);
+            for (int i = left_index[channel]; i <= right_index[channel]; i++) {
+                *(gyroDataPool.at(i).get() + channel) = s(i);
+            }
+        }
+    }
+}
+
+void BleDataParser::sensorFusionEntry(double fGyro[], double fAcc[], double fMag[], double fAudio)
+{
+    string sAttitude;
+
+    sensorFusion.uTime++;
+    //Todo: remove it if integrated in iOS
+    extern FILE* fpGyroRaw;
+    fprintf(fpGyroRaw, "%d, %f, %f, %f\n", sensorFusion.uTime, fGyro[CHX], fGyro[CHY], fGyro[CHZ]);
+    //Todo: remove it if integrated in iOS
+    sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
+
+    //Todo: remove it if integrated in iOS
+    extern FILE* fpOutput;
+    extern FILE* fpGyroCali;
+    fprintf(fpGyroCali, "%d, %f, %f, %f\n", sensorFusion.uTime, fGyro[CHX], fGyro[CHY], fGyro[CHZ]);
+    if (!sAttitude.empty())
+    {
+        fputs(sAttitude.c_str(), fpOutput);
+        fputs("\r\n", fpOutput);
+    }
+
+    if (sensorFusion.uActionComplete == true)
+    {
+        cout << "-------------------------------------------------------------------------------------------------------------------------------------\n"
+             << sensorFusion.trainData.sTrajectory << "\n" <<
+             "-------------------------------------------------------------------------------------------------------------------------------------\n" << endl;
+    }
+
+    //Todo: remove it if integrated in iOS
 }
 
 void BleDataParser::parserReceivedData(const char* const strData)

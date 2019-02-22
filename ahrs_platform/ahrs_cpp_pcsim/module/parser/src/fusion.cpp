@@ -2124,7 +2124,6 @@ void SensorFusion::accFilter(double acc[])
     }
 }
 
-#define OMEGA_MARGIN (10)
 void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataArray, double gyro[])
 {
     int left_index = -1;

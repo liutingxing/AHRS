@@ -40,6 +40,7 @@ using namespace Eigen;
 #define     MAGFITERROR     (5)
 
 #define     MAX_OMEGA_DEG   (2000)
+#define     OMEGA_MARGIN    (10)
 
 class SensorFusion
 {

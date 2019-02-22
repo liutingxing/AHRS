@@ -8,6 +8,7 @@
 #include <cstring>
 #include <iostream>
 #include "fusion.h"
+#include "fitting.h"
 
 typedef     signed char             int8_t;                  /* Signed 8 bits integer    */
 typedef     unsigned char           uint8_t;                 /* Unsigned 8 bits integer  */
@@ -20,6 +21,15 @@ typedef     unsigned int            uint32_t;                /* Unsigned 32 bits
 #define  GYRO_SENSITIVITY   (1.0/16.4)
 #define  MAG_SENSITIVITY    (0.15)
 #define  MaxBufferSize      (1024)
+
+#define Data_Compensate     (1)
+
+typedef enum outlierStatus
+{
+    Outlier_Peace = 0,
+    Outlier_Start = 1,
+    Outlier_End = 2,
+} outlierStatus_t;
 
 typedef enum parserStatus
 {
@@ -44,6 +54,15 @@ class BleDataParser
         int ParserDelimiterIndex;
         SensorFusion sensorFusion;
 
+        vector<shared_ptr<double>> GyroDataPool;
+        vector<shared_ptr<double>> AccDataPool;
+        vector<shared_ptr<double>> MagDataPool;
+        vector<double> AudioDataPool;
+        double GyroLastCpy[3][3];
+        double GyroLast[3][3];
+        outlierStatus_t Outlier_Detect_Status;
+        int Outlier_ExtData_Count;
+
         void strstrip(char* const str);
 
         int charToByte(char c);
@@ -59,6 +78,10 @@ class BleDataParser
         void resetParserStatus();
 
         int checkDataFrame(const dataArray_t* const array);
+
+        void outlierDataProcess(double gyroLast[][3], vector<shared_ptr<double>>& gyroDataPool);
+
+        void sensorFusionEntry(double fGyro[], double fAcc[], double fMag[], double fAudio);
 
     public:
         BleDataParser();
