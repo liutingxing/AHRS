@@ -12,7 +12,7 @@ public class test {
     private ArrayList<double[]> MagDataPool = new ArrayList<>(20);
     private ArrayList<Double> AudioDataPool = new ArrayList<>(20);
     private double[][] GyroLastCpy = new double[3][3];
-    double[][] GyroLast = new double[3][3];
+    private double[][] GyroLast = new double[3][3];
     private final static int Outlier_Peace = 0;
     private final static int Outlier_Start = 1;
     private final static int Outlier_End = 2;
