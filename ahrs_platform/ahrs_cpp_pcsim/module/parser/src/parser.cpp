@@ -429,7 +429,7 @@ void BleDataParser::outlierDataProcess(double gyroLast[][3], vector<shared_ptr<d
                 }
                 else
                 {
-                    y0[i] = *(gyroDataPool.at((int)x0[i]).get() + i);
+                    y0[i] = gyroDataPool.at((int)x0[i]).get()[channel];
                 }
             }
 
@@ -437,7 +437,7 @@ void BleDataParser::outlierDataProcess(double gyroLast[][3], vector<shared_ptr<d
             yvals << y0[0], y0[1], y0[2], y0[3], y0[4], y0[5];
             SplineFunction s(xvals, yvals);
             for (int i = left_index[channel]; i <= right_index[channel]; i++) {
-                *(gyroDataPool.at(i).get() + channel) = s(i);
+                gyroDataPool.at(i).get()[channel] = s(i);
             }
         }
     }
