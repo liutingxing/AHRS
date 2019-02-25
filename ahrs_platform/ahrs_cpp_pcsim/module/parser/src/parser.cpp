@@ -353,6 +353,7 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
                     AudioDataPool.clear();
                     Outlier_Detect_Status = Outlier_Peace;
                 }
+                break;
 
             }
 

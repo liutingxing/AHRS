@@ -344,6 +344,7 @@ public class test {
                                 AudioDataPool.clear();
                                 Outlier_Detect_Status = Outlier_Peace;
                             }
+                            break;
 
                     }
                     // record the last gyro data
