@@ -9,6 +9,7 @@
 #define  MAX_BUFF_LEN   1024
 
 FILE* fpOutput;
+FILE* fpSensorData;
 
 int main(int argc, char* argv[])
 {
@@ -18,6 +19,7 @@ int main(int argc, char* argv[])
 
     fpInput = fopen("../data/rawData.txt", "r");
     fpOutput = fopen("../data/outputData.txt", "w");
+    fpSensorData = fopen("../data/sensorData.txt", "w");
 
     if (fpInput == NULL)
     {
@@ -33,6 +35,7 @@ int main(int argc, char* argv[])
 
     fclose(fpInput);
     fclose(fpOutput);
+    fclose(fpSensorData);
 
     return 0;
 }

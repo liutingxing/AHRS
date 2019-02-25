@@ -448,6 +448,11 @@ void BleDataParser::sensorFusionEntry(double fGyro[], double fAcc[], double fMag
     string sAttitude;
 
     sensorFusion.uTime++;
+
+    //Todo: remove it if integrated in iOS
+    extern FILE* fpSensorData;
+    fprintf(fpSensorData, "%d %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %f %f %f %f\n", sensorFusion.uTime, fGyro[0], fGyro[1], fGyro[2], fAcc[0], fAcc[1], fAcc[2], fMag[0], fMag[1], fMag[2], fAudio);
+    //Todo: remove it if integrated in iOS
     sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
 
     //Todo: remove it if integrated in iOS
@@ -464,7 +469,6 @@ void BleDataParser::sensorFusionEntry(double fGyro[], double fAcc[], double fMag
              << sensorFusion.trainData.sTrajectory << "\n" <<
              "-------------------------------------------------------------------------------------------------------------------------------------\n" << endl;
     }
-
     //Todo: remove it if integrated in iOS
 }
 
