@@ -252,110 +252,118 @@ int BleDataParser::processDataFrame(const dataArray_t* const array)
 #if !Data_Compensate
             sensorFusionEntry(fGyro, fAcc, fMag, fAudio);
 #else
-        switch (Outlier_Detect_Status)
+
+            switch (Outlier_Detect_Status)
+            {
+            case Outlier_Peace:
+                if (abs(fGyro[CHX]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD ||
+                        abs(fGyro[CHY]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD ||
+                        abs(fGyro[CHZ]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
+                {
+                    // outlier data happens
+                    for (int j = CHX; j <= CHZ; j++)
                     {
-                        case Outlier_Peace:
-                            if (abs(fGyro[CHX]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD ||
-                                abs(fGyro[CHY]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD ||
-                                abs(fGyro[CHZ]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
-                            {
-                                // outlier data happens
-                                for (int j = CHX; j <= CHZ; j++)
-                                {
-                                    GyroLastCpy[0][j] = GyroLast[0][j];
-                                    GyroLastCpy[1][j] = GyroLast[1][j];
-                                    GyroLastCpy[2][j] = GyroLast[2][j];
-                                }
-                                GyroDataPool.push_back(shared_ptr<double>(new double[3] {fGyro[CHX], fGyro[CHY], fGyro[CHZ]}, [](double * p)
-                                {
-                                    delete[] p;
-                                }));
-                                AccDataPool.push_back(shared_ptr<double>(new double[3] {fAcc[CHX], fAcc[CHY], fAcc[CHZ]}, [](double * p)
-                                {
-                                    delete[] p;
-                                }));
-                                MagDataPool.push_back(shared_ptr<double>(new double[3] {fMag[CHX], fMag[CHY], fMag[CHZ]}, [](double * p)
-                                {
-                                    delete[] p;
-                                }));
-                                AudioDataPool.push_back(fAudio);
-                                Outlier_Detect_Status = Outlier_Start;
-                            }
-                            else
-                            {
-                                sensorFusionEntry(fGyro, fAcc, fMag, fAudio);
-                            }
-                            break;
-
-                        case Outlier_Start:
-                            GyroDataPool.push_back(shared_ptr<double>(new double[3] {fGyro[CHX], fGyro[CHY], fGyro[CHZ]}, [](double * p)
-                            {
-                                delete[] p;
-                            }));
-                            AccDataPool.push_back(shared_ptr<double>(new double[3] {fAcc[CHX], fAcc[CHY], fAcc[CHZ]}, [](double * p)
-                            {
-                                delete[] p;
-                            }));
-                            MagDataPool.push_back(shared_ptr<double>(new double[3] {fMag[CHX], fMag[CHY], fMag[CHZ]}, [](double * p)
-                            {
-                                delete[] p;
-                            }));
-                            AudioDataPool.push_back(fAudio);
-                            if (abs(fGyro[CHX]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD &&
-                                abs(fGyro[CHY]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD &&
-                                abs(fGyro[CHZ]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
-                            {
-                                // outlier data disappear
-                                Outlier_Detect_Status = Outlier_End;
-                                Outlier_ExtData_Count = 1;
-                            }
-                            break;
-
-                        case Outlier_End:
-                            GyroDataPool.push_back(shared_ptr<double>(new double[3] {fGyro[CHX], fGyro[CHY], fGyro[CHZ]}, [](double * p)
-                            {
-                                delete[] p;
-                            }));
-                            AccDataPool.push_back(shared_ptr<double>(new double[3] {fAcc[CHX], fAcc[CHY], fAcc[CHZ]}, [](double * p)
-                            {
-                                delete[] p;
-                            }));
-                            MagDataPool.push_back(shared_ptr<double>(new double[3] {fMag[CHX], fMag[CHY], fMag[CHZ]}, [](double * p)
-                            {
-                                delete[] p;
-                            }));
-                            AudioDataPool.push_back(fAudio);
-                            Outlier_ExtData_Count++;
-                            if (Outlier_ExtData_Count >= 3)
-                            {
-                                // start process outlier data
-                                if (Data_Compensate)
-                                {
-                                    outlierDataProcess(GyroLastCpy, GyroDataPool);
-                                }
-
-                                // restart the sensor fusion entry
-                                for (int i = 0; i < GyroDataPool.size(); i++)
-                                {
-                                    sensorFusionEntry(GyroDataPool.at(i).get(), AccDataPool.at(i).get(), MagDataPool.at(i).get(), AudioDataPool.at(i));
-                                }
-
-                                // clear the status
-                                GyroDataPool.clear();
-                                AccDataPool.clear();
-                                MagDataPool.clear();
-                                AudioDataPool.clear();
-                                Outlier_Detect_Status = Outlier_Peace;
-                            }
-
+                        GyroLastCpy[0][j] = GyroLast[0][j];
+                        GyroLastCpy[1][j] = GyroLast[1][j];
+                        GyroLastCpy[2][j] = GyroLast[2][j];
                     }
-                    // record the last gyro data
-                    for (int i = CHX; i <= CHZ; i++)
+
+                    GyroDataPool.push_back(shared_ptr<double>(new double[3] {fGyro[CHX], fGyro[CHY], fGyro[CHZ]}, [](double * p)
                     {
-                        GyroLast[0][i] = GyroLast[1][i];
-                        GyroLast[1][i] = GyroLast[2][i];
-                        GyroLast[2][i] = fGyroCpy[i];
+                        delete[] p;
+                    }));
+                    AccDataPool.push_back(shared_ptr<double>(new double[3] {fAcc[CHX], fAcc[CHY], fAcc[CHZ]}, [](double * p)
+                    {
+                        delete[] p;
+                    }));
+                    MagDataPool.push_back(shared_ptr<double>(new double[3] {fMag[CHX], fMag[CHY], fMag[CHZ]}, [](double * p)
+                    {
+                        delete[] p;
+                    }));
+                    AudioDataPool.push_back(fAudio);
+                    Outlier_Detect_Status = Outlier_Start;
+                }
+                else
+                {
+                    sensorFusionEntry(fGyro, fAcc, fMag, fAudio);
+                }
+
+                break;
+
+            case Outlier_Start:
+                GyroDataPool.push_back(shared_ptr<double>(new double[3] {fGyro[CHX], fGyro[CHY], fGyro[CHZ]}, [](double * p)
+                {
+                    delete[] p;
+                }));
+                AccDataPool.push_back(shared_ptr<double>(new double[3] {fAcc[CHX], fAcc[CHY], fAcc[CHZ]}, [](double * p)
+                {
+                    delete[] p;
+                }));
+                MagDataPool.push_back(shared_ptr<double>(new double[3] {fMag[CHX], fMag[CHY], fMag[CHZ]}, [](double * p)
+                {
+                    delete[] p;
+                }));
+                AudioDataPool.push_back(fAudio);
+
+                if (abs(fGyro[CHX]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD &&
+                        abs(fGyro[CHY]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD &&
+                        abs(fGyro[CHZ]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
+                {
+                    // outlier data disappear
+                    Outlier_Detect_Status = Outlier_End;
+                    Outlier_ExtData_Count = 1;
+                }
+
+                break;
+
+            case Outlier_End:
+                GyroDataPool.push_back(shared_ptr<double>(new double[3] {fGyro[CHX], fGyro[CHY], fGyro[CHZ]}, [](double * p)
+                {
+                    delete[] p;
+                }));
+                AccDataPool.push_back(shared_ptr<double>(new double[3] {fAcc[CHX], fAcc[CHY], fAcc[CHZ]}, [](double * p)
+                {
+                    delete[] p;
+                }));
+                MagDataPool.push_back(shared_ptr<double>(new double[3] {fMag[CHX], fMag[CHY], fMag[CHZ]}, [](double * p)
+                {
+                    delete[] p;
+                }));
+                AudioDataPool.push_back(fAudio);
+                Outlier_ExtData_Count++;
+
+                if (Outlier_ExtData_Count >= 3)
+                {
+                    // start process outlier data
+                    if (Data_Compensate)
+                    {
+                        outlierDataProcess(GyroLastCpy, GyroDataPool);
                     }
+
+                    // restart the sensor fusion entry
+                    for (int i = 0; i < GyroDataPool.size(); i++)
+                    {
+                        sensorFusionEntry(GyroDataPool.at(i).get(), AccDataPool.at(i).get(), MagDataPool.at(i).get(), AudioDataPool.at(i));
+                    }
+
+                    // clear the status
+                    GyroDataPool.clear();
+                    AccDataPool.clear();
+                    MagDataPool.clear();
+                    AudioDataPool.clear();
+                    Outlier_Detect_Status = Outlier_Peace;
+                }
+
+            }
+
+            // record the last gyro data
+            for (int i = CHX; i <= CHZ; i++)
+            {
+                GyroLast[0][i] = GyroLast[1][i];
+                GyroLast[1][i] = GyroLast[2][i];
+                GyroLast[2][i] = fGyroCpy[i];
+            }
+
 #endif
             break;
         }
@@ -379,26 +387,38 @@ void BleDataParser::outlierDataProcess(double gyroLast[][3], vector<shared_ptr<d
     bool outlier_flag[3] = {false, false, false};
 
     /* determine the outlier data boundary */
-    for (int i = CHX; i <= CHZ; i++) {
+    for (int i = CHX; i <= CHZ; i++)
+    {
         index = 0;
-        for (auto p : gyroDataPool) {
+
+        for (auto p : gyroDataPool)
+        {
             double* val = p.get();
-            if (left_index[i] == -1) {
-                if (abs(val[i]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD) {
+
+            if (left_index[i] == -1)
+            {
+                if (abs(val[i]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
+                {
                     left_index[i] = index;
                 }
-            } else {
-                if (right_index[i] == -1) {
-                    if (abs(val[i]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD) {
+            }
+            else
+            {
+                if (right_index[i] == -1)
+                {
+                    if (abs(val[i]) < (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
+                    {
                         right_index[i] = index - 1;
                         outlier_flag[i] = true;
                     }
                 }
             }
 
-            if (outlier_flag[i]) {
+            if (outlier_flag[i])
+            {
                 break;
             }
+
             index++;
         }
     }
@@ -422,7 +442,8 @@ void BleDataParser::outlierDataProcess(double gyroLast[][3], vector<shared_ptr<d
             x0[4] = seq_right + 1;
             x0[5] = seq_right + 2;
 
-            for (int i = 0; i < 6; i++) {
+            for (int i = 0; i < 6; i++)
+            {
                 if (x0[i] < 0)
                 {
                     y0[i] = gyroLast[(int)(x0[i] + 3)][channel];
@@ -436,7 +457,9 @@ void BleDataParser::outlierDataProcess(double gyroLast[][3], vector<shared_ptr<d
             xvals << x0[0], x0[1], x0[2], x0[3], x0[4], x0[5];
             yvals << y0[0], y0[1], y0[2], y0[3], y0[4], y0[5];
             SplineFunction s(xvals, yvals);
-            for (int i = left_index[channel]; i <= right_index[channel]; i++) {
+
+            for (int i = left_index[channel]; i <= right_index[channel]; i++)
+            {
                 gyroDataPool.at(i).get()[channel] = s(i);
             }
         }
@@ -457,6 +480,7 @@ void BleDataParser::sensorFusionEntry(double fGyro[], double fAcc[], double fMag
 
     //Todo: remove it if integrated in iOS
     extern FILE* fpOutput;
+
     if (!sAttitude.empty())
     {
         fputs(sAttitude.c_str(), fpOutput);
@@ -469,6 +493,7 @@ void BleDataParser::sensorFusionEntry(double fGyro[], double fAcc[], double fMag
              << sensorFusion.trainData.sTrajectory << "\n" <<
              "-------------------------------------------------------------------------------------------------------------------------------------\n" << endl;
     }
+
     //Todo: remove it if integrated in iOS
 }
 

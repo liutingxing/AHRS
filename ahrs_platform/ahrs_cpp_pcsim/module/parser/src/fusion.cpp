@@ -130,6 +130,7 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     double fMagRaw[3];
 
     uTime = time;
+
     // recording the raw data
     for (int i = CHX; i <= CHZ; i++)
     {
@@ -1198,6 +1199,7 @@ void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[
 
 #if MAG_SUPPORT
     double magNorm = sqrt(mag[0] * mag[0] + mag[1] * mag[1] + mag[2] * mag[2]);
+
     if (iValidMagCal)
     {
         // execute the acc aid process
@@ -1212,8 +1214,8 @@ void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[
         MatrixXd cbn(3, 3);
 
         cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
-                fCbn[1][0], fCbn[1][1], fCbn[1][2],
-                fCbn[2][0], fCbn[2][1], fCbn[2][2];
+            fCbn[1][0], fCbn[1][1], fCbn[1][2],
+            fCbn[2][0], fCbn[2][1], fCbn[2][2];
 
         mEstimate[0] = mag[0] / magNorm;
         mEstimate[1] = mag[1] / magNorm;
@@ -2132,9 +2134,11 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
     bool outlier_flag = false;
 
     index = 0;
+
     for (auto p : sampleDataArray)
     {
-        SampleData *val = p.get();
+        SampleData* val = p.get();
+
         if (left_index == -1)
         {
             if (abs(val->fOmegaBRaw[CHZ]) > (MAX_OMEGA_DEG - OMEGA_MARGIN) * DEG2RAD)
@@ -2158,6 +2162,7 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
         {
             break;
         }
+
         index++;
     }
 
@@ -2170,20 +2175,21 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
         int seq_right = right_index + 1;
 
         // check the index valid
-        if (seq_left-2 < 0 || seq_right+2 > sampleDataArray.size()-1)
+        if (seq_left - 2 < 0 || seq_right + 2 > sampleDataArray.size() - 1)
         {
             return;
         }
 
-        xvals << seq_left-2, seq_left-1, seq_left, seq_right, seq_right+1, seq_right+2;
-        yvals << sampleDataArray.at(seq_left-2)->fOmegaBRaw[CHZ],
-                 sampleDataArray.at(seq_left-1)->fOmegaBRaw[CHZ],
-                 sampleDataArray.at(seq_left)->fOmegaBRaw[CHZ],
-                 sampleDataArray.at(seq_right)->fOmegaBRaw[CHZ],
-                 sampleDataArray.at(seq_right+1)->fOmegaBRaw[CHZ],
-                 sampleDataArray.at(seq_right+2)->fOmegaBRaw[CHZ];
+        xvals << seq_left - 2, seq_left - 1, seq_left, seq_right, seq_right + 1, seq_right + 2;
+        yvals << sampleDataArray.at(seq_left - 2)->fOmegaBRaw[CHZ],
+              sampleDataArray.at(seq_left - 1)->fOmegaBRaw[CHZ],
+              sampleDataArray.at(seq_left)->fOmegaBRaw[CHZ],
+              sampleDataArray.at(seq_right)->fOmegaBRaw[CHZ],
+              sampleDataArray.at(seq_right + 1)->fOmegaBRaw[CHZ],
+              sampleDataArray.at(seq_right + 2)->fOmegaBRaw[CHZ];
 
         SplineFunction s(xvals, yvals);
+
         for (int i = left_index; i <= right_index; i++)
         {
             sampleDataArray.at(i)->fOmegaBRaw[CHZ] = s(i);
@@ -2193,16 +2199,16 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
         double lpfGyroX[2];
         double lpfGyroY[2];
         //left_index = 2;
-        lpfGyroX[0] = sampleDataArray.at(left_index-1)->fOmegaBRaw[CHZ];
-        lpfGyroX[1] = sampleDataArray.at(left_index-2)->fOmegaBRaw[CHZ];
-        lpfGyroY[0] = sampleDataArray.at(left_index-1)->fOmegaB[CHZ]+fGyroBias[CHZ];
-        lpfGyroY[1] = sampleDataArray.at(left_index-2)->fOmegaB[CHZ]+fGyroBias[CHZ];
+        lpfGyroX[0] = sampleDataArray.at(left_index - 1)->fOmegaBRaw[CHZ];
+        lpfGyroX[1] = sampleDataArray.at(left_index - 2)->fOmegaBRaw[CHZ];
+        lpfGyroY[0] = sampleDataArray.at(left_index - 1)->fOmegaB[CHZ] + fGyroBias[CHZ];
+        lpfGyroY[1] = sampleDataArray.at(left_index - 2)->fOmegaB[CHZ] + fGyroBias[CHZ];
 
         for (int i = left_index; i < sampleDataArray.size(); i++)
         {
             double gyroZ = sampleDataArray.at(i)->fOmegaBRaw[CHZ];
             double temp = LpfGyroB[0] * gyroZ + LpfGyroB[1] * lpfGyroX[0] + LpfGyroB[2] * lpfGyroX[1]
-                        - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
+                          - LpfGyroA[1] * lpfGyroY[0] - LpfGyroA[2] * lpfGyroY[1];
             lpfGyroX[1] = lpfGyroX[0];
             lpfGyroX[0] = gyroZ;
             lpfGyroY[1] = lpfGyroY[0];
@@ -2235,16 +2241,17 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
         double fCbn[3][3];
         double fqBase[4];
 
-        cbnPlatform << sampleDataArray.at(left_index-1)->fCbnPlat[0][0], sampleDataArray.at(left_index-1)->fCbnPlat[0][1], sampleDataArray.at(left_index-1)->fCbnPlat[0][2],
-                       sampleDataArray.at(left_index-1)->fCbnPlat[1][0], sampleDataArray.at(left_index-1)->fCbnPlat[1][1], sampleDataArray.at(left_index-1)->fCbnPlat[1][2],
-                       sampleDataArray.at(left_index-1)->fCbnPlat[2][0], sampleDataArray.at(left_index-1)->fCbnPlat[2][1], sampleDataArray.at(left_index-1)->fCbnPlat[2][2];
+        cbnPlatform << sampleDataArray.at(left_index - 1)->fCbnPlat[0][0], sampleDataArray.at(left_index - 1)->fCbnPlat[0][1], sampleDataArray.at(left_index - 1)->fCbnPlat[0][2],
+                    sampleDataArray.at(left_index - 1)->fCbnPlat[1][0], sampleDataArray.at(left_index - 1)->fCbnPlat[1][1], sampleDataArray.at(left_index - 1)->fCbnPlat[1][2],
+                    sampleDataArray.at(left_index - 1)->fCbnPlat[2][0], sampleDataArray.at(left_index - 1)->fCbnPlat[2][1], sampleDataArray.at(left_index - 1)->fCbnPlat[2][2];
 
         cnp << fCnp[0][0], fCnp[0][1], fCnp[0][2],
-                fCnp[1][0], fCnp[1][1], fCnp[1][2],
-                fCnp[2][0], fCnp[2][1], fCnp[2][2];
+            fCnp[1][0], fCnp[1][1], fCnp[1][2],
+            fCnp[2][0], fCnp[2][1], fCnp[2][2];
 
         cnp.transposeInPlace();
         cbn = cnp * cbnPlatform;
+
         for (int i = CHX; i <= CHZ; i++)
         {
             for (int j = CHX; j <= CHZ; j++)
@@ -2252,8 +2259,10 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
                 fCbn[i][j] = cbn(i, j);
             }
         }
+
         dcm2euler(fCbn, fEuler);
         euler2q(fqBase, fEuler[0], fEuler[1], fEuler[2]);
+
         for (int k = left_index; k < sampleDataArray.size(); k++)
         {
             double fGyro[3] = {sampleDataArray.at(k)->fOmegaB[CHX], sampleDataArray.at(k)->fOmegaB[CHY], sampleDataArray.at(k)->fOmegaB[CHZ]};
@@ -2269,15 +2278,17 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
             {
                 fqBase[i] += fdq[i] * dt;
             }
+
             qNorm(fqBase);
             q2dcm(fqBase, fCbn);
             cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
-                    fCbn[1][0], fCbn[1][1], fCbn[1][2],
-                    fCbn[2][0], fCbn[2][1], fCbn[2][2];
+                fCbn[1][0], fCbn[1][1], fCbn[1][2],
+                fCbn[2][0], fCbn[2][1], fCbn[2][2];
             cnp << fCnp[0][0], fCnp[0][1], fCnp[0][2],
-                    fCnp[1][0], fCnp[1][1], fCnp[1][2],
-                    fCnp[2][0], fCnp[2][1], fCnp[2][2];
+                fCnp[1][0], fCnp[1][1], fCnp[1][2],
+                fCnp[2][0], fCnp[2][1], fCnp[2][2];
             cbnPlatform = cnp * cbn;
+
             for (int i = CHX; i <= CHZ; i++)
             {
                 for (int j = CHX; j <= CHZ; j++)
@@ -2285,6 +2296,7 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
                     sampleDataArray.at(k)->fCbnPlat[i][j] = cbnPlatform(i, j);
                 }
             }
+
             dcm2euler(sampleDataArray.at(k)->fCbnPlat, fEuler);
             euler2q(sampleDataArray.at(k)->fqPlPlat, fEuler[0], fEuler[1], fEuler[2]);
             sampleDataArray.at(k)->fPsiPlPlat = fEuler[0];
@@ -2293,6 +2305,7 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
             sampleDataArray.at(k)->fLinerAccN = sampleDataArray.at(k)->fAccelerate[0] * sampleDataArray.at(k)->fCbnPlat[0][0] + sampleDataArray.at(k)->fAccelerate[1] * sampleDataArray.at(k)->fCbnPlat[0][1] + sampleDataArray.at(k)->fAccelerate[2] * sampleDataArray.at(k)->fCbnPlat[0][2];
             sampleDataArray.at(k)->fLinerAccE = sampleDataArray.at(k)->fAccelerate[0] * sampleDataArray.at(k)->fCbnPlat[1][0] + sampleDataArray.at(k)->fAccelerate[1] * sampleDataArray.at(k)->fCbnPlat[1][1] + sampleDataArray.at(k)->fAccelerate[2] * sampleDataArray.at(k)->fCbnPlat[1][2];
             sampleDataArray.at(k)->fLinerAccD = sampleDataArray.at(k)->fAccelerate[0] * sampleDataArray.at(k)->fCbnPlat[2][0] + sampleDataArray.at(k)->fAccelerate[1] * sampleDataArray.at(k)->fCbnPlat[2][1] + sampleDataArray.at(k)->fAccelerate[2] * sampleDataArray.at(k)->fCbnPlat[2][2];
+
             for (int i = CHX; i <= CHZ; i++)
             {
                 sampleDataArray.at(k)->fOmegaN[i] = sampleDataArray.at(k)->fCbnPlat[i][0] * sampleDataArray.at(k)->fOmegaB[0] + sampleDataArray.at(k)->fCbnPlat[i][1] * sampleDataArray.at(k)->fOmegaB[1] + sampleDataArray.at(k)->fCbnPlat[i][2] * sampleDataArray.at(k)->fOmegaB[2];
@@ -2313,14 +2326,15 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
         {
             fqBase[i] += fdq[i] * dt;
         }
+
         qNorm(fqBase);
         q2dcm(fqBase, fCbn);
         cbn << fCbn[0][0], fCbn[0][1], fCbn[0][2],
-                fCbn[1][0], fCbn[1][1], fCbn[1][2],
-                fCbn[2][0], fCbn[2][1], fCbn[2][2];
+            fCbn[1][0], fCbn[1][1], fCbn[1][2],
+            fCbn[2][0], fCbn[2][1], fCbn[2][2];
         cnp << fCnp[0][0], fCnp[0][1], fCnp[0][2],
-                fCnp[1][0], fCnp[1][1], fCnp[1][2],
-                fCnp[2][0], fCnp[2][1], fCnp[2][2];
+            fCnp[1][0], fCnp[1][1], fCnp[1][2],
+            fCnp[2][0], fCnp[2][1], fCnp[2][2];
         cbnPlatform = cnp * cbn;
         cnbTemp << fCbn[0][0], fCbn[0][1], fCbn[0][2],
                 fCbn[1][0], fCbn[1][1], fCbn[1][2],
@@ -2336,14 +2350,17 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
                 this->fCnb[i][j] = cnbTemp(i, j);
             }
         }
+
         dcm2euler(fCbn, fEuler);
         fPsiPl = fEuler[0];
         fThePl = fEuler[1];
         fPhiPl = fEuler[2];
+
         for (int i = 0; i < 4; i++)
         {
             this->fqPl[i] = fqBase[i];
         }
+
         dcm2euler(fCbnPlat, fEuler);
         fPsiPlPlat = fEuler[0];
         fThePlPlat = fEuler[1];
@@ -2454,6 +2471,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
                     startIndex = tempIndex;
                 }
             }
+
             bCurveRising = false;
         }
 
@@ -2463,6 +2481,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
             {
                 break;
             }
+
             if (linerAccX > fLastLinerAccX)
             {
                 tempIndex = index - 1;
