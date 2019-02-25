@@ -448,16 +448,10 @@ void BleDataParser::sensorFusionEntry(double fGyro[], double fAcc[], double fMag
     string sAttitude;
 
     sensorFusion.uTime++;
-    //Todo: remove it if integrated in iOS
-    extern FILE* fpGyroRaw;
-    fprintf(fpGyroRaw, "%d, %f, %f, %f\n", sensorFusion.uTime, fGyro[CHX], fGyro[CHY], fGyro[CHZ]);
-    //Todo: remove it if integrated in iOS
     sAttitude = sensorFusion.sensorFusionExec(sensorFusion.uTime, fGyro, fAcc, fMag, fAudio);
 
     //Todo: remove it if integrated in iOS
     extern FILE* fpOutput;
-    extern FILE* fpGyroCali;
-    fprintf(fpGyroCali, "%d, %f, %f, %f\n", sensorFusion.uTime, fGyro[CHX], fGyro[CHY], fGyro[CHZ]);
     if (!sAttitude.empty())
     {
         fputs(sAttitude.c_str(), fpOutput);

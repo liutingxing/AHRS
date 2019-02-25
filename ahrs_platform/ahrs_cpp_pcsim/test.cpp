@@ -9,8 +9,6 @@
 #define  MAX_BUFF_LEN   1024
 
 FILE* fpOutput;
-FILE* fpGyroRaw;
-FILE* fpGyroCali;
 
 int main(int argc, char* argv[])
 {
@@ -20,8 +18,6 @@ int main(int argc, char* argv[])
 
     fpInput = fopen("../data/rawData.txt", "r");
     fpOutput = fopen("../data/outputData.txt", "w");
-    fpGyroRaw = fopen("../data/gyroRawData.txt", "w");
-    fpGyroCali = fopen("../data/gyroCaliData.txt", "w");
 
     if (fpInput == NULL)
     {
@@ -37,8 +33,6 @@ int main(int argc, char* argv[])
 
     fclose(fpInput);
     fclose(fpOutput);
-    fclose(fpGyroRaw);
-    fclose(fpGyroCali);
 
     return 0;
 }
