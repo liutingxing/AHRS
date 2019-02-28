@@ -1157,7 +1157,7 @@ void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[
 
     accNorm = sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
 
-    if (accNorm > 8 && accNorm < 12)
+    if (accNorm > 5 && accNorm < 15)
     {
         // execute the acc aid process
         double diff = 0;
@@ -1200,7 +1200,7 @@ void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[
 #if MAG_SUPPORT
     double magNorm = sqrt(mag[0] * mag[0] + mag[1] * mag[1] + mag[2] * mag[2]);
 
-    if (iValidMagCal)
+    if (iValidMagCal && accNorm < 20 && magNorm > 0.8 * fB && magNorm < 1.2 * fB)
     {
         // execute the acc aid process
         double diff = 0;
@@ -1260,13 +1260,13 @@ void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[
 
 #endif
 
-    if (accNorm > 8.0 && accNorm < 12.0)
+    if (accNorm > 5.0 && accNorm < 20.0)
     {
-        gyroMeasError = 10.0 * PI / 180;
+        gyroMeasError = 60.0 * PI / 180;
     }
     else
     {
-        gyroMeasError = 5.0 * PI / 180;
+        gyroMeasError = 10.0 * PI / 180;
     }
 
     beta = sqrt(3.0 / 4.0) * gyroMeasError;
