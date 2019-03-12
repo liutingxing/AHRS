@@ -2462,6 +2462,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
             {
                 // the max peak
                 startIndex = tempIndex;
+                break;
             }
             else
             {
