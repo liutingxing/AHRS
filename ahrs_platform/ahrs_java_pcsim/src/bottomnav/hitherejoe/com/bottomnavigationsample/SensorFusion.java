@@ -2289,6 +2289,7 @@ public class SensorFusion {
                 {
                     // the max peak
                     startIndex = tempIndex;
+                    break;
                 }
                 else
                 {
