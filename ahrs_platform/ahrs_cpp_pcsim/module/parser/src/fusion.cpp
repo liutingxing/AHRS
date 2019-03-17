@@ -1157,7 +1157,7 @@ void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[
 
     accNorm = sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
 
-    if (accNorm > 5 && accNorm < 15)
+    if (true)
     {
         // execute the acc aid process
         double diff = 0;
