@@ -2505,7 +2505,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
     }
 
     // special refine:
-    if (fPlatformOmegaMaxZ < 8 && abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 5 && abs(fOmegaMin) < 5)
+    if (fPlatformOmegaMaxZ < 8 && abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 3 && abs(fOmegaMin) < 3)
     {
         // no rotation, it is push
 

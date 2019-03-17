@@ -2328,7 +2328,7 @@ public class SensorFusion {
         }
 
         // special refine:
-        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 5 && Math.abs(fOmegaMin) < 5)
+        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 3 && Math.abs(fOmegaMin) < 3)
         {
             // no rotation, it is push action
 
