@@ -553,7 +553,7 @@ void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<Sample
         {
             if (abs(linerAccIBP[i]) < 1)
             {
-                linerAccIBP[i] = 0;
+                //linerAccIBP[i] = 0;
             }
         }
 
@@ -2780,6 +2780,36 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
             index ++;
         }
 
+        if (endIndex > 0)
+        {
+            arraySize = sampleDataArray.size();
+
+            for (int i = 0; i < arraySize - endIndex; i++)
+            {
+                sampleDataArray.erase(sampleDataArray.end() - 1);
+            }
+        }
+
+        // remove the lower action
+        endIndex = 0;
+        index = 0;
+
+        for (auto p : sampleDataArray)
+        {
+            SampleData* val = p.get();
+            int lastIndex = index - 1;
+
+            if (lastIndex > 0 && abs(val->fPosD) < abs(sampleDataArray.at(lastIndex)->fPosD))
+            {
+                endIndex = index;
+                break;
+            }
+
+            index ++;
+        }
+        // retain more 3 samples
+        endIndex += 3;
+        endIndex = endIndex < sampleDataArray.size() ? endIndex : sampleDataArray.size()-1;
         if (endIndex > 0)
         {
             arraySize = sampleDataArray.size();
