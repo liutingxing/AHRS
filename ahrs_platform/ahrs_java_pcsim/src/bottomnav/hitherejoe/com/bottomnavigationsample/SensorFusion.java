@@ -1001,7 +1001,7 @@ public class SensorFusion {
             case Step2:
                 actionTime += dt;
                 downTime += dt;
-                if (actionTime > 1.0 || downTime > 0.5)
+                if (actionTime > 1.5 || downTime > 1.0)
                 {
                     iCurveCondition = Peace;
                     uActionStartFlag = false;
@@ -1030,7 +1030,7 @@ public class SensorFusion {
 
             case Step3:
                 actionTime += dt;
-                if (actionTime > 1.5)
+                if (actionTime > 2.0)
                 {
                     iCurveCondition = Peace;
                     uActionStartFlag = false;
@@ -2559,27 +2559,6 @@ public class SensorFusion {
                     break;
                 }
             }
-            if (endIndex > 0)
-            {
-                arraySize = sampleDataArray.size();
-                for (int i = 0; i < arraySize - endIndex; i++) {
-                    sampleDataArray.remove(sampleDataArray.size() - 1);
-                }
-            }
-            // remove the lower action
-            endIndex = 0;
-            for(SampleData val:sampleDataArray)
-            {
-                int lastIndex = sampleDataArray.indexOf(val) - 1;
-                if (lastIndex > 0 && Math.abs(val.fPosD) < Math.abs(sampleDataArray.get(lastIndex).fPosD))
-                {
-                    endIndex = sampleDataArray.indexOf(val);
-                    break;
-                }
-            }
-            // retain more 3 samples
-            endIndex += 3;
-            endIndex = endIndex < sampleDataArray.size() ? endIndex : sampleDataArray.size()-1;
             if (endIndex > 0)
             {
                 arraySize = sampleDataArray.size();
