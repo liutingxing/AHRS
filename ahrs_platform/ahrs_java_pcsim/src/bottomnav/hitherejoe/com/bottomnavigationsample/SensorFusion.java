@@ -1001,7 +1001,7 @@ public class SensorFusion {
             case Step2:
                 actionTime += dt;
                 downTime += dt;
-                if (actionTime > 1.5 || downTime > 1.0)
+                if (actionTime > 1.0 || downTime > 0.5)
                 {
                     iCurveCondition = Peace;
                     uActionStartFlag = false;
@@ -1030,7 +1030,7 @@ public class SensorFusion {
 
             case Step3:
                 actionTime += dt;
-                if (actionTime > 2.0)
+                if (actionTime > 1.5)
                 {
                     iCurveCondition = Peace;
                     uActionStartFlag = false;

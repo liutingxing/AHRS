@@ -773,7 +773,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
         actionTime += dt;
         downTime += dt;
 
-        if (actionTime > 1.5 || downTime > 1.0)
+        if (actionTime > 1.0 || downTime > 0.5)
         {
             iCurveCondition = Peace;
             uActionStartFlag = false;
@@ -812,7 +812,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
     case Step3:
         actionTime += dt;
 
-        if (actionTime > 2.0)
+        if (actionTime > 1.5)
         {
             iCurveCondition = Peace;
             uActionStartFlag = false;
