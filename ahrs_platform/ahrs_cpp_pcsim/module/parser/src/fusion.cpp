@@ -2478,11 +2478,6 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
 
         if (!bCurveRising)
         {
-            if (linerAccX < 0)
-            {
-                break;
-            }
-
             if (linerAccX > fLastLinerAccX)
             {
                 tempIndex = index - 1;
@@ -2650,7 +2645,7 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
             switch (condition)
             {
             case START:
-                if (gyroZ > 10)
+                if (gyroZ > 10 && val->fLinerAccN > 3)
                 {
                     condition = UP;
                     startIndex = index;

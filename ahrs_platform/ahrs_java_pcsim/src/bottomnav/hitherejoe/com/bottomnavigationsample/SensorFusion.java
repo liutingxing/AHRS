@@ -2304,10 +2304,6 @@ public class SensorFusion {
 
             if (!bCurveRising)
             {
-                if (linerAccX < 0)
-                {
-                    break;
-                }
                 if (linerAccX > fLastLinerAccX)
                 {
                     tempIndex = sampleDataArray.indexOf(val) - 1;
@@ -2447,7 +2443,7 @@ public class SensorFusion {
                 switch(condition)
                 {
                     case START:
-                        if (gyroZ > 10)
+                        if (gyroZ > 10 && val.fLinerAccN > 3)
                         {
                             condition = UP;
                             startIndex = sampleDataArray.indexOf(val);
