@@ -2370,6 +2370,26 @@ public class SensorFusion {
             {
                 // abnormal case
             }
+
+            // remove the negative liner acc samples
+            for (int i = 0; i < sampleDataArray.size(); i++)
+            {
+                if (sampleDataArray.get(i).fLinerAccN > 3)
+                {
+                    startIndex = i;
+                    break;
+                }
+            }
+            if (startIndex > 0)
+            {
+                for (int i = 0; i < startIndex; i++)
+                {
+                    sampleDataArray.remove(0);
+                    fAccMinIndex--;
+                    fAccMaxIndex--;
+                }
+            }
+
             // remove the negative gyro Z actions
             for (int i = 0; i < sampleDataArray.size(); i++)
             {

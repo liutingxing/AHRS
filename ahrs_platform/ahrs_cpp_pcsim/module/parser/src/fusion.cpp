@@ -2556,6 +2556,25 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
             // abnormal case
         }
 
+        // remove the negative liner acc samples
+        for (int i = 0; i < sampleDataArray.size(); i++)
+        {
+            if (sampleDataArray.at(i)->fLinerAccN > 3)
+            {
+                startIndex = i;
+                break;
+            }
+        }
+        if (startIndex > 0)
+        {
+            for (int i = 0; i < startIndex; i++)
+            {
+                sampleDataArray.erase(sampleDataArray.begin());
+                fAccMinIndex--;
+                fAccMaxIndex--;
+            }
+        }
+
         // remove the negative gyro Z actions
         for (int i = 0; i < sampleDataArray.size(); i++)
         {
