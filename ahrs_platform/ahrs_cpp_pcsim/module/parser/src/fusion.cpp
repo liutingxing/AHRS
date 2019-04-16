@@ -2495,7 +2495,8 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
         for (int i = 0; i < startIndex; i++)
         {
             sampleDataArray.erase(sampleDataArray.begin());
-            endIndex--;
+            fAccMinIndex--;
+            fAccMaxIndex--;
         }
     }
 
