@@ -345,6 +345,7 @@ public class SensorFusion {
         {
             //outlierCompensate(cSampleDataArray, gyro);
             refineSampleData(cSampleDataArray);
+            specialActionProcess(cSampleDataArray);
         }
 
         // process the sample data array
@@ -666,6 +667,146 @@ public class SensorFusion {
         dst.fVel = Math.sqrt(src.fVelN*src.fVelN +  src.fVelE*src.fVelE + src.fVelD*src.fVelD);
 
         return 0;
+    }
+
+    private void ahrsFusionGeneral(double[] fq, double dt, double[] gyro, double[] acc, double[] mag)
+    {
+        double accNorm = 0;
+        double[] qDot = new double[]{0, 0, 0, 0};
+        double[] qDotError = new double[]{0, 0, 0, 0};
+        double gyroMeasError = 10 * Math.PI / 180; // gyroscope measurement error in rad/s (shown as 10 deg/s)
+        double beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
+
+        qDot[0] = -(gyro[0] * fq[1] + gyro[1] * fq[2] + gyro[2] * fq[3]) / 2.0;
+        qDot[1] =  (gyro[0] * fq[0] + gyro[2] * fq[2] - gyro[1] * fq[3]) / 2.0;
+        qDot[2] =  (gyro[1] * fq[0] - gyro[2] * fq[1] + gyro[0] * fq[3]) / 2.0;
+        qDot[3] =  (gyro[2] * fq[0] + gyro[1] * fq[1] - gyro[0] * fq[2]) / 2.0;
+
+        accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
+        if (accNorm > 8 && accNorm < 12) {
+            // execute the acc aid process
+            double diff = 0;
+            double[] gEstimate = new double[3];
+            Matrix F = new Matrix(3, 1);
+            Matrix J = new Matrix(3, 4);
+            Matrix step = new Matrix(4, 1);
+
+            gEstimate[0] = -acc[0] / accNorm;
+            gEstimate[1] = -acc[1] / accNorm;
+            gEstimate[2] = -acc[2] / accNorm;
+
+            F.set(0, 0, 2 * (fq[1] * fq[3] - fq[0] * fq[2]) - gEstimate[0]);
+            F.set(1, 0, 2 * (fq[0] * fq[1] + fq[2] * fq[3]) - gEstimate[1]);
+            F.set(2, 0, 2 * (0.5 - fq[1] * fq[1] - fq[2] * fq[2]) - gEstimate[2]);
+
+            J.set(0, 0, -2 * fq[2]);
+            J.set(0, 1, 2 * fq[3]);
+            J.set(0, 2, -2 * fq[0]);
+            J.set(0, 3, 2 * fq[1]);
+
+            J.set(1, 0, 2 * fq[1]);
+            J.set(1, 1, 2 * fq[0]);
+            J.set(1, 2, 2 * fq[3]);
+            J.set(1, 3, 2 * fq[2]);
+
+            J.set(2, 0, 0);
+            J.set(2, 1, -4 * fq[1]);
+            J.set(2, 2, -4 * fq[2]);
+            J.set(2, 3, 0);
+
+            step = J.transpose().times(F);
+            qDotError[0] += step.get(0, 0);
+            qDotError[1] += step.get(1, 0);
+            qDotError[2] += step.get(2, 0);
+            qDotError[3] += step.get(3, 0);
+        }
+
+        if (MAG_SUPPORT == 1)
+        {
+            double magNorm = Math.sqrt(mag[0]*mag[0] + mag[1]*mag[1] + mag[2]*mag[2]);
+            if (iValidMagCal && accNorm < 20 && magNorm > 0.8 * fB && magNorm < 1.2 * fB)
+            {
+                // execute the acc aid process
+                double diff = 0;
+                double[] mEstimate = new double[3];
+                double[] b = new double[4];
+                Matrix F = new Matrix(3, 1);
+                Matrix J = new Matrix(3, 4);
+                Matrix h = new Matrix(3, 1);
+                Matrix cbn = new Matrix(fCbn);
+                Matrix m = new Matrix(3, 1);
+                Matrix step = new Matrix(4, 1);
+
+                mEstimate[0] = mag[0] / magNorm;
+                mEstimate[1] = mag[1] / magNorm;
+                mEstimate[2] = mag[2] / magNorm;
+
+                m.set(0, 0, mEstimate[0]);
+                m.set(1, 0, mEstimate[1]);
+                m.set(2, 0, mEstimate[2]);
+
+                h = cbn.times(m);
+                b[0] = 0;
+                b[1] = Math.sqrt(h.get(0, 0)*h.get(0, 0) + h.get(1, 0)*h.get(1, 0));
+                b[2] = 0;
+                b[3] = h.get(2, 0);
+
+                F.set(0, 0, 2*b[1]*(0.5 - fq[2]*fq[2] - fq[3]*fq[3]) + 2*b[3]*(fq[1]*fq[3] - fq[0]*fq[2]) - mEstimate[0]);
+                F.set(1, 0, 2*b[1]*(fq[1]*fq[2] - fq[0]*fq[3]) + 2*b[3]*(fq[0]*fq[1] + fq[2]*fq[3]) - mEstimate[1]);
+                F.set(2, 0, 2*b[1]*(fq[0]*fq[2] + fq[1]*fq[3]) + 2*b[3]*(0.5 - fq[1]*fq[1] - fq[2]*fq[2]) - mEstimate[2]);
+
+                J.set(0, 0, -2 * b[3] * fq[2]);
+                J.set(0, 1, 2 * b[3] * fq[3]);
+                J.set(0, 2, -4 * b[1] * fq[2] - 2 * b[3] * fq[0]);
+                J.set(0, 3, -4 * b[1] * fq[3] + 2 * b[3] * fq[1]);
+
+                J.set(1, 0, -2 * b[1] * fq[3] + 2 * b[3] * fq[1]);
+                J.set(1, 1, 2 * b[1] * fq[2] + 2 * b[3] * fq[0]);
+                J.set(1, 2, 2 * b[1] * fq[1] + 2 * b[3] * fq[3]);
+                J.set(1, 3, -2 * b[1] * fq[0] + 2 * b[3] * fq[2]);
+
+                J.set(2, 0, 2 * b[1] * fq[2]);
+                J.set(2, 1, 2 * b[1] * fq[3] - 4 * b[3] * fq[1]);
+                J.set(2, 2, 2 * b[1] * fq[0] - 4 * b[3] * fq[2]);
+                J.set(2, 3, 2 * b[1] * fq[1]);
+
+                diff = F.norm2();
+                step = J.transpose().times(F);
+                qDotError[0] += step.get(0, 0);
+                qDotError[1] += step.get(1, 0);
+                qDotError[2] += step.get(2, 0);
+                qDotError[3] += step.get(3, 0);
+            }
+        }
+
+        if (accNorm > 8.0 && accNorm < 12.0){
+            gyroMeasError = 10 * Math.PI / 180;
+        }
+        else
+        {
+            gyroMeasError = 3 * Math.PI / 180;
+        }
+        beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
+
+        double qDotErrorNorm = Math.sqrt(qDotError[0] * qDotError[0] + qDotError[1] * qDotError[1] + qDotError[2] * qDotError[2] + qDotError[3] * qDotError[3]);
+        if (qDotErrorNorm > 0)
+        {
+            qDotError[0] /= qDotErrorNorm;
+            qDotError[1] /= qDotErrorNorm;
+            qDotError[2] /= qDotErrorNorm;
+            qDotError[3] /= qDotErrorNorm;
+        }
+
+        qDot[0] -= beta * qDotError[0];
+        qDot[1] -= beta * qDotError[1];
+        qDot[2] -= beta * qDotError[2];
+        qDot[3] -= beta * qDotError[3];
+
+        for (int i = 0; i < 4; i++)
+        {
+            fq[i] += qDot[i] * dt;
+        }
+        qNorm(fq);
     }
 
     private void ahrsFusion(double[] fq, double dt, double[] gyro, double[] acc, double[] mag)
@@ -1365,6 +1506,23 @@ public class SensorFusion {
 
         return sigma;
 
+    }
+
+    private double stdCalVec(ArrayList<Double> numList)
+    {
+        double value = 0; // the sum of Xi
+        double square = 0; // the sum of xi^2
+        double sigma = 0; // standard deviation
+        double size = numList.size();
+
+        for(Double val:numList)
+        {
+            value += val.doubleValue();
+            square += val.doubleValue()*val.doubleValue();
+        }
+        sigma = Math.sqrt((square - value * value / size) / (size - 1));
+
+        return sigma;
     }
 
     private void euler2q(double[] q, double fyaw, double fpitch, double froll)
@@ -2206,6 +2364,66 @@ public class SensorFusion {
             fThePlPlat = fEuler[1];
             fPhiPlPlat = fEuler[2];
             euler2q(fqPlPlat, fEuler[0], fEuler[1], fEuler[2]);
+        }
+    }
+
+    private void specialActionProcess(ArrayList<SampleData> sampleDataArray)
+    {
+        if (sampleDataArray.size() == 0)
+        {
+            return;
+        }
+
+        // move action check
+        ArrayList<Double> numList = new ArrayList<Double>(30);
+        double[] stdChanel = new double[]{0,0,0};
+
+        for (int i = CHX; i <= CHZ; i++) {
+            for (SampleData val : sampleDataArray) {
+                numList.add(val.fAccelerate[i]);
+            }
+            stdChanel[i] = stdCalVec(numList);
+            numList.clear();
+        }
+
+        if (stdChanel[CHX] > 5 * stdChanel[CHY] && stdChanel[CHX] > 5 * stdChanel[CHZ])
+        {
+            // move action refine
+            for (int i = 1; i < sampleDataArray.size(); i++) {
+                SampleData p = sampleDataArray.get(i);
+                double gyro[] = sampleDataArray.get(i).fOmegaB;
+                double acc[] = sampleDataArray.get(i).fAccelerate;
+                double mag[] = sampleDataArray.get(i).fMagnetic;
+                double[] qDot = new double[]{0, 0, 0, 0};
+                Matrix cnp = new Matrix(fCnp);
+                Matrix cbnPlatform = new Matrix(sampleDataArray.get(i-1).fCbnPlat);
+                double[][] cbn = cnp.transpose().times(cbnPlatform).getArray();
+                double[] euler = dcm2euler(cbn);
+                double[] fq = new double[4];
+                double[][] cbnTemp = new double[3][3];
+
+                euler2q(fq, euler[0], 0, euler[2]);
+                ahrsFusionGeneral(fq, dt, gyro, acc, mag);
+
+                q2dcm(fq, cbnTemp);
+                cbnPlatform = cnp.times(new Matrix(cbnTemp));
+                sampleDataArray.get(i).fCbnPlat = cbnPlatform.getArray();
+
+                euler = dcm2euler(sampleDataArray.get(i).fCbnPlat);
+                sampleDataArray.get(i).fPsiPlPlat = euler[0];
+                sampleDataArray.get(i).fThePlPlat = euler[1];
+                sampleDataArray.get(i).fPhiPlPlat = euler[2];
+                euler2q(sampleDataArray.get(i).fqPlPlat, sampleDataArray.get(i).fPsiPlPlat, sampleDataArray.get(i).fThePlPlat, sampleDataArray.get(i).fPhiPlPlat);
+
+                p.fLinerAccN = p.fAccelerate[0] * p.fCbnPlat[0][0] + p.fAccelerate[1] * p.fCbnPlat[0][1] + p.fAccelerate[2] * p.fCbnPlat[0][2];
+                p.fLinerAccE = p.fAccelerate[0] * p.fCbnPlat[1][0] + p.fAccelerate[1] * p.fCbnPlat[1][1] + p.fAccelerate[2] * p.fCbnPlat[1][2];
+                p.fLinerAccD = p.fAccelerate[0] * p.fCbnPlat[2][0] + p.fAccelerate[1] * p.fCbnPlat[2][1] + p.fAccelerate[2] * p.fCbnPlat[2][2] + GRAVITY;
+
+                for (int j = CHX; i <= CHZ; i++)
+                {
+                    p.fOmegaN[i] = p.fCbnPlat[i][0] * p.fOmegaB[0] + p.fCbnPlat[i][1] * p.fOmegaB[1] + p.fCbnPlat[i][2] * p.fOmegaB[2];
+                }
+            }
         }
     }
 
