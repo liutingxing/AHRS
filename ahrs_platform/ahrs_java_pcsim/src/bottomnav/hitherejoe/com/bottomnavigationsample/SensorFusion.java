@@ -2389,20 +2389,21 @@ public class SensorFusion {
         if (stdChanel[CHX] > 5 * stdChanel[CHY] && stdChanel[CHX] > 5 * stdChanel[CHZ])
         {
             // move action refine
+            Matrix cnp = new Matrix(fCnp);
+            Matrix cbnPlatform = new Matrix(sampleDataArray.get(0).fCbnPlat);
+            double[][] cbn = cnp.transpose().times(cbnPlatform).getArray();
+            double[] euler = dcm2euler(cbn);
+            double[] fq = new double[4];
+            double[][] cbnTemp = new double[3][3];
+            euler2q(fq, euler[0], 0, euler[2]);
+
             for (int i = 0; i < sampleDataArray.size(); i++) {
                 SampleData p = sampleDataArray.get(i);
                 double gyro[] = sampleDataArray.get(i).fOmegaB;
                 double acc[] = sampleDataArray.get(i).fAccelerate;
                 double mag[] = sampleDataArray.get(i).fMagnetic;
                 double[] qDot = new double[]{0, 0, 0, 0};
-                Matrix cnp = new Matrix(fCnp);
-                Matrix cbnPlatform = new Matrix(sampleDataArray.get(i).fCbnPlat);
-                double[][] cbn = cnp.transpose().times(cbnPlatform).getArray();
-                double[] euler = dcm2euler(cbn);
-                double[] fq = new double[4];
-                double[][] cbnTemp = new double[3][3];
 
-                euler2q(fq, euler[0], 0, euler[2]);
                 ahrsFusionGeneral(fq, dt, gyro, acc, mag);
 
                 q2dcm(fq, cbnTemp);
