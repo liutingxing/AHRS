@@ -721,71 +721,7 @@ public class SensorFusion {
             qDotError[3] += step.get(3, 0);
         }
 
-        if (MAG_SUPPORT == 1)
-        {
-            double magNorm = Math.sqrt(mag[0]*mag[0] + mag[1]*mag[1] + mag[2]*mag[2]);
-            if (iValidMagCal && accNorm < 20 && magNorm > 0.8 * fB && magNorm < 1.2 * fB)
-            {
-                // execute the acc aid process
-                double diff = 0;
-                double[] mEstimate = new double[3];
-                double[] b = new double[4];
-                Matrix F = new Matrix(3, 1);
-                Matrix J = new Matrix(3, 4);
-                Matrix h = new Matrix(3, 1);
-                Matrix cbn = new Matrix(fCbn);
-                Matrix m = new Matrix(3, 1);
-                Matrix step = new Matrix(4, 1);
-
-                mEstimate[0] = mag[0] / magNorm;
-                mEstimate[1] = mag[1] / magNorm;
-                mEstimate[2] = mag[2] / magNorm;
-
-                m.set(0, 0, mEstimate[0]);
-                m.set(1, 0, mEstimate[1]);
-                m.set(2, 0, mEstimate[2]);
-
-                h = cbn.times(m);
-                b[0] = 0;
-                b[1] = Math.sqrt(h.get(0, 0)*h.get(0, 0) + h.get(1, 0)*h.get(1, 0));
-                b[2] = 0;
-                b[3] = h.get(2, 0);
-
-                F.set(0, 0, 2*b[1]*(0.5 - fq[2]*fq[2] - fq[3]*fq[3]) + 2*b[3]*(fq[1]*fq[3] - fq[0]*fq[2]) - mEstimate[0]);
-                F.set(1, 0, 2*b[1]*(fq[1]*fq[2] - fq[0]*fq[3]) + 2*b[3]*(fq[0]*fq[1] + fq[2]*fq[3]) - mEstimate[1]);
-                F.set(2, 0, 2*b[1]*(fq[0]*fq[2] + fq[1]*fq[3]) + 2*b[3]*(0.5 - fq[1]*fq[1] - fq[2]*fq[2]) - mEstimate[2]);
-
-                J.set(0, 0, -2 * b[3] * fq[2]);
-                J.set(0, 1, 2 * b[3] * fq[3]);
-                J.set(0, 2, -4 * b[1] * fq[2] - 2 * b[3] * fq[0]);
-                J.set(0, 3, -4 * b[1] * fq[3] + 2 * b[3] * fq[1]);
-
-                J.set(1, 0, -2 * b[1] * fq[3] + 2 * b[3] * fq[1]);
-                J.set(1, 1, 2 * b[1] * fq[2] + 2 * b[3] * fq[0]);
-                J.set(1, 2, 2 * b[1] * fq[1] + 2 * b[3] * fq[3]);
-                J.set(1, 3, -2 * b[1] * fq[0] + 2 * b[3] * fq[2]);
-
-                J.set(2, 0, 2 * b[1] * fq[2]);
-                J.set(2, 1, 2 * b[1] * fq[3] - 4 * b[3] * fq[1]);
-                J.set(2, 2, 2 * b[1] * fq[0] - 4 * b[3] * fq[2]);
-                J.set(2, 3, 2 * b[1] * fq[1]);
-
-                diff = F.norm2();
-                step = J.transpose().times(F);
-                qDotError[0] += step.get(0, 0);
-                qDotError[1] += step.get(1, 0);
-                qDotError[2] += step.get(2, 0);
-                qDotError[3] += step.get(3, 0);
-            }
-        }
-
-        if (accNorm > 8.0 && accNorm < 12.0){
-            gyroMeasError = 10 * Math.PI / 180;
-        }
-        else
-        {
-            gyroMeasError = 3 * Math.PI / 180;
-        }
+        gyroMeasError = 3 * Math.PI / 180;
         beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
 
         double qDotErrorNorm = Math.sqrt(qDotError[0] * qDotError[0] + qDotError[1] * qDotError[1] + qDotError[2] * qDotError[2] + qDotError[3] * qDotError[3]);
