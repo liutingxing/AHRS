@@ -2420,9 +2420,9 @@ public class SensorFusion {
                 p.fLinerAccE = p.fAccelerate[0] * p.fCbnPlat[1][0] + p.fAccelerate[1] * p.fCbnPlat[1][1] + p.fAccelerate[2] * p.fCbnPlat[1][2];
                 p.fLinerAccD = p.fAccelerate[0] * p.fCbnPlat[2][0] + p.fAccelerate[1] * p.fCbnPlat[2][1] + p.fAccelerate[2] * p.fCbnPlat[2][2] + GRAVITY;
 
-                for (int j = CHX; i <= CHZ; i++)
+                for (int j = CHX; j <= CHZ; j++)
                 {
-                    p.fOmegaN[i] = p.fCbnPlat[i][0] * p.fOmegaB[0] + p.fCbnPlat[i][1] * p.fOmegaB[1] + p.fCbnPlat[i][2] * p.fOmegaB[2];
+                    p.fOmegaN[j] = p.fCbnPlat[j][0] * p.fOmegaB[0] + p.fCbnPlat[j][1] * p.fOmegaB[1] + p.fCbnPlat[j][2] * p.fOmegaB[2];
                 }
             }
         }
