@@ -2399,22 +2399,22 @@ public class SensorFusion {
 
             for (int i = 0; i < sampleDataArray.size(); i++) {
                 SampleData p = sampleDataArray.get(i);
-                double gyro[] = sampleDataArray.get(i).fOmegaB;
-                double acc[] = sampleDataArray.get(i).fAccelerate;
-                double mag[] = sampleDataArray.get(i).fMagnetic;
-                double[] qDot = new double[]{0, 0, 0, 0};
+                if (i > 0) {
+                    double gyro[] = p.fOmegaB;
+                    double acc[] = p.fAccelerate;
+                    double mag[] = p.fMagnetic;
 
-                ahrsFusionGeneral(fq, dt, gyro, acc, mag);
-
+                    ahrsFusionGeneral(fq, dt, gyro, acc, mag);
+                }
                 q2dcm(fq, cbnTemp);
                 cbnPlatform = cnp.times(new Matrix(cbnTemp));
                 sampleDataArray.get(i).fCbnPlat = cbnPlatform.getArray();
 
-                euler = dcm2euler(sampleDataArray.get(i).fCbnPlat);
-                sampleDataArray.get(i).fPsiPlPlat = euler[0];
-                sampleDataArray.get(i).fThePlPlat = euler[1];
-                sampleDataArray.get(i).fPhiPlPlat = euler[2];
-                euler2q(sampleDataArray.get(i).fqPlPlat, sampleDataArray.get(i).fPsiPlPlat, sampleDataArray.get(i).fThePlPlat, sampleDataArray.get(i).fPhiPlPlat);
+                euler = dcm2euler(p.fCbnPlat);
+                p.fPsiPlPlat = euler[0];
+                p.fThePlPlat = euler[1];
+                p.fPhiPlPlat = euler[2];
+                euler2q(p.fqPlPlat, p.fPsiPlPlat, p.fThePlPlat, p.fPhiPlPlat);
 
                 p.fLinerAccN = p.fAccelerate[0] * p.fCbnPlat[0][0] + p.fAccelerate[1] * p.fCbnPlat[0][1] + p.fAccelerate[2] * p.fCbnPlat[0][2];
                 p.fLinerAccE = p.fAccelerate[0] * p.fCbnPlat[1][0] + p.fAccelerate[1] * p.fCbnPlat[1][1] + p.fAccelerate[2] * p.fCbnPlat[1][2];
