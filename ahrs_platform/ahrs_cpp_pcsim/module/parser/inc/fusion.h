@@ -159,8 +159,10 @@ class SensorFusion
         int staticDetectUpdate(double gyro[], double acc[], double mag[]);
         int staticDetectCheck();
         double stdCal(vector<shared_ptr<double>>& numList);
+        double stdCalVec(vector<double>& numList);
         bool sensorAlignment(vector<shared_ptr<double>>& accArray, vector<shared_ptr<double>>& magArray);
         void gyroCalibration(vector<shared_ptr<double>>& gyroArray);
+        void ahrsFusionGeneral(double fq[], double dt, double gyro[], double acc[], double mag[]);
         void ahrsFusion(double fq[], double dt, double gyro[], double acc[], double mag[]);
         void ahrsProcess(double dt, double gyro[], double acc[], double mag[]);
         void quaternionIntegration(double dt, double gyro[]);
@@ -173,6 +175,7 @@ class SensorFusion
         int updateAudioInfo(PingPongTrainData& data);
         bool magCalibration(double mag[]);
         void calibration4InvRaw(vector<shared_ptr<double>>& magArray);
+        void specialActionProcess(vector<shared_ptr<SampleData>>& sampleDataArray);
         void refineSampleData(vector<shared_ptr<SampleData>>& sampleDataArray);
         void gyroFilter(double gyro[]);
         void accFilter(double acc[]);

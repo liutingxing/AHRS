@@ -270,6 +270,7 @@ string SensorFusion::sensorFusionExec(int time, double gyro[], double acc[], dou
     {
         //outlierCompensate(cSampleDataArray, gyro);
         refineSampleData(cSampleDataArray);
+        specialActionProcess(cSampleDataArray);
     }
 
     // record the attitude and trajectory
@@ -1141,6 +1142,88 @@ void SensorFusion::quaternionIntegration(double dt, double gyro[])
     }
 }
 
+void SensorFusion::ahrsFusionGeneral(double fq[], double dt, double gyro[], double acc[], double mag[])
+{
+    int i = 0;
+    double accNorm = 0;
+    double qDot[4] {0, 0, 0, 0};
+    double qDotError[4] {0, 0, 0, 0};
+    double gyroMeasError = 10 * PI / 180; // gyroscope measurement error in rad/s (shown as 10 deg/s)
+    double beta = sqrt(3.0 / 4.0) * gyroMeasError;
+
+    qDot[0] = -(gyro[0] * fq[1] + gyro[1] * fq[2] + gyro[2] * fq[3]) / 2.0;
+    qDot[1] = (gyro[0] * fq[0] + gyro[2] * fq[2] - gyro[1] * fq[3]) / 2.0;
+    qDot[2] = (gyro[1] * fq[0] - gyro[2] * fq[1] + gyro[0] * fq[3]) / 2.0;
+    qDot[3] = (gyro[2] * fq[0] + gyro[1] * fq[1] - gyro[0] * fq[2]) / 2.0;
+
+    accNorm = sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
+
+    if (accNorm > 8 && accNorm < 12)
+    {
+        // execute the acc aid process
+        double diff = 0;
+        double gEstimate[3];
+        MatrixXd F(3, 1);
+        MatrixXd J(3, 4);
+        MatrixXd step(4, 1);
+
+        gEstimate[0] = -acc[0] / accNorm;
+        gEstimate[1] = -acc[1] / accNorm;
+        gEstimate[2] = -acc[2] / accNorm;
+
+        F(0, 0) = 2 * (fq[1] * fq[3] - fq[0] * fq[2]) - gEstimate[0];
+        F(1, 0) = 2 * (fq[0] * fq[1] + fq[2] * fq[3]) - gEstimate[1];
+        F(2, 0) = 2 * (0.5 - fq[1] * fq[1] - fq[2] * fq[2]) - gEstimate[2];
+
+        J(0, 0) = -2 * fq[2];
+        J(0, 1) = 2 * fq[3];
+        J(0, 2) = -2 * fq[0];
+        J(0, 3) = 2 * fq[1];
+
+        J(1, 0) = 2 * fq[1];
+        J(1, 1) = 2 * fq[0];
+        J(1, 2) = 2 * fq[3];
+        J(1, 3) = 2 * fq[2];
+
+        J(2, 0) = 0;
+        J(2, 1) = -4 * fq[1];
+        J(2, 2) = -4 * fq[2];
+        J(2, 3) = 0;
+
+        step = J.transpose().eval() * F;
+
+        qDotError[0] += step(0, 0);
+        qDotError[1] += step(1, 0);
+        qDotError[2] += step(2, 0);
+        qDotError[3] += step(3, 0);
+    }
+
+    gyroMeasError = 3 * PI / 180;
+    beta = sqrt(3.0 / 4.0) * gyroMeasError;
+
+    double qDotErrorNorm = sqrt(qDotError[0] * qDotError[0] + qDotError[1] * qDotError[1] + qDotError[2] * qDotError[2] + qDotError[3] * qDotError[3]);
+
+    if (qDotErrorNorm > 0)
+    {
+        qDotError[0] /= qDotErrorNorm;
+        qDotError[1] /= qDotErrorNorm;
+        qDotError[2] /= qDotErrorNorm;
+        qDotError[3] /= qDotErrorNorm;
+    }
+
+    qDot[0] -= beta * qDotError[0];
+    qDot[1] -= beta * qDotError[1];
+    qDot[2] -= beta * qDotError[2];
+    qDot[3] -= beta * qDotError[3];
+
+    for (i = 0; i < 4; i++)
+    {
+        fq[i] += qDot[i] * dt;
+    }
+
+    qNorm(fq);
+}
+
 void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[], double mag[])
 {
     int i = 0;
@@ -1620,6 +1703,23 @@ double SensorFusion::stdCal(vector<shared_ptr<double>>& numList)
         square += det * det;
     }
 
+    sigma = sqrt((square - value * value / size) / (size - 1));
+
+    return sigma;
+}
+
+double SensorFusion::stdCalVec(vector<double>& numList)
+{
+    double value = 0; // the sum of Xi
+    double square = 0; // the sum of xi^2
+    double sigma = 0; // standard deviation
+    double size = numList.size();
+
+    for(double val:numList)
+    {
+        value += val;
+        square += val*val;
+    }
     sigma = sqrt((square - value * value / size) / (size - 1));
 
     return sigma;
@@ -2367,6 +2467,102 @@ void SensorFusion::outlierCompensate(vector<shared_ptr<SampleData>>& sampleDataA
         fPhiPlPlat = fEuler[2];
         euler2q(fqPlPlat, fEuler[0], fEuler[1], fEuler[2]);
     }
+}
+
+void SensorFusion::specialActionProcess(vector<shared_ptr<SampleData>>& sampleDataArray)
+{
+    if (sampleDataArray.size() == 0)
+    {
+        return;
+    }
+
+    // move action check
+    vector<double> numList;
+    double stdChanel[3] = {0,0,0};
+
+    for (int i = CHX; i <= CHZ; i++)
+    {
+        for (auto p:sampleDataArray)
+        {
+            SampleData* val = p.get();
+            numList.push_back(val->fAccelerate[i]);
+        }
+        stdChanel[i] = stdCalVec(numList);
+        numList.clear();
+    }
+
+    if (stdChanel[CHX] > 5 * stdChanel[CHY] && stdChanel[CHX] > 5 * stdChanel[CHZ])
+    {
+        // move action refine
+        Matrix3d cpn;
+        Matrix3d cbnPlatform;
+        Matrix3d cbn;
+        double euler[3];
+        double fq[4];
+        double cbnTemp[3][3];
+
+        cbnPlatform << sampleDataArray.at(0)->fCbnPlat[0][0], sampleDataArray.at(0)->fCbnPlat[0][1], sampleDataArray.at(0)->fCbnPlat[0][2],
+                       sampleDataArray.at(0)->fCbnPlat[1][0], sampleDataArray.at(0)->fCbnPlat[1][1], sampleDataArray.at(0)->fCbnPlat[1][2],
+                       sampleDataArray.at(0)->fCbnPlat[2][0], sampleDataArray.at(0)->fCbnPlat[2][1], sampleDataArray.at(0)->fCbnPlat[2][2];
+
+        cpn << fCnp[0][0], fCnp[0][1], fCnp[0][2],
+                fCnp[1][0], fCnp[1][1], fCnp[1][2],
+                fCnp[2][0], fCnp[2][1], fCnp[2][2];
+
+        cpn.transposeInPlace();
+        cbn = cpn * cbnPlatform;
+        for (int i = CHX; i <= CHZ; i++)
+        {
+            for (int j = CHX; j <= CHZ; j++)
+            {
+                cbnTemp[i][j] = cbn(i, j);
+            }
+        }
+        dcm2euler(cbnTemp, euler);
+        euler2q(fq, euler[0], 0, euler[2]);
+
+        for (int i = 0; i < sampleDataArray.size(); i++)
+        {
+            SampleData* p = sampleDataArray.at(i).get();
+            if (i > 0)
+            {
+                double gyro[3] = {p->fOmegaB[CHX], p->fOmegaB[CHY], p->fOmegaB[CHZ]};
+                double acc[3] = {p->fAccelerate[CHX], p->fOmegaB[CHY], p->fOmegaB[CHZ]};
+                double mag[3] = {p->fMagnetic[CHX], p->fOmegaB[CHY], p->fOmegaB[CHZ]};
+
+                ahrsFusionGeneral(fq, dt, gyro, acc, mag);
+            }
+            q2dcm(fq, cbnTemp);
+            cbn << cbnTemp[0][0], cbnTemp[0][1], cbnTemp[0][2],
+                   cbnTemp[1][0], cbnTemp[1][1], cbnTemp[1][2],
+                   cbnTemp[2][0], cbnTemp[2][1], cbnTemp[2][2];
+            cpn.transposeInPlace(); // now it is cnp
+            cbnPlatform = cpn * cbn;
+            for (int i = CHX; i <= CHZ; i++)
+            {
+                for (int j = CHX; j <= CHZ; j++)
+                {
+                    p->fCbnPlat[i][j] = cbnPlatform(i, j);
+                }
+            }
+            dcm2euler(p->fCbnPlat, euler);
+            p->fPsiPlPlat = euler[0];
+            p->fThePlPlat = euler[1];
+            p->fPhiPlPlat = euler[2];
+            euler2q(p->fqPlPlat, p->fPsiPlPlat, p->fThePlPlat, p->fPhiPlPlat);
+
+            p->fLinerAccN = p->fAccelerate[0] * p->fCbnPlat[0][0] + p->fAccelerate[1] * p->fCbnPlat[0][1] + p->fAccelerate[2] * p->fCbnPlat[0][2];
+            p->fLinerAccE = p->fAccelerate[0] * p->fCbnPlat[1][0] + p->fAccelerate[1] * p->fCbnPlat[1][1] + p->fAccelerate[2] * p->fCbnPlat[1][2];
+            p->fLinerAccD = p->fAccelerate[0] * p->fCbnPlat[2][0] + p->fAccelerate[1] * p->fCbnPlat[2][1] + p->fAccelerate[2] * p->fCbnPlat[2][2] + GRAVITY;
+
+            for (int j = CHX; j <= CHZ; j++)
+            {
+                p->fOmegaN[j] = p->fCbnPlat[j][0] * p->fOmegaB[0] + p->fCbnPlat[j][1] * p->fOmegaB[1] + p->fCbnPlat[j][2] * p->fOmegaB[2];
+            }
+
+        }
+    }
+
 }
 
 void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataArray)
