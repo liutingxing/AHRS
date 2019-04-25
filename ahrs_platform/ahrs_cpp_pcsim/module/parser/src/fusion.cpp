@@ -587,9 +587,6 @@ void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<Sample
         velAve[1] = (valLast->fVelE + velIBP[1]) / 2.0;
         velAve[2] = (valLast->fVelD + velIBP[2]) / 2.0;
 
-        val->fLinerAccN = linerAccIBP[0];
-        val->fLinerAccE = linerAccIBP[1];
-        val->fLinerAccD = linerAccIBP[2];
         val->fVelN = velIBP[0];
         val->fVelE = velIBP[1];
         val->fVelD = velIBP[2];
