@@ -582,16 +582,6 @@ public class SensorFusion {
             data.uStrikePower = 0;
         }
 
-
-        if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
-        {
-            data.sActionType = "backhand";
-        }
-        else
-        {
-            data.sActionType = "forehand";
-        }
-
         // replace the type character in trajectory
         while ((typeIndex = trajectory.indexOf("x")) != -1)
         {
@@ -2483,7 +2473,7 @@ public class SensorFusion {
         if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 3 && Math.abs(fOmegaMin) < 3)
         {
             // no rotation, it is push action
-
+            trainData.sActionType = "push-pull";
             // calculate the ins info firstly
             insStrapdownMechanization(dt, sampleDataArray);
             // remove the backward action
@@ -2508,6 +2498,7 @@ public class SensorFusion {
         else if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
         {
             // backhand action
+            trainData.sActionType = "backhand";
             fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
             fOmegaLast = sampleDataArray.get(sampleDataArray.size() - 1).fOmegaB[CHZ];
 
@@ -2585,6 +2576,7 @@ public class SensorFusion {
         else
         {
             // forehand action
+            trainData.sActionType = "forehand";
             fOmegaFirst = sampleDataArray.get(0).fOmegaB[CHZ];
             fOmegaLast = sampleDataArray.get(sampleDataArray.size() - 1).fOmegaB[CHZ];
 
