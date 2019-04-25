@@ -2457,8 +2457,37 @@ public class SensorFusion {
             }
             fLastLinerAccX = linerAccX;
         }
-
-        // refine the sample data array
+        if (startIndex > 0)
+        {
+            for (int i = 0; i < startIndex; i++)
+            {
+                sampleDataArray.remove(0);
+                fAccMinIndex--;
+                fAccMaxIndex--;
+            }
+        }
+        // remove the immature false peak
+        double slopAngle = 0; // unit:Degree
+        tempIndex = 0;
+        for(SampleData val:sampleDataArray)
+        {
+            double linerAccX = val.fLinerAccN;
+            if (Math.abs(linerAccX - fAccMaxX) < 1)
+            {
+                // the max peak
+                startIndex = tempIndex;
+                break;
+            }
+            int indexCurr = sampleDataArray.indexOf(val);
+            if (indexCurr > 0)
+            {
+                slopAngle = Math.toDegrees(Math.atan(linerAccX - sampleDataArray.get(indexCurr - 1).fLinerAccN));
+                if (slopAngle < 15)
+                {
+                    tempIndex = indexCurr;
+                }
+            }
+        }
         if (startIndex > 0)
         {
             for (int i = 0; i < startIndex; i++)
@@ -2470,7 +2499,7 @@ public class SensorFusion {
         }
 
         // special refine:
-        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 3 && Math.abs(fOmegaMin) < 3)
+        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 4 && Math.abs(fOmegaMin) < 4)
         {
             // no rotation, it is push action
             trainData.sActionType = "push-pull";
@@ -2493,6 +2522,14 @@ public class SensorFusion {
                 for (int i = 0; i < arraySize - endIndex; i++) {
                     sampleDataArray.remove(sampleDataArray.size() - 1);
                 }
+            }
+            // check the range
+            if (sampleDataArray.get(sampleDataArray.size() - 1).fPosN > 1)
+            {
+                uActionComplete = false;
+                sampleDataArray.clear();
+
+                return;
             }
         }
         else if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
