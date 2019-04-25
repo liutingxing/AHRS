@@ -2373,9 +2373,7 @@ public class SensorFusion {
             return;
         }
 
-        // check the action type roughly
-        fPlatformOmegaMaxZ = 0;
-        fPlatformOmegaMinZ = 0;
+        // record the max liner acc
         for(SampleData val:sampleDataArray)
         {
             double linerAccX = 0;
@@ -2392,26 +2390,6 @@ public class SensorFusion {
             {
                 fAccMinX = linerAccX;
                 fAccMinIndex = sampleDataArray.indexOf(val);
-            }
-
-            // platform omega
-            if (val.fOmegaN[CHZ] > fPlatformOmegaMaxZ) {
-                fPlatformOmegaMaxZ = val.fOmegaN[CHZ];
-            }
-
-            if (val.fOmegaN[CHZ] < fPlatformOmegaMinZ) {
-                fPlatformOmegaMinZ = val.fOmegaN[CHZ];
-            }
-
-            // body omega
-            if (val.fOmegaB[2] > fOmegaMax)
-            {
-                fOmegaMax = val.fOmegaB[2];
-            }
-
-            if (val.fOmegaB[2]  < fOmegaMin)
-            {
-                fOmegaMin = val.fOmegaB[2];
             }
         }
 
@@ -2492,6 +2470,32 @@ public class SensorFusion {
                 sampleDataArray.remove(0);
                 fAccMinIndex--;
                 fAccMaxIndex--;
+            }
+        }
+
+        // record the max/min platform Omega and body Omega
+        fPlatformOmegaMaxZ = 0;
+        fPlatformOmegaMinZ = 0;
+        for (SampleData val:sampleDataArray)
+        {
+            // platform omega
+            if (val.fOmegaN[CHZ] > fPlatformOmegaMaxZ)
+            {
+                fPlatformOmegaMaxZ = val.fOmegaN[CHZ];
+            }
+            if (val.fOmegaN[CHZ] < fPlatformOmegaMinZ)
+            {
+                fPlatformOmegaMinZ = val.fOmegaN[CHZ];
+            }
+
+            // body omega
+            if (val.fOmegaB[CHZ] > fOmegaMax)
+            {
+                fOmegaMax = val.fOmegaB[CHZ];
+            }
+            if (val.fOmegaB[CHZ] < fOmegaMin)
+            {
+                fOmegaMin = val.fOmegaB[CHZ];
             }
         }
 

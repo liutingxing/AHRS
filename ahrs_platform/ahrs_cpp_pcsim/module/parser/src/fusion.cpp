@@ -2585,12 +2585,8 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
         return;
     }
 
-    // check the action type roughly
-    fPlatformOmegaMaxZ = 0;
-    fPlatformOmegaMinZ = 0;
-
+    // record the max liner acc
     index = 0;
-
     for (auto p : sampleDataArray)
     {
         SampleData* val = p.get();
@@ -2610,29 +2606,6 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
             fAccMinX = linerAccX;
             fAccMinIndex = index;
         }
-
-        // platform omega
-        if (val->fOmegaN[CHZ] > fPlatformOmegaMaxZ)
-        {
-            fPlatformOmegaMaxZ = val->fOmegaN[CHZ];
-        }
-
-        if (val->fOmegaN[CHZ] < fPlatformOmegaMinZ)
-        {
-            fPlatformOmegaMinZ = val->fOmegaN[CHZ];
-        }
-
-        // body omega
-        if (val->fOmegaB[2] > fOmegaMax)
-        {
-            fOmegaMax = val->fOmegaB[2];
-        }
-
-        if (val->fOmegaB[2]  < fOmegaMin)
-        {
-            fOmegaMin = val->fOmegaB[2];
-        }
-
         index++;
     }
 
@@ -2690,6 +2663,33 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
             sampleDataArray.erase(sampleDataArray.begin());
             fAccMinIndex--;
             fAccMaxIndex--;
+        }
+    }
+
+    // record the max/min platform Omega and body Omega
+    fPlatformOmegaMaxZ = 0;
+    fPlatformOmegaMinZ = 0;
+    for (auto p:sampleDataArray)
+    {
+        SampleData* val = p.get();
+        // platform omega
+        if (val->fOmegaN[CHZ] > fPlatformOmegaMaxZ)
+        {
+            fPlatformOmegaMaxZ = val->fOmegaN[CHZ];
+        }
+        if (val->fOmegaN[CHZ] < fPlatformOmegaMinZ)
+        {
+            fPlatformOmegaMinZ = val->fOmegaN[CHZ];
+        }
+
+        // body omega
+        if (val->fOmegaB[CHZ] > fOmegaMax)
+        {
+            fOmegaMax = val->fOmegaB[CHZ];
+        }
+        if (val->fOmegaB[CHZ] < fOmegaMin)
+        {
+            fOmegaMin = val->fOmegaB[CHZ];
         }
     }
 
