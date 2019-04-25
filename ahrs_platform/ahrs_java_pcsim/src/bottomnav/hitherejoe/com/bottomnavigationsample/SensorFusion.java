@@ -749,7 +749,7 @@ public class SensorFusion {
         qDot[3] =  (gyro[2] * fq[0] + gyro[1] * fq[1] - gyro[0] * fq[2]) / 2.0;
 
         accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
-        if (true) {
+        if (accNorm > 5 && accNorm < 15) {
             // execute the acc aid process
             double diff = 0;
             double[] gEstimate = new double[3];
@@ -763,7 +763,7 @@ public class SensorFusion {
 
             F.set(0, 0, 2 * (fq[1] * fq[3] - fq[0] * fq[2]) - gEstimate[0]);
             F.set(1, 0, 2 * (fq[0] * fq[1] + fq[2] * fq[3]) - gEstimate[1]);
-            F.set(2, 0, 2 * (0.5 - fq[1] * fq[1] - fq[2] * fq[2]) - gEstimate[2]);
+            F.set(2, 0, (fq[0] * fq[0] - fq[1] * fq[1] - fq[2] * fq[2] + fq[3] * fq[3]) - gEstimate[2]);
 
             J.set(0, 0, -2 * fq[2]);
             J.set(0, 1, 2 * fq[3]);
@@ -775,10 +775,10 @@ public class SensorFusion {
             J.set(1, 2, 2 * fq[3]);
             J.set(1, 3, 2 * fq[2]);
 
-            J.set(2, 0, 0);
-            J.set(2, 1, -4 * fq[1]);
-            J.set(2, 2, -4 * fq[2]);
-            J.set(2, 3, 0);
+            J.set(2, 0, 2 * fq[0]);
+            J.set(2, 1, -2 * fq[1]);
+            J.set(2, 2, -2 * fq[2]);
+            J.set(2, 3, 2 * fq[3]);
 
             step = J.transpose().times(F);
             qDotError[0] += step.get(0, 0);
@@ -817,24 +817,24 @@ public class SensorFusion {
                 b[2] = 0;
                 b[3] = h.get(2, 0);
 
-                F.set(0, 0, 2*b[1]*(0.5 - fq[2]*fq[2] - fq[3]*fq[3]) + 2*b[3]*(fq[1]*fq[3] - fq[0]*fq[2]) - mEstimate[0]);
+                F.set(0, 0, b[1]*(fq[0]*fq[0] + fq[1]*fq[1] - fq[2]*fq[2] - fq[3]*fq[3]) + 2*b[3]*(fq[1]*fq[3] - fq[0]*fq[2]) - mEstimate[0]);
                 F.set(1, 0, 2*b[1]*(fq[1]*fq[2] - fq[0]*fq[3]) + 2*b[3]*(fq[0]*fq[1] + fq[2]*fq[3]) - mEstimate[1]);
-                F.set(2, 0, 2*b[1]*(fq[0]*fq[2] + fq[1]*fq[3]) + 2*b[3]*(0.5 - fq[1]*fq[1] - fq[2]*fq[2]) - mEstimate[2]);
+                F.set(2, 0, 2*b[1]*(fq[0]*fq[2] + fq[1]*fq[3]) + b[3]*(fq[0]*fq[0] - fq[1]*fq[1] - fq[2]*fq[2] + fq[3]*fq[3]) - mEstimate[2]);
 
-                J.set(0, 0, -2 * b[3] * fq[2]);
-                J.set(0, 1, 2 * b[3] * fq[3]);
-                J.set(0, 2, -4 * b[1] * fq[2] - 2 * b[3] * fq[0]);
-                J.set(0, 3, -4 * b[1] * fq[3] + 2 * b[3] * fq[1]);
+                J.set(0, 0, 2 * b[1] * fq[0] -2 * b[3] * fq[2]);
+                J.set(0, 1, 2 * b[1] * fq[1] + 2 * b[3] * fq[3]);
+                J.set(0, 2, -2 * b[1] * fq[2] - 2 * b[3] * fq[0]);
+                J.set(0, 3, -2 * b[1] * fq[3] + 2 * b[3] * fq[1]);
 
                 J.set(1, 0, -2 * b[1] * fq[3] + 2 * b[3] * fq[1]);
                 J.set(1, 1, 2 * b[1] * fq[2] + 2 * b[3] * fq[0]);
                 J.set(1, 2, 2 * b[1] * fq[1] + 2 * b[3] * fq[3]);
                 J.set(1, 3, -2 * b[1] * fq[0] + 2 * b[3] * fq[2]);
 
-                J.set(2, 0, 2 * b[1] * fq[2]);
-                J.set(2, 1, 2 * b[1] * fq[3] - 4 * b[3] * fq[1]);
-                J.set(2, 2, 2 * b[1] * fq[0] - 4 * b[3] * fq[2]);
-                J.set(2, 3, 2 * b[1] * fq[1]);
+                J.set(2, 0, 2 * b[1] * fq[2] + 2 * b[3] * fq[0]);
+                J.set(2, 1, 2 * b[1] * fq[3] - 2 * b[3] * fq[1]);
+                J.set(2, 2, 2 * b[1] * fq[0] - 2 * b[3] * fq[2]);
+                J.set(2, 3, 2 * b[1] * fq[1] + 2 * b[3] * fq[3]);
 
                 diff = F.norm2();
                 step = J.transpose().times(F);
