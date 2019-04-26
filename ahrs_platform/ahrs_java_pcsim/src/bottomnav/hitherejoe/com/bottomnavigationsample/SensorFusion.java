@@ -2500,10 +2500,39 @@ public class SensorFusion {
         }
 
         // special refine:
-        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 4 && Math.abs(fOmegaMin) < 4)
+        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 6 && Math.abs(fOmegaMin) < 6)
         {
             // no rotation, it is push action
             trainData.sActionType = "push-pull";
+
+            startIndex = 0;
+            endIndex = fAccMinIndex;
+
+            for (SampleData val : sampleDataArray)
+            {
+                if (val.fLinerAccN > 0.75 * fAccMaxX)
+                {
+                    startIndex = sampleDataArray.indexOf(val);
+                    break;
+                }
+            }
+            // refine the sample data array
+            if (startIndex > 0)
+            {
+                for (int i = 0; i < startIndex; i++)
+                {
+                    sampleDataArray.remove(0);
+                    endIndex--;
+                }
+            }
+            if (endIndex > 0)
+            {
+                arraySize = sampleDataArray.size();
+                for (int i = 0; i < arraySize - endIndex - 1; i++)
+                {
+                    sampleDataArray.remove(sampleDataArray.size() - 1);
+                }
+            }
             // calculate the ins info firstly
             insStrapdownMechanization(dt, sampleDataArray);
             // remove the backward action
@@ -2524,14 +2553,7 @@ public class SensorFusion {
                     sampleDataArray.remove(sampleDataArray.size() - 1);
                 }
             }
-            // check the range
-            if (sampleDataArray.get(sampleDataArray.size() - 1).fPosN > 1)
-            {
-                uActionComplete = false;
-                sampleDataArray.clear();
 
-                return;
-            }
         }
         else if (Math.abs(fPlatformOmegaMaxZ) > Math.abs(fPlatformOmegaMinZ))
         {
