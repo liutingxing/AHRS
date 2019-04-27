@@ -2500,7 +2500,7 @@ public class SensorFusion {
         }
 
         // special refine:
-        if (fPlatformOmegaMaxZ < 8 && Math.abs(fPlatformOmegaMinZ) < 8 && fOmegaMax < 6 && Math.abs(fOmegaMin) < 6)
+        if ((fPlatformOmegaMaxZ < 6 && Math.abs(fPlatformOmegaMinZ) < 6 && fOmegaMax < 4 && Math.abs(fOmegaMin) < 4) || (fPlatformOmegaMaxZ < 3 && Math.abs(fPlatformOmegaMinZ) < 3))
         {
             // no rotation, it is push action
             trainData.sActionType = "push-pull";
