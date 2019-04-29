@@ -2688,7 +2688,7 @@ public class SensorFusion {
                 switch(condition)
                 {
                     case START:
-                        if (gyroZ > 7 && val.fLinerAccN > 3)
+                        if (gyroZ > 6.5 && val.fLinerAccN > 3)
                         {
                             condition = UP;
                             startIndex = sampleDataArray.indexOf(val);
