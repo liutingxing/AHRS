@@ -2500,7 +2500,7 @@ public class SensorFusion {
         }
 
         // special refine:
-        if ((fPlatformOmegaMaxZ < 6 && Math.abs(fPlatformOmegaMinZ) < 6 && fOmegaMax < 4 && Math.abs(fOmegaMin) < 4) || (fPlatformOmegaMaxZ < 3 && Math.abs(fPlatformOmegaMinZ) < 3))
+        if (fPlatformOmegaMaxZ < 6 && Math.abs(fPlatformOmegaMinZ) < 6 && fOmegaMax < 4 && Math.abs(fOmegaMin) < 4)
         {
             // no rotation, it is push action
             trainData.sActionType = "push-pull";
@@ -2671,7 +2671,7 @@ public class SensorFusion {
                 switch(condition)
                 {
                     case START:
-                        if (gyroZ > 10 && val.fLinerAccN > 3)
+                        if (gyroZ > 7 && val.fLinerAccN > 3)
                         {
                             condition = UP;
                             startIndex = sampleDataArray.indexOf(val);
@@ -2718,7 +2718,7 @@ public class SensorFusion {
                         {
                             // normal case
                             slop = -1;
-                            if (gyroZ < 0.5 * fOmegaPeak * fScale * fOmegaLetter)
+                            if (gyroZ < 0.85 * fOmegaPeak * fScale * fOmegaLetter)
                             {
                                 endIndex = sampleDataArray.indexOf(val);
                                 endFlag = true;
