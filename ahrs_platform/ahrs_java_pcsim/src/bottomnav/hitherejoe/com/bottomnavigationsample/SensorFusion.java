@@ -939,6 +939,23 @@ public class SensorFusion {
             }
             linerAccIBP[2] += GRAVITY;
 
+            linerAccIBP[2] /= 2.0;
+            if (Math.abs(linerAccIBP[2]) > 3)
+            {
+                if (linerAccIBP[2] < 0)
+                {
+                    linerAccIBP[2] += 3.0;
+                }
+                else
+                {
+                    linerAccIBP[2] -= 3.0;
+                }
+            }
+            if (Math.abs(linerAccIBP[2]) < 3)
+            {
+                linerAccIBP[2] = 0;
+            }
+
             // static constrain
             for (i = 0; i < 3; i++)
             {
