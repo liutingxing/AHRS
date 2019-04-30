@@ -1095,7 +1095,7 @@ public class SensorFusion {
                 }else{
                     slop = -1;
                     // reach the up peak
-                    if (fLinerAccXLast < 6 && Math.abs(gyro[CHZ]) < 10){
+                    if (fLinerAccXLast < 4 && Math.abs(gyro[CHZ]) < 10){
                         // false peak
                         iCurveCondition = Peace;
                         uActionStartFlag = false;
@@ -1151,7 +1151,7 @@ public class SensorFusion {
                 }else {
                     slop = -1;
                 }
-                if (linerAccX > -10 && linerAccX < 10 && Math.abs(gyro[CHZ]) < 10 && bSlopChange){
+                if (linerAccX > -10 && linerAccX < 10 && Math.abs(gyro[CHZ]) < 2 && bSlopChange){
                     uActionEndFlag = true;
                     iCurveCondition = Peace;
                 }
@@ -2758,6 +2758,11 @@ public class SensorFusion {
         double fLastLinerAccX = 0;
         boolean bCurveRising = true;
         int tempIndex = 0;
+
+        if (sampleDataArray.size() == 0)
+        {
+            return;
+        }
 
         for(SampleData val:sampleDataArray)
         {
