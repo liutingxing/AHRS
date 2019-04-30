@@ -2680,6 +2680,8 @@ public class SensorFusion {
             return;
         }
 
+        fAccMaxX = Double.MIN_VALUE;
+        fAccMinX = Double.MAX_VALUE;
         // record the max liner acc
         for(SampleData val:sampleDataArray)
         {
@@ -2701,8 +2703,8 @@ public class SensorFusion {
         }
 
         // record the max/min platform Omega and body Omega
-        fPlatformOmegaMaxZ = 0;
-        fPlatformOmegaMinZ = 0;
+        fPlatformOmegaMaxZ = Double.MIN_VALUE;
+        fPlatformOmegaMinZ = Double.MAX_VALUE;
         for (SampleData val:sampleDataArray)
         {
             // platform omega
