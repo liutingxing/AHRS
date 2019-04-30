@@ -105,6 +105,9 @@ public class SensorFusion {
     private final static int Step3 = 3;
     private int iCurveCondition = Peace;
     private double fLinerAccXLast = 0.0;
+    private double fGyroZLast = 0.0;
+    private int iSlopGyroLast = 0;
+    private boolean bSlopChange = false;
     private double actionTime = 0.0;
     private double downTime = 0.0;
     private double peakValue = 0.0;
@@ -1019,6 +1022,7 @@ public class SensorFusion {
     {
         int i;
         int slop = 0;
+        int slopGyro = 0;
         double[] linerAccIBP = new double[]{0, 0, 0};
         double linerAccX = 0.0;
 
@@ -1044,6 +1048,18 @@ public class SensorFusion {
             }
         }
         linerAccX = linerAccIBP[0];
+        if (gyro[CHZ] > fGyroZLast)
+        {
+            slopGyro = 1;
+        }
+        else
+        {
+            slopGyro = -1;
+        }
+        if (slopGyro * iSlopGyroLast < 0)
+        {
+            bSlopChange = true;
+        }
         switch(iCurveCondition)
         {
             case Peace:
@@ -1051,6 +1067,8 @@ public class SensorFusion {
                     uActionStartFlag = true;
                     iCurveCondition = Step1;
                     actionTime = 0;
+                    bSlopChange = false;
+                    iSlopGyroLast = 0;
                 }
                 break;
 
@@ -1133,13 +1151,15 @@ public class SensorFusion {
                 }else {
                     slop = -1;
                 }
-                if (linerAccX > -10 && linerAccX < 10 && Math.abs(gyro[CHZ]) < 10){
+                if (linerAccX > -10 && linerAccX < 10 && Math.abs(gyro[CHZ]) < 10 && bSlopChange){
                     uActionEndFlag = true;
                     iCurveCondition = Peace;
                 }
                 break;
         }
         fLinerAccXLast = linerAccX;
+        fGyroZLast = gyro[CHZ];
+        iSlopGyroLast = slopGyro;
     }
 
     private void errCorrection(SensorKalman kalmanInfo)
