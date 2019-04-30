@@ -2394,16 +2394,17 @@ public class SensorFusion {
 
         trainData.sActionType = "forehand";
 
-        if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
-        {
-            fOmegaPeak = fOmegaMax;
-            fOmegaLetter = 1;
-        }
-        else
-        {
-            fOmegaPeak = fOmegaMin;
-            fOmegaLetter = -1;
-        }
+//        if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
+//        {
+//            fOmegaPeak = fOmegaMax;
+//            fOmegaLetter = 1;
+//        }
+//        else
+//        {
+//            fOmegaPeak = fOmegaMin;
+//            fOmegaLetter = -1;
+//        }
+        fOmegaLetter = 1;
 
         double fGyroLastZ = 0;
         int slop = 0;
@@ -2564,16 +2565,17 @@ public class SensorFusion {
             int startIndex = 0;
             int endIndex = 0;
 
-            if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
-            {
-                fOmegaPeak = fOmegaMax;
-                fOmegaLetter = 1;
-            }
-            else
-            {
-                fOmegaPeak = fOmegaMin;
-                fOmegaLetter = -1;
-            }
+//            if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
+//            {
+//                fOmegaPeak = fOmegaMax;
+//                fOmegaLetter = 1;
+//            }
+//            else
+//            {
+//                fOmegaPeak = fOmegaMin;
+//                fOmegaLetter = -1;
+//            }
+            fOmegaLetter = 1;
 
             // remove the negative gyro Z actions
             for (int i = 0; i < sampleDataArray.size(); i++)
