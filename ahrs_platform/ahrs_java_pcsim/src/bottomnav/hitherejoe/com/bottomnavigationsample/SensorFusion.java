@@ -141,13 +141,13 @@ public class SensorFusion {
     public native double splineFitting(double[] x0, double[] y0, int num, double x);
 
     // refine parameters
-    double fOmegaMax = Double.MIN_VALUE;
-    double fOmegaMin = Double.MAX_VALUE;
+    double fOmegaMax = 0;
+    double fOmegaMin = 0;
     double fOmegaPeak = 0;
     double fOmegaLetter = 0;
     double fScale = 10;
-    double fAccMaxX = Double.MIN_VALUE;
-    double fAccMinX = Double.MAX_VALUE;
+    double fAccMaxX = 0;
+    double fAccMinX = 0;
     int fAccMaxIndex = 0;
     int fAccMinIndex = 0;
 
@@ -2394,17 +2394,16 @@ public class SensorFusion {
 
         trainData.sActionType = "forehand";
 
-//        if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
-//        {
-//            fOmegaPeak = fOmegaMax;
-//            fOmegaLetter = 1;
-//        }
-//        else
-//        {
-//            fOmegaPeak = fOmegaMin;
-//            fOmegaLetter = -1;
-//        }
-        fOmegaLetter = 1;
+        if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
+        {
+            fOmegaPeak = fOmegaMax;
+            fOmegaLetter = 1;
+        }
+        else
+        {
+            fOmegaPeak = fOmegaMin;
+            fOmegaLetter = -1;
+        }
 
         double fGyroLastZ = 0;
         int slop = 0;
@@ -2565,17 +2564,16 @@ public class SensorFusion {
             int startIndex = 0;
             int endIndex = 0;
 
-//            if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
-//            {
-//                fOmegaPeak = fOmegaMax;
-//                fOmegaLetter = 1;
-//            }
-//            else
-//            {
-//                fOmegaPeak = fOmegaMin;
-//                fOmegaLetter = -1;
-//            }
-            fOmegaLetter = 1;
+            if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
+            {
+                fOmegaPeak = fOmegaMax;
+                fOmegaLetter = 1;
+            }
+            else
+            {
+                fOmegaPeak = fOmegaMin;
+                fOmegaLetter = -1;
+            }
 
             // remove the negative gyro Z actions
             for (int i = 0; i < sampleDataArray.size(); i++)
@@ -2707,6 +2705,8 @@ public class SensorFusion {
         // record the max/min platform Omega and body Omega
         fPlatformOmegaMaxZ = Double.MIN_VALUE;
         fPlatformOmegaMinZ = Double.MAX_VALUE;
+        fOmegaMax = Double.MIN_VALUE;
+        fOmegaMin = Double.MAX_VALUE;
         for (SampleData val:sampleDataArray)
         {
             // platform omega
