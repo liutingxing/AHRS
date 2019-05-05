@@ -126,6 +126,9 @@ class SensorFusion
         } iCurveCondition;
 
         double fLinerAccXLast;
+        double fGyroZLast;
+        int iSlopGyroLast;
+        bool bSlopChange;
         double actionTime;
         double downTime;
         double peakValue;
@@ -150,6 +153,17 @@ class SensorFusion
         double LpfAccY[3][2];
 
         string sAttitude;
+
+        // refine parameters
+        double fOmegaMax;
+        double fOmegaMin;
+        double fOmegaPeak;
+        double fOmegaLetter;
+        double fScale = 10;
+        double fAccMaxX;
+        double fAccMinX;
+        int fAccMaxIndex;
+        int fAccMinIndex;
 
         void magCalibrationInit();
         int magBufferUpdate(double magRaw[], double magCal[], int loopCounter);
@@ -176,6 +190,11 @@ class SensorFusion
         bool magCalibration(double mag[]);
         void calibration4InvRaw(vector<shared_ptr<double>>& magArray);
         void specialActionProcess(vector<shared_ptr<SampleData>>& sampleDataArray);
+        void forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArray);
+        void backhandRefine(vector<shared_ptr<SampleData>>& sampleDataArray);
+        void pushpullRefine(vector<shared_ptr<SampleData>>& sampleDataArray);
+        void computeRefineParameters(vector<shared_ptr<SampleData>>& sampleDataArray);
+        void removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArray);
         void refineSampleData(vector<shared_ptr<SampleData>>& sampleDataArray);
         void gyroFilter(double gyro[]);
         void accFilter(double acc[]);
