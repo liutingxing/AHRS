@@ -2575,7 +2575,7 @@ public class SensorFusion {
 
         if (fPlatformOmegaMaxZ < 6 && Math.abs(fPlatformOmegaMinZ) < 6 && fOmegaMax < 4 && Math.abs(fOmegaMin) < 4)
         {
-            pushPullRefine(sampleDataArray);
+            pushpullRefine(sampleDataArray);
         }
         else
         {
@@ -2634,7 +2634,7 @@ public class SensorFusion {
         }
     }
 
-    private void pushPullRefine(ArrayList<SampleData> sampleDataArray)
+    private void pushpullRefine(ArrayList<SampleData> sampleDataArray)
     {
         if (sampleDataArray.isEmpty())
         {
