@@ -2340,7 +2340,7 @@ public class SensorFusion {
 
     private void specialActionProcess(ArrayList<SampleData> sampleDataArray)
     {
-        if (sampleDataArray.size() == 0)
+        if (sampleDataArray.isEmpty())
         {
             return;
         }
@@ -2401,7 +2401,7 @@ public class SensorFusion {
 
     private void forehandRefine(ArrayList<SampleData> sampleDataArray)
     {
-        if (sampleDataArray.size() == 0)
+        if (sampleDataArray.isEmpty())
         {
             return;
         }
@@ -2566,7 +2566,7 @@ public class SensorFusion {
 
     private void backhandRefine(ArrayList<SampleData> sampleDataArray)
     {
-        if (sampleDataArray.size() == 0)
+        if (sampleDataArray.isEmpty())
         {
             return;
         }
@@ -2636,6 +2636,11 @@ public class SensorFusion {
 
     private void pushPullRefine(ArrayList<SampleData> sampleDataArray)
     {
+        if (sampleDataArray.isEmpty())
+        {
+            return;
+        }
+
         // no rotation, it is push action
         trainData.sActionType = "push-pull";
         // remove the false peak
@@ -2695,7 +2700,7 @@ public class SensorFusion {
 
     private void computeRefineParameters(ArrayList<SampleData> sampleDataArray)
     {
-        if (sampleDataArray.size() == 0)
+        if (sampleDataArray.isEmpty())
         {
             return;
         }
@@ -2759,11 +2764,13 @@ public class SensorFusion {
         boolean bCurveRising = true;
         int tempIndex = 0;
 
-        if (sampleDataArray.size() == 0)
+        if (sampleDataArray.isEmpty())
         {
             return;
         }
 
+        startIndex = 0;
+        tempIndex = 0;
         for(SampleData val:sampleDataArray)
         {
             double linerAccX = val.fLinerAccN;
@@ -2806,6 +2813,8 @@ public class SensorFusion {
             }
         }
 
+        startIndex = 0;
+        tempIndex = 0;
         for(SampleData val:sampleDataArray)
         {
             double linerAccX = val.fLinerAccN;
@@ -2836,7 +2845,7 @@ public class SensorFusion {
 
     private void refineSampleData(ArrayList<SampleData> sampleDataArray)
     {
-        if (sampleDataArray.size() == 0)
+        if (sampleDataArray.isEmpty())
         {
             return;
         }
