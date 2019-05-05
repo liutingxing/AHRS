@@ -2649,7 +2649,7 @@ public class SensorFusion {
         computeRefineParameters(sampleDataArray);
 
         int startIndex = 0;
-        int endIndex = fAccMinIndex;;
+        int endIndex = fAccMinIndex;
 
         for (SampleData val : sampleDataArray)
         {
@@ -2864,7 +2864,7 @@ public class SensorFusion {
         }
 
         // check action time and action interval time
-        if (sampleDataArray.size() == 0)
+        if (sampleDataArray.isEmpty())
         {
             uActionComplete = false;
 
