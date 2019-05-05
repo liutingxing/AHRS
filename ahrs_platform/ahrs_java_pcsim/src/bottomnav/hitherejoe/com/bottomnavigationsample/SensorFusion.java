@@ -456,7 +456,7 @@ public class SensorFusion {
         fAudioMax = 0.0;
         strikeIndex = 0;
 
-        if (sampleDataArray.size() == 0)
+        if (sampleDataArray.isEmpty())
         {
             return -1;
         }
