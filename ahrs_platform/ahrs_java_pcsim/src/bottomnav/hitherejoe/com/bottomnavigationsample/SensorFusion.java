@@ -144,15 +144,15 @@ public class SensorFusion {
     public native double splineFitting(double[] x0, double[] y0, int num, double x);
 
     // refine parameters
-    double fOmegaMax = 0;
-    double fOmegaMin = 0;
-    double fOmegaPeak = 0;
-    double fOmegaLetter = 0;
-    double fScale = 10;
-    double fAccMaxX = 0;
-    double fAccMinX = 0;
-    int fAccMaxIndex = 0;
-    int fAccMinIndex = 0;
+    private double fOmegaMax = 0;
+    private double fOmegaMin = 0;
+    private double fOmegaPeak = 0;
+    private double fOmegaLetter = 0;
+    private double fScale = 10;
+    private double fAccMaxX = 0;
+    private double fAccMinX = 0;
+    private int fAccMaxIndex = 0;
+    private int fAccMinIndex = 0;
 
     static
     {
