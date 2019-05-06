@@ -2443,7 +2443,7 @@ public class SensorFusion {
             switch(condition)
             {
                 case START:
-                    if (gyroZ > 6.5 && val.fLinerAccN > 3)
+                    if (gyroZ > 0.25 * fOmegaMax * fOmegaLetter * fScale && val.fLinerAccN > 3)
                     {
                         condition = UP;
                         startIndex = sampleDataArray.indexOf(val);
@@ -2517,7 +2517,7 @@ public class SensorFusion {
         // sample data array must including the max and min liner acc
         if (startIndex > fAccMaxIndex)
         {
-            startIndex = fAccMaxIndex;
+            //startIndex = fAccMaxIndex;
         }
         if (endIndex < fAccMinIndex)
         {

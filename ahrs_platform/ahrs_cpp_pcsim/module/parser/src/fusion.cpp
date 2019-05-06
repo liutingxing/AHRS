@@ -2630,7 +2630,7 @@ void SensorFusion::forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArra
         switch (condition)
         {
             case START:
-                if (gyroZ > 6.5 && val->fLinerAccN > 3)
+                if (gyroZ > 0.25 * fOmegaMax * fOmegaLetter && val->fLinerAccN > 3)
                 {
                     condition = UP;
                     startIndex = index;
@@ -2711,7 +2711,7 @@ void SensorFusion::forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArra
     // sample data array must including the max and min liner acc
     if (startIndex > fAccMaxIndex)
     {
-        startIndex = fAccMaxIndex;
+        //startIndex = fAccMaxIndex;
     }
 
     if (endIndex < fAccMinIndex)
