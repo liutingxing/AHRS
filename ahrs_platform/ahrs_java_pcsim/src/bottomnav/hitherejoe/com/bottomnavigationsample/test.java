@@ -345,7 +345,7 @@ public class test {
                                 // start process outlier data
                                 if (Data_Compensate)
                                 {
-                                    outlierGyroDataProcess(GyroLastCpy, GyroDataPool);
+                                    //outlierGyroDataProcess(GyroLastCpy, GyroDataPool);
                                     //outlierAccDataProcess(AccLastCpy, AccDataPool);
                                 }
 
