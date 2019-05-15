@@ -2370,6 +2370,24 @@ public class SensorFusion {
         }
     }
 
+    private boolean checkHeightDown(ArrayList<SampleData> sampleDataArray)
+    {
+        int index = 0;
+
+        insStrapdownMechanization(dt, sampleDataArray);
+        for(SampleData val:sampleDataArray)
+        {
+            int lastIndex = index - 1;
+            if (lastIndex > 0 && val.fPosD > sampleDataArray.get(lastIndex).fPosD)
+            {
+                return true;
+            }
+            index++;
+        }
+
+        return false;
+    }
+
     private void forehandRefine(ArrayList<SampleData> sampleDataArray)
     {
         if (sampleDataArray.isEmpty())
@@ -2531,6 +2549,18 @@ public class SensorFusion {
             int arraySize = sampleDataArray.size();
             for (int i = 0; i < arraySize - endIndex; i++) {
                 sampleDataArray.remove(sampleDataArray.size() - 1);
+            }
+        }
+
+        // optimize the height of trajectory
+        while(checkHeightDown(sampleDataArray))
+        {
+            for(SampleData val:sampleDataArray)
+            {
+                if (val.fLinerAccD > 0)
+                {
+                    val.fLinerAccD = -0.5;
+                }
             }
         }
     }
