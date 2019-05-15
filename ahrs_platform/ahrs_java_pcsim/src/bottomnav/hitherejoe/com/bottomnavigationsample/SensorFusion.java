@@ -154,6 +154,11 @@ public class SensorFusion {
     private int fAccMaxIndex = 0;
     private int fAccMinIndex = 0;
 
+    // forehand special refine parameters
+    private double fLastForehandActionTime = 0;
+    private int uContinueForehandActionCount = 0;
+    private boolean bContinueForehandActionRefine = false;
+
     static
     {
         System.loadLibrary("fitting");
@@ -2552,8 +2557,24 @@ public class SensorFusion {
             }
         }
 
+        // check if continue forehand actions (0.2s interval)
+        if ((sampleDataArray.get(0).uTime - fLastForehandActionTime) < 200 && fLastForehandActionTime > 0)
+        {
+            uContinueForehandActionCount++;
+            if (uContinueForehandActionCount > 3)
+            {
+                bContinueForehandActionRefine = true;
+            }
+        }
+        else
+        {
+            uContinueForehandActionCount = 0;
+            bContinueForehandActionRefine = false;
+        }
+        fLastForehandActionTime = sampleDataArray.get(sampleDataArray.size() - 1).uTime;
+
         // optimize the height of trajectory
-        while(checkHeightDown(sampleDataArray))
+        while(checkHeightDown(sampleDataArray) && bContinueForehandActionRefine)
         {
             for(SampleData val:sampleDataArray)
             {
