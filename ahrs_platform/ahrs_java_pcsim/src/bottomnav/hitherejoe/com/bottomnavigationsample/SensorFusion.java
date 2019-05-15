@@ -536,14 +536,15 @@ public class SensorFusion {
             trajectory.append(" ");
             trajectory.append(String.valueOf(val.fqPlPlat[3]));
             trajectory.append(" ");
-            if (count == strikeIndex)
-            {
-                trajectory.append("s");
-            }
-            else
-            {
-                trajectory.append("x");
-            }
+//            if (count == strikeIndex)
+//            {
+//                trajectory.append("s");
+//            }
+//            else
+//            {
+//                trajectory.append("x");
+//            }
+            trajectory.append("x");
             trajectory.append("\n");
 
             count++;
