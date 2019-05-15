@@ -946,22 +946,9 @@ public class SensorFusion {
         {
             int index = sampleDataArray.indexOf(val);
 
-            for (i = 0; i < 3; i++)
-            {
-                linerAccIBP[i] = val.fAccelerate[0] * val.fCbnPlat[i][0] +
-                                 val.fAccelerate[1] * val.fCbnPlat[i][1] +
-                                 val.fAccelerate[2] * val.fCbnPlat[i][2];
-            }
-            linerAccIBP[2] += GRAVITY;
-
-            // static constrain
-            for (i = 0; i < 3; i++)
-            {
-                if (Math.abs(linerAccIBP[i]) < 1)
-                {
-                    //linerAccIBP[i] = 0;
-                }
-            }
+            linerAccIBP[CHX] = val.fLinerAccN;
+            linerAccIBP[CHY] = val.fLinerAccE;
+            linerAccIBP[CHZ] = val.fLinerAccD;
 
             if (index == 0)
             {
