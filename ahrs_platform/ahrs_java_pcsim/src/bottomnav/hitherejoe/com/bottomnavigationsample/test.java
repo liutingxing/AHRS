@@ -6,7 +6,7 @@ import java.util.*;
 
 public class test {
 
-    private final boolean Data_Compensate = true;
+    private final boolean Data_Compensate = false;
     private ArrayList<double[]> GyroDataPool = new ArrayList<>(20);
     private ArrayList<double[]> AccDataPool = new ArrayList<>(20);
     private ArrayList<double[]> MagDataPool = new ArrayList<>(20);
@@ -345,7 +345,7 @@ public class test {
                                 // start process outlier data
                                 if (Data_Compensate)
                                 {
-                                    //outlierGyroDataProcess(GyroLastCpy, GyroDataPool);
+                                    outlierGyroDataProcess(GyroLastCpy, GyroDataPool);
                                     //outlierAccDataProcess(AccLastCpy, AccDataPool);
                                 }
 
