@@ -2877,6 +2877,7 @@ public class SensorFusion {
         double azimuth = 0;
         ArrayList<SampleData> sampleDataArrayCpy = new ArrayList<SampleData>();
         sampleDataArrayCpy = (ArrayList<SampleData>)sampleDataArray.clone();
+        computeRefineParameters(sampleDataArray);
         removeFalsePeak(sampleDataArrayCpy);
         for (SampleData val : sampleDataArrayCpy)
         {
