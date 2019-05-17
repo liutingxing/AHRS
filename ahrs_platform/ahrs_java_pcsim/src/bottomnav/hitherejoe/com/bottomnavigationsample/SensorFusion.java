@@ -769,7 +769,7 @@ public class SensorFusion {
         qDot[3] =  (gyro[2] * fq[0] + gyro[1] * fq[1] - gyro[0] * fq[2]) / 2.0;
 
         accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
-        if (accNorm > 5 && accNorm < 20) {
+        if (accNorm > 5 && accNorm < 30) {
             // execute the acc aid process
             double diff = 0;
             double[] gEstimate = new double[3];
@@ -810,7 +810,7 @@ public class SensorFusion {
         if (MAG_SUPPORT == 1)
         {
             double magNorm = Math.sqrt(mag[0]*mag[0] + mag[1]*mag[1] + mag[2]*mag[2]);
-            if (iValidMagCal)
+            if (iValidMagCal && magNorm > 0.8*fB && magNorm < 1.2*fB)
             {
                 // execute the acc aid process
                 double diff = 0;
@@ -865,7 +865,7 @@ public class SensorFusion {
             }
         }
 
-        if (accNorm > 5.0 && accNorm < 20.0){
+        if (accNorm > 5.0 && accNorm < 30.0){
             gyroMeasError = 20 * Math.PI / 180;
         }
         else
@@ -2574,15 +2574,16 @@ public class SensorFusion {
         fLastForehandActionTime = sampleDataArray.get(sampleDataArray.size() - 1).uTime;
 
         // optimize the height of trajectory
-        while(checkHeightDown(sampleDataArray) && bContinueForehandActionRefine)
+        if (checkHeightDown(sampleDataArray) && bContinueForehandActionRefine)
         {
             for(SampleData val:sampleDataArray)
             {
                 if (val.fLinerAccD > 0)
                 {
-                    val.fLinerAccD = -0.5;
+                    val.fLinerAccD = -3.0;
                 }
             }
+
         }
     }
 
