@@ -2559,7 +2559,7 @@ public class SensorFusion {
             }
         }
 
-        // check if continue forehand actions (0.2s interval)
+        // check if continue forehand actions (1s interval)
         if ((sampleDataArray.get(0).uTime - fLastForehandActionTime) < 1000 && fLastForehandActionTime > 0)
         {
             uContinueForehandActionCount++;
