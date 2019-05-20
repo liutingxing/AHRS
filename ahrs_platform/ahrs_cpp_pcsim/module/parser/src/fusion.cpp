@@ -433,15 +433,15 @@ int SensorFusion::processSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
         trajectory.append(to_string(val->fqPlPlat[3]));
         trajectory.append(" ");
 
-        if (count == strikeIndex)
-        {
-            trajectory.append("s");
-        }
-        else
-        {
-            trajectory.append("x");
-        }
-
+//        if (count == strikeIndex)
+//        {
+//            trajectory.append("s");
+//        }
+//        else
+//        {
+//            trajectory.append("x");
+//        }
+        trajectory.append("x");
         trajectory.append("\n");
 
         count++;
@@ -531,40 +531,9 @@ void SensorFusion::insStrapdownMechanization(double dt, vector<shared_ptr<Sample
     {
         SampleData* val = p.get();
 
-        for (i = 0; i < 3; i++)
-        {
-            linerAccIBP[i] = val->fAccelerate[0] * val->fCbnPlat[i][0] +
-                             val->fAccelerate[1] * val->fCbnPlat[i][1] +
-                             val->fAccelerate[2] * val->fCbnPlat[i][2];
-        }
-
-        linerAccIBP[2] += GRAVITY;
-
-        linerAccIBP[2] /= 2.0;
-        if (abs(linerAccIBP[2]) > 3)
-        {
-            if (linerAccIBP[2] < 0)
-            {
-                linerAccIBP[2] += 3.0;
-            }
-            else
-            {
-                linerAccIBP[2] -= 3.0;
-            }
-        }
-        if (abs(linerAccIBP[2]) < 3)
-        {
-            linerAccIBP[2] = 0;
-        }
-
-        // static constrain
-        for (i = 0; i < 3; i++)
-        {
-            if (abs(linerAccIBP[i]) < 1)
-            {
-                //linerAccIBP[i] = 0;
-            }
-        }
+        linerAccIBP[CHX] = val->fLinerAccN;
+        linerAccIBP[CHY] = val->fLinerAccE;
+        linerAccIBP[CHZ] = val->fLinerAccD;
 
         if (index == 0)
         {
@@ -659,7 +628,7 @@ int SensorFusion::copyInSampleData(SensorFusion* src, SampleData* dst)
 
     dst->fLinerAccN = src->fAccelerate[0] * src->fCbnPlat[0][0] + src->fAccelerate[1] * src->fCbnPlat[0][1] + src->fAccelerate[2] * src->fCbnPlat[0][2];
     dst->fLinerAccE = src->fAccelerate[0] * src->fCbnPlat[1][0] + src->fAccelerate[1] * src->fCbnPlat[1][1] + src->fAccelerate[2] * src->fCbnPlat[1][2];
-    dst->fLinerAccD = src->fAccelerate[0] * src->fCbnPlat[2][0] + src->fAccelerate[1] * src->fCbnPlat[2][1] + src->fAccelerate[2] * src->fCbnPlat[2][2];
+    dst->fLinerAccD = src->fAccelerate[0] * src->fCbnPlat[2][0] + src->fAccelerate[1] * src->fCbnPlat[2][1] + src->fAccelerate[2] * src->fCbnPlat[2][2] + GRAVITY;
     dst->fVelN = src->fVelN;
     dst->fVelE = src->fVelE;
     dst->fVelD = src->fVelD;
@@ -847,7 +816,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
             slop = -1;
         }
 
-        if (linerAccX > -10 && linerAccX < 10 && abs(gyro[CHZ]) < 2 && bSlopChange)
+        if (linerAccX > -10 && linerAccX < 10 && abs(gyro[CHZ]) < 15 && bSlopChange)
         {
             uActionEndFlag = true;
             iCurveCondition = Peace;
@@ -1260,7 +1229,7 @@ void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[
 
     accNorm = sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
 
-    if (true)
+    if (accNorm > 5 && accNorm < 30)
     {
         // execute the acc aid process
         double diff = 0;
@@ -1303,7 +1272,7 @@ void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[
 #if MAG_SUPPORT
     double magNorm = sqrt(mag[0] * mag[0] + mag[1] * mag[1] + mag[2] * mag[2]);
 
-    if (iValidMagCal && accNorm < 20 && magNorm > 0.8 * fB && magNorm < 1.2 * fB)
+    if (iValidMagCal && magNorm > 0.8 * fB && magNorm < 1.2 * fB)
     {
         // execute the acc aid process
         double diff = 0;
@@ -1365,7 +1334,7 @@ void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[
 
     if (accNorm > 5.0 && accNorm < 30.0)
     {
-        gyroMeasError = 60.0 * PI / 180;
+        gyroMeasError = 40.0 * PI / 180;
     }
     else
     {
@@ -2585,6 +2554,24 @@ void SensorFusion::specialActionProcess(vector<shared_ptr<SampleData>>& sampleDa
 
 }
 
+bool SensorFusion::checkHeightDown(vector<shared_ptr<SampleData>>& sampleDataArray)
+{
+    int index = 0;
+
+    insStrapdownMechanization(dt, sampleDataArray);
+    for (auto p : sampleDataArray) {
+        SampleData *val = p.get();
+        int lastIndex = index - 1;
+        if (lastIndex > 0 && val->fPosD > sampleDataArray.at(lastIndex)->fPosD)
+        {
+            return true;
+        }
+        index++;
+    }
+
+    return false;
+}
+
 void SensorFusion::forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArray)
 {
     if (sampleDataArray.empty())
@@ -2600,7 +2587,7 @@ void SensorFusion::forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArra
 
     trainData.sActionType = "forehand";
 
-    if (abs(fOmegaMax) > abs(fOmegaMin))
+    if (abs(fOmegaMax) > abs(fOmegaMin) || fOmegaMinIndex < 0.2*sampleDataArray.size() || fOmegaMinIndex > 0.8*sampleDataArray.size())
     {
         fOmegaPeak = fOmegaMax;
         fOmegaLetter = 1;
@@ -2630,7 +2617,7 @@ void SensorFusion::forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArra
         switch (condition)
         {
             case START:
-                if (gyroZ > 0.25 * fOmegaMax * fOmegaLetter && val->fLinerAccN > 3)
+                if (gyroZ > 0.25 * fOmegaMax * fOmegaLetter * fScale && val->fLinerAccN > 3)
                 {
                     condition = UP;
                     startIndex = index;
@@ -2766,6 +2753,36 @@ void SensorFusion::forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArra
         {
             sampleDataArray.erase(sampleDataArray.end() - 1);
         }
+    }
+
+    // check if continue forehand actions (1s interval)
+    if ((sampleDataArray.at(0)->uTime - fLastForehandActionTime) < 1000 && fLastForehandActionTime > 0)
+    {
+        uContinueForehandActionCount++;
+        if (uContinueForehandActionCount > 3)
+        {
+            bContinueForehandActionRefine = true;
+        }
+    }
+    else
+    {
+        uContinueForehandActionCount = 0;
+        bContinueForehandActionRefine = false;
+    }
+    fLastForehandActionTime = sampleDataArray.at(sampleDataArray.size() - 1)->uTime;
+
+    // optimize the height of trajectory
+    if (checkHeightDown(sampleDataArray) && bContinueForehandActionRefine)
+    {
+        for(auto p:sampleDataArray)
+        {
+            SampleData* val = p.get();
+            if (val->fLinerAccD > 0)
+            {
+                val->fLinerAccD = -3.0;
+            }
+        }
+
     }
 
 }
@@ -2969,6 +2986,7 @@ void SensorFusion::computeRefineParameters(vector<shared_ptr<SampleData>>& sampl
     fPlatformOmegaMinZ = DBL_MAX;
     fOmegaMax = DBL_MIN;
     fOmegaMin = DBL_MAX;
+    index = 0;
     for (auto p:sampleDataArray)
     {
         SampleData* val = p.get();
@@ -2986,11 +3004,14 @@ void SensorFusion::computeRefineParameters(vector<shared_ptr<SampleData>>& sampl
         if (val->fOmegaB[CHZ] > fOmegaMax)
         {
             fOmegaMax = val->fOmegaB[CHZ];
+            fOmegaMaxIndex = index;
         }
         if (val->fOmegaB[CHZ] < fOmegaMin)
         {
             fOmegaMin = val->fOmegaB[CHZ];
+            fOmegaMinIndex = index;
         }
+        index++;
     }
 }
 
@@ -3098,7 +3119,19 @@ void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataAr
     }
 
     // check the attitude for action distinguish
-    double azimuth = sampleDataArray.at(0)->fPsiPlPlat;
+    double azimuth = 0;
+    vector<shared_ptr<SampleData>> sampleDataArrayCpy(sampleDataArray);
+    computeRefineParameters(sampleDataArray);
+    removeFalsePeak(sampleDataArrayCpy);
+    for (auto p : sampleDataArrayCpy)
+    {
+        SampleData *val = p.get();
+        if (val->fLinerAccN > 0)
+        {
+            azimuth = val->fPsiPlPlat;
+            break;
+        }
+    }
     if (azimuth > 0)
     {
         // forehand actions

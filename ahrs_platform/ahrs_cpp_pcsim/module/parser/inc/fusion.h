@@ -156,7 +156,9 @@ class SensorFusion
 
         // refine parameters
         double fOmegaMax;
+        int fOmegaMaxIndex;
         double fOmegaMin;
+        int fOmegaMinIndex;
         double fOmegaPeak;
         double fOmegaLetter;
         double fScale = 10;
@@ -164,6 +166,11 @@ class SensorFusion
         double fAccMinX;
         int fAccMaxIndex;
         int fAccMinIndex;
+
+        // forehand special refine parameters
+        double fLastForehandActionTime = 0;
+        int uContinueForehandActionCount = 0;
+        bool bContinueForehandActionRefine = false;
 
         void magCalibrationInit();
         int magBufferUpdate(double magRaw[], double magCal[], int loopCounter);
@@ -190,6 +197,7 @@ class SensorFusion
         bool magCalibration(double mag[]);
         void calibration4InvRaw(vector<shared_ptr<double>>& magArray);
         void specialActionProcess(vector<shared_ptr<SampleData>>& sampleDataArray);
+        bool checkHeightDown(vector<shared_ptr<SampleData>>& sampleDataArray);
         void forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArray);
         void backhandRefine(vector<shared_ptr<SampleData>>& sampleDataArray);
         void pushpullRefine(vector<shared_ptr<SampleData>>& sampleDataArray);
