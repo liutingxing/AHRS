@@ -145,7 +145,9 @@ public class SensorFusion {
 
     // refine parameters
     private double fOmegaMax = 0;
+    private int fOmegaMaxIndex = 0;
     private double fOmegaMin = 0;
+    private int fOmegaMinIndex = 0;
     private double fOmegaPeak = 0;
     private double fOmegaLetter = 0;
     private double fScale = 10;
@@ -1127,7 +1129,7 @@ public class SensorFusion {
                 }else {
                     slop = -1;
                 }
-                if (linerAccX > -10 && linerAccX < 10 && Math.abs(gyro[CHZ]) < 2 && bSlopChange){
+                if (linerAccX > -10 && linerAccX < 10 && Math.abs(gyro[CHZ]) < 15 && bSlopChange){
                     uActionEndFlag = true;
                     iCurveCondition = Peace;
                 }
@@ -2408,7 +2410,7 @@ public class SensorFusion {
 
         trainData.sActionType = "forehand";
 
-        if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
+        if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin) || fOmegaMinIndex < 0.2*sampleDataArray.size() || fOmegaMinIndex > 0.8*sampleDataArray.size())
         {
             fOmegaPeak = fOmegaMax;
             fOmegaLetter = 1;
@@ -2771,10 +2773,12 @@ public class SensorFusion {
             if (val.fOmegaB[CHZ] > fOmegaMax)
             {
                 fOmegaMax = val.fOmegaB[CHZ];
+                fOmegaMaxIndex = sampleDataArray.indexOf(val);
             }
             if (val.fOmegaB[CHZ] < fOmegaMin)
             {
                 fOmegaMin = val.fOmegaB[CHZ];
+                fOmegaMinIndex = sampleDataArray.indexOf(val);
             }
         }
     }
