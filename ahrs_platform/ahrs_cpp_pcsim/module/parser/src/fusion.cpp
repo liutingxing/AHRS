@@ -816,7 +816,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
             slop = -1;
         }
 
-        if (linerAccX > -10 && linerAccX < 10 && abs(gyro[CHZ]) < 15 && bSlopChange)
+        if (linerAccX > -10 && linerAccX < 10 && abs(gyro[CHZ]) < 5 && bSlopChange)
         {
             uActionEndFlag = true;
             iCurveCondition = Peace;
@@ -1334,7 +1334,7 @@ void SensorFusion::ahrsFusion(double fq[], double dt, double gyro[], double acc[
 
     if (accNorm > 5.0 && accNorm < 30.0)
     {
-        gyroMeasError = 40.0 * PI / 180;
+        gyroMeasError = 60.0 * PI / 180;
     }
     else
     {
@@ -1663,7 +1663,7 @@ int SensorFusion::staticDetectCheck()
         gyro_std = stdCal(fAlignGyroArray);
         acc_std = stdCal(fAlignAccArray);
 
-        if (gyro_std < 0.01 && acc_std < 0.1)
+        if (gyro_std < 0.05 && acc_std < 0.5)
         {
             return 1;
         }
