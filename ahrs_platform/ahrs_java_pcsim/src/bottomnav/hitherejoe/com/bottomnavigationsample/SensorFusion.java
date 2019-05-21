@@ -868,7 +868,7 @@ public class SensorFusion {
         }
 
         if (accNorm > 5.0 && accNorm < 30.0){
-            gyroMeasError = 40 * Math.PI / 180;
+            gyroMeasError = 60 * Math.PI / 180;
         }
         else
         {
@@ -1129,7 +1129,7 @@ public class SensorFusion {
                 }else {
                     slop = -1;
                 }
-                if (linerAccX > -10 && linerAccX < 10 && Math.abs(gyro[CHZ]) < 15 && bSlopChange){
+                if (linerAccX > -10 && linerAccX < 10 && Math.abs(gyro[CHZ]) < 5 && bSlopChange){
                     uActionEndFlag = true;
                     iCurveCondition = Peace;
                 }
@@ -1409,7 +1409,7 @@ public class SensorFusion {
             gyro_std = stdCal(fAlignGyroArray);
             acc_std = stdCal(fAlignAccArray);
 
-            if (gyro_std < 0.01 && acc_std < 0.1)
+            if (gyro_std < 0.05 && acc_std < 0.5)
             {
                 return 1;
             }
