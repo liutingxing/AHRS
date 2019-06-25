@@ -1089,7 +1089,7 @@ public class SensorFusion {
             case Step2:
                 actionTime += dt;
                 downTime += dt;
-                if (actionTime > 1.5 || downTime > 1.0)
+                if (actionTime > 1.5 || downTime > 1.0 || (Math.abs(linerAccX) < 1e-5 && Math.abs(fLinerAccXLast) < 1e-5))
                 {
                     iCurveCondition = Peace;
                     uActionStartFlag = false;
@@ -2816,7 +2816,7 @@ public class SensorFusion {
             if (linerAccX < fLastLinerAccX && bCurveRising)
             {
                 // reach the peak and check the peak
-                if (Math.abs(fLastLinerAccX - fAccMaxX) < 0.01)
+                if (Math.abs(fLastLinerAccX - fAccMaxX) < 1e-5)
                 {
                     // the max peak
                     startIndex = tempIndex;
