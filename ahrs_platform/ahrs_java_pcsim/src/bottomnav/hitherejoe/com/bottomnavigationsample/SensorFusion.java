@@ -2439,7 +2439,7 @@ public class SensorFusion {
             switch(condition)
             {
                 case START:
-                    if (gyroZ > 0.25 * fOmegaMax * fOmegaLetter * fScale && val.fLinerAccN > 3)
+                    if (gyroZ > 0.1 * fOmegaMax * fOmegaLetter * fScale)
                     {
                         condition = UP;
                         startIndex = sampleDataArray.indexOf(val);
@@ -2513,7 +2513,7 @@ public class SensorFusion {
         // sample data array must including the max and min liner acc
         if (startIndex > fAccMaxIndex)
         {
-            //startIndex = fAccMaxIndex;
+            startIndex = fAccMaxIndex;
         }
         if (endIndex < fAccMinIndex)
         {
@@ -2608,6 +2608,16 @@ public class SensorFusion {
             trainData.sActionType = "backhand";
             int startIndex = 0;
             int endIndex = 0;
+            int falseIndex = 0;
+            ArrayList<SampleData> sampleDataArrayCpy = new ArrayList<SampleData>();
+
+            sampleDataArrayCpy = (ArrayList<SampleData>)sampleDataArray.clone();
+            computeRefineParameters(sampleDataArray);
+            falseIndex = removeFalsePeak(sampleDataArrayCpy);
+            if (falseIndex > 20)
+            {
+                removeFalsePeak(sampleDataArray);
+            }
 
             if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
             {
@@ -2783,17 +2793,18 @@ public class SensorFusion {
         }
     }
 
-    private void removeFalsePeak(ArrayList<SampleData> sampleDataArray)
+    private int removeFalsePeak(ArrayList<SampleData> sampleDataArray)
     {
         double slopAngle = 0; // unit:Degree
         int startIndex = 0;
         double fLastLinerAccX = 0;
         boolean bCurveRising = true;
         int tempIndex = 0;
+        int removeIndex = 0;
 
         if (sampleDataArray.isEmpty())
         {
-            return;
+            return 0;
         }
 
         startIndex = 0;
@@ -2834,6 +2845,7 @@ public class SensorFusion {
         }
         if (startIndex > 0)
         {
+            removeIndex += startIndex;
             for (int i = 0; i < startIndex; i++)
             {
                 sampleDataArray.remove(0);
@@ -2863,11 +2875,36 @@ public class SensorFusion {
         }
         if (startIndex > 0)
         {
+            removeIndex += startIndex;
             for (int i = 0; i < startIndex; i++)
             {
                 sampleDataArray.remove(0);
             }
         }
+
+        // remove the negative liner acc index
+        if (removeIndex > 0)
+        {
+            startIndex = 0;
+            for(SampleData val:sampleDataArray) {
+                double linerAccX = val.fLinerAccN;
+                if (linerAccX > 3)
+                {
+                    startIndex = sampleDataArray.indexOf(val);
+                    break;
+                }
+            }
+            if (startIndex > 0)
+            {
+                removeIndex += startIndex;
+                for (int i = 0; i < startIndex; i++)
+                {
+                    sampleDataArray.remove(0);
+                }
+            }
+        }
+
+        return removeIndex;
     }
 
     private void refineSampleData(ArrayList<SampleData> sampleDataArray)
