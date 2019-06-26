@@ -32,7 +32,7 @@ public class TrainData {
     public TrainData()
     {
         bValid = false;
-        iScore = 88;
+        iScore = 0;
         sTrajectory = null;
         uActionCount = 0;
         sActionType = null;

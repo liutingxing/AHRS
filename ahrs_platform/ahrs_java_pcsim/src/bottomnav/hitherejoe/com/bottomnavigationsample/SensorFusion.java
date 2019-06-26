@@ -565,43 +565,40 @@ public class SensorFusion {
         data.fRangeMax = fRangeMax;
         data.fVelocityMax = fVelocityMax;
         data.fStrikeAudio = fAudioMax;
-        if (strikeIndex != -1)
-        {
+        if (strikeIndex != -1) {
             value = sampleDataArray.get(strikeIndex);
-            data.fVelocityStrike = Math.sqrt(value.fVelN*value.fVelN + value.fVelE*value.fVelE + value.fVelD*value.fVelD);
-            if (data.fVelocityStrike > 9)
-            {
-                data.uStrikePower = 100;
-            }
-            else if (data.fVelocityStrike > 8)
-            {
-                data.uStrikePower = (int) ((data.fVelocityStrike - 8) * 10.0 + 90);
-            }
-            else if (data.fVelocityStrike > 7)
-            {
-                data.uStrikePower = (int) ((data.fVelocityStrike - 7) * 5.0 + 85);
-            }
-            else if (data.fVelocityStrike > 6)
-            {
-                data.uStrikePower = (int) ((data.fVelocityStrike - 6) * 5.0 + 80);
-            }
-            else if (data.fVelocityStrike > 5)
-            {
-                data.uStrikePower = (int) ((data.fVelocityStrike - 5) * 15.0 + 65);
-            }
-            else if (data.fVelocityStrike > 4)
-            {
-                data.uStrikePower = (int) ((data.fVelocityStrike - 4) * 25.0 + 40);
-            }
-            else
-            {
-                data.uStrikePower = (int) (data.fVelocityStrike * 10);
-            }
+            data.fVelocityStrike = Math.sqrt(value.fVelN * value.fVelN + value.fVelE * value.fVelE + value.fVelD * value.fVelD);
+        }
+        else {
+            data.fVelocityStrike = data.fVelocityMax;
+        }
+        if (data.fVelocityStrike > 9)
+        {
+            data.uStrikePower = 100;
+        }
+        else if (data.fVelocityStrike > 8)
+        {
+            data.uStrikePower = (int) ((data.fVelocityStrike - 8) * 10.0 + 90);
+        }
+        else if (data.fVelocityStrike > 7)
+        {
+            data.uStrikePower = (int) ((data.fVelocityStrike - 7) * 5.0 + 85);
+        }
+        else if (data.fVelocityStrike > 6)
+        {
+            data.uStrikePower = (int) ((data.fVelocityStrike - 6) * 5.0 + 80);
+        }
+        else if (data.fVelocityStrike > 5)
+        {
+            data.uStrikePower = (int) ((data.fVelocityStrike - 5) * 15.0 + 65);
+        }
+        else if (data.fVelocityStrike > 4)
+        {
+            data.uStrikePower = (int) ((data.fVelocityStrike - 4) * 25.0 + 40);
         }
         else
         {
-            data.fVelocityStrike = 0;
-            data.uStrikePower = 0;
+            data.uStrikePower = (int) (data.fVelocityStrike * 10);
         }
 
         // replace the type character in trajectory
@@ -613,6 +610,9 @@ public class SensorFusion {
 
         // update audio index
         updateAudioInfo(data);
+
+        // update action score
+        updateActionScore(data);
 
         return 0;
     }
@@ -641,6 +641,73 @@ public class SensorFusion {
         }
 
         return 0;
+    }
+
+    private void updateActionScore(TrainData data)
+    {
+        int iscore = (int)((data.uStrikePower + data.fVelocityStrike * 10) / 2.0);
+
+        if (data.sActionType.equals("push-pull"))
+        {
+            iscore *= 2;
+            if (data.fRangeMax > 0.5 && data.fRangeMax < 0.8)
+            {
+                iscore += 20;
+            }
+            else if (data.fRangeMax > 0.8)
+            {
+                iscore -= (data.fRangeMax - 0.8) * 50;
+            }
+            else
+            {
+                iscore -= (0.5 - data.fRangeMax) * 50;
+            }
+        }
+        else if (data.sActionType.equals("backhand"))
+        {
+            iscore *= 3;
+            if (data.fRangeMax > 0.3 && data.fRangeMax < 1.0)
+            {
+                iscore += 10;
+            }
+            else if (data.fRangeMax > 1.0)
+            {
+                iscore -= (data.fRangeMax - 1.0) * 50;
+            }
+            else
+            {
+                iscore -= (0.3 - data.fRangeMax) * 50;
+            }
+        }
+        else if (data.sActionType.equals("forehand"))
+        {
+            if (data.fRangeMax > 0.8 && data.fRangeMax < 1.5)
+            {
+                iscore += 10;
+            }
+            else if (data.fRangeMax > 1.5)
+            {
+                iscore -= (data.fRangeMax - 1.5) * 50;
+            }
+            else
+            {
+                iscore -= (1.0 - data.fRangeMax) * 50;
+            }
+        }
+        else
+        {
+
+        }
+
+        if (iscore > 100)
+        {
+            iscore = 100;
+        }
+        else if (iscore < 20)
+        {
+            iscore = 30;
+        }
+        data.iScore = iscore;
     }
 
     private int copyInSampleData(SensorFusion src, SampleData dst)
