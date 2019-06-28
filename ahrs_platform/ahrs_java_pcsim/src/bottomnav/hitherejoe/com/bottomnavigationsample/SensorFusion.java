@@ -2622,6 +2622,11 @@ public class SensorFusion {
         if (endIndex > 0)
         {
             int arraySize = sampleDataArray.size();
+            endIndex += 5;
+            if (endIndex > arraySize)
+            {
+                endIndex = arraySize;
+            }
             for (int i = 0; i < arraySize - endIndex; i++) {
                 sampleDataArray.remove(sampleDataArray.size() - 1);
             }
