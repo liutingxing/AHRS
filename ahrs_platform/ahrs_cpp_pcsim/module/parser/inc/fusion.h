@@ -194,6 +194,7 @@ class SensorFusion
         void insStrapdownMechanization(double dt, vector<shared_ptr<SampleData>>& sampleDataArray);
         int processSampleData(vector<shared_ptr<SampleData>>& sampleDataArray, PingPongTrainData& data);
         int updateAudioInfo(PingPongTrainData& data);
+        void updateActionScore(PingPongTrainData& data);
         bool magCalibration(double mag[]);
         void calibration4InvRaw(vector<shared_ptr<double>>& magArray);
         void specialActionProcess(vector<shared_ptr<SampleData>>& sampleDataArray);

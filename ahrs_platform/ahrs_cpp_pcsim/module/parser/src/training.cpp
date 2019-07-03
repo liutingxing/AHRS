@@ -6,7 +6,7 @@
 PingPongTrainData::PingPongTrainData()
 {
     bValid = false;
-    iScore = 88;
+    iScore = 0;
     sTrajectory = "";
     uActionCount = 0;
     sActionType = "";
