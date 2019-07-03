@@ -202,7 +202,7 @@ class SensorFusion
         void backhandRefine(vector<shared_ptr<SampleData>>& sampleDataArray);
         void pushpullRefine(vector<shared_ptr<SampleData>>& sampleDataArray);
         void computeRefineParameters(vector<shared_ptr<SampleData>>& sampleDataArray);
-        void removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArray);
+        int removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArray);
         void refineSampleData(vector<shared_ptr<SampleData>>& sampleDataArray);
         void gyroFilter(double gyro[]);
         void accFilter(double acc[]);

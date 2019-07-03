@@ -2617,7 +2617,7 @@ void SensorFusion::forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArra
         switch (condition)
         {
             case START:
-                if (gyroZ > 0.25 * fOmegaMax * fOmegaLetter * fScale && val->fLinerAccN > 3)
+                if (gyroZ > 0.25 * fOmegaMax * fOmegaLetter * fScale)
                 {
                     condition = UP;
                     startIndex = index;
@@ -2698,7 +2698,7 @@ void SensorFusion::forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArra
     // sample data array must including the max and min liner acc
     if (startIndex > fAccMaxIndex)
     {
-        //startIndex = fAccMaxIndex;
+        startIndex = fAccMaxIndex;
     }
 
     if (endIndex < fAccMinIndex)
@@ -2807,6 +2807,14 @@ void SensorFusion::backhandRefine(vector<shared_ptr<SampleData>>& sampleDataArra
         int index = 0;
         int startIndex = 0;
         int endIndex = 0;
+        int falseIndex = 0;
+        vector<shared_ptr<SampleData>> sampleDataArrayCpy(sampleDataArray);
+        computeRefineParameters(sampleDataArray);
+        falseIndex = removeFalsePeak(sampleDataArrayCpy);
+        if (falseIndex > 20)
+        {
+            removeFalsePeak(sampleDataArray);
+        }
 
         if (abs(fOmegaMax) > abs(fOmegaMin))
         {
@@ -3015,7 +3023,7 @@ void SensorFusion::computeRefineParameters(vector<shared_ptr<SampleData>>& sampl
     }
 }
 
-void SensorFusion::removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArray)
+int SensorFusion::removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArray)
 {
     double slopAngle = 0; // unit:Degree
     int startIndex = 0;
@@ -3023,10 +3031,11 @@ void SensorFusion::removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArr
     bool bCurveRising = true;
     int tempIndex = 0;
     int index = 0;
+    int removeIndex = 0;
 
     if (sampleDataArray.empty())
     {
-        return;
+        return 0;
     }
 
     index = 0;
@@ -3072,6 +3081,7 @@ void SensorFusion::removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArr
     }
     if (startIndex > 0)
     {
+        removeIndex == startIndex;
         for (int i = 0; i < startIndex; i++)
         {
             sampleDataArray.erase(sampleDataArray.begin());
@@ -3104,9 +3114,36 @@ void SensorFusion::removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArr
     }
     if (startIndex > 0)
     {
+        removeIndex += startIndex;
         for (int i = 0; i < startIndex; i++)
         {
             sampleDataArray.erase(sampleDataArray.begin());
+        }
+    }
+
+    // remove the negative liner acc index
+    if (removeIndex > 0)
+    {
+        index = 0;
+        startIndex = 0;
+        for (auto p : sampleDataArray)
+        {
+            SampleData* val = p.get();
+            double linerAccX = val->fLinerAccN;
+            if (linerAccX > 3)
+            {
+                startIndex = index;
+                break;
+            }
+            index++;
+        }
+        if (startIndex > 0)
+        {
+            removeIndex += startIndex;
+            for (int i = 0; i < startIndex; i++)
+            {
+                sampleDataArray.erase(sampleDataArray.begin());
+            }
         }
     }
 }
