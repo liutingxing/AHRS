@@ -761,7 +761,7 @@ void SensorFusion::actionDetect(double dt, double gyro[], double acc[])
         actionTime += dt;
         downTime += dt;
 
-        if (actionTime > 1.5 || downTime > 1.0)
+        if (actionTime > 1.5 || downTime > 1.0 || (abs(linerAccX) < 1e-5 && abs(fLinerAccXLast) < 1e-5))
         {
             iCurveCondition = Peace;
             uActionStartFlag = false;
@@ -3049,7 +3049,7 @@ int SensorFusion::removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArra
         if (linerAccX < fLastLinerAccX && bCurveRising)
         {
             // reach the peak and check the peak
-            if (abs(fLastLinerAccX - fAccMaxX) < 0.01)
+            if (abs(fLastLinerAccX - fAccMaxX) < 1e-5)
             {
                 // the max peak
                 startIndex = tempIndex;
