@@ -3147,7 +3147,7 @@ int SensorFusion::removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArra
     }
     if (startIndex > 0)
     {
-        removeIndex == startIndex;
+        removeIndex += startIndex;
         for (int i = 0; i < startIndex; i++)
         {
             sampleDataArray.erase(sampleDataArray.begin());
@@ -3212,6 +3212,8 @@ int SensorFusion::removeFalsePeak(vector<shared_ptr<SampleData>>& sampleDataArra
             }
         }
     }
+
+    return removeIndex;
 }
 
 void SensorFusion::refineSampleData(vector<shared_ptr<SampleData>>& sampleDataArray)
