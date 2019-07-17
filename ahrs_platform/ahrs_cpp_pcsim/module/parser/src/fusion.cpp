@@ -369,6 +369,7 @@ void SensorFusion::updateActionScore(PingPongTrainData& data)
     }
     else if (data.sActionType.compare("forehand") == 0)
     {
+        iscore += 30;
         if (data.fRangeMax > 0.8 && data.fRangeMax < 1.5)
         {
             iscore += 10;

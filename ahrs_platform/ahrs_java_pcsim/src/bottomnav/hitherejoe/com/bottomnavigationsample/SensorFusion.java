@@ -681,6 +681,7 @@ public class SensorFusion {
         }
         else if (data.sActionType.equals("forehand"))
         {
+            iscore += 30;
             if (data.fRangeMax > 0.8 && data.fRangeMax < 1.5)
             {
                 iscore += 10;
