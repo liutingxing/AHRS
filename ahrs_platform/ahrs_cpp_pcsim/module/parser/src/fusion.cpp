@@ -2679,7 +2679,7 @@ void SensorFusion::forehandRefine(vector<shared_ptr<SampleData>>& sampleDataArra
         switch (condition)
         {
             case START:
-                if (gyroZ > 0.25 * fOmegaMax * fOmegaLetter * fScale)
+                if (gyroZ > 0.1 * fOmegaMax * fOmegaLetter * fScale)
                 {
                     condition = UP;
                     startIndex = index;
