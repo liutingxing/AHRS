@@ -700,9 +700,9 @@ public class SensorFusion {
 
         }
 
-        if (iscore > 100)
+        if (iscore > 99)
         {
-            iscore = 100;
+            iscore = 99;
         }
         else if (iscore < 20)
         {
