@@ -3003,7 +3003,7 @@ public class SensorFusion {
             }
         }
 
-        if (azimuth > 0)
+        if (azimuth > 0 || azimuth < (-Math.PI + 0.2))
         {
             // forehand actions
             forehandRefine(sampleDataArray);
