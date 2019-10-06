@@ -825,6 +825,92 @@ public class SensorFusion {
         qNorm(fq);
     }
 
+    private void ahrsFusionRefine(double[] fq, double dt, double[] gyro, double[] acc, double[] mag)
+    {
+        double[] fg = new double[]{-acc[0], -acc[1], -acc[2]};
+
+        q2dcm(fq, fCbn);
+        double[] euler = dcm2euler(fCbn);
+        fPsiPl = euler[0];
+        fThePl = -Math.asin(fg[0] / SensorFusion.GRAVITY);
+        fPhiPl = Math.atan2(fg[1] / SensorFusion.GRAVITY, fg[2] / SensorFusion.GRAVITY);
+        euler2q(fq, fPsiPl, fThePl, fPhiPl);
+    }
+
+    private void ahrsFusionReset(double[] fq, double dt, double[] gyro, double[] acc, double[] mag)
+    {
+        int i = 0;
+        int j = 0;
+        int X = 0;
+        int Y = 1;
+        int Z = 2;
+        double ftmp = 0;
+        double[] fg = new double[]{0,0,0};
+        double[] fm = new double[]{0,0,0};
+        double[] fmod = new double[]{0,0,0};
+        double[][] fR = new double[3][3];
+
+        for (i = 0; i < 3; i++)
+        {
+            fg[i] = -acc[i];
+            fR[i][Z] = fg[i];;
+        }
+
+        for (i = 0; i < 3; i++)
+        {
+            fm[i] = mag[i] - fMagBias[i];
+            fR[i][X] = fm[i];
+        }
+
+        // set y vector to vector product of z and x vectors
+        fR[X][Y] = fR[Y][Z] * fR[Z][X] - fR[Z][Z] * fR[Y][X];
+        fR[Y][Y] = fR[Z][Z] * fR[X][X] - fR[X][Z] * fR[Z][X];
+        fR[Z][Y] = fR[X][Z] * fR[Y][X] - fR[Y][Z] * fR[X][X];
+
+        // set x vector to vector product of y and z vectors
+        fR[X][X] = fR[Y][Y] * fR[Z][Z] - fR[Z][Y] * fR[Y][Z];
+        fR[Y][X] = fR[Z][Y] * fR[X][Z] - fR[X][Y] * fR[Z][Z];
+        fR[Z][X] = fR[X][Y] * fR[Y][Z] - fR[Y][Y] * fR[X][Z];
+
+        for (i = X; i <= Z; i++)
+        {
+            fmod[i] = Math.sqrt(fR[X][i] * fR[X][i] + fR[Y][i] * fR[Y][i] + fR[Z][i] * fR[Z][i]);
+        }
+
+        if (!((fmod[X] == 0.0F) || (fmod[Y] == 0.0F) || (fmod[Z] == 0.0F)))
+        {
+            for (j = X; j <= Z; j++)
+            {
+                ftmp = 1.0F / fmod[j];
+                for (i = X; i <= Z; i++)
+                {
+                    fR[i][j] *= ftmp;
+                }
+            }
+        }
+        else
+        {
+            // no solution is possible so set rotation to identity matrix
+            return;
+        }
+
+        for (i = 0; i < 3; i++)
+        {
+            for (j = 0; j < 3; j++)
+            {
+                fCnb[i][j] = fR[i][j];
+            }
+        }
+
+        Matrix temp = new Matrix(fCnb);
+        fCbn = temp.transpose().getArray();
+        double[] euler = dcm2euler(fCbn);
+        fPsiPl = euler[0];
+        fThePl = euler[1];
+        fPhiPl = euler[2];
+        euler2q(fq, fPsiPl, fThePl, fPhiPl);
+    }
+
     private void ahrsFusion(double[] fq, double dt, double[] gyro, double[] acc, double[] mag)
     {
         double accNorm = 0;
@@ -839,7 +925,7 @@ public class SensorFusion {
         qDot[3] =  (gyro[2] * fq[0] + gyro[1] * fq[1] - gyro[0] * fq[2]) / 2.0;
 
         accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
-        if (accNorm > 5 && accNorm < 30) {
+        if (accNorm > 5 && accNorm < 15) {
             // execute the acc aid process
             double diff = 0;
             double[] gEstimate = new double[3];
@@ -967,7 +1053,12 @@ public class SensorFusion {
 
     private void ahrsProcess(double dt, double[] gyro, double[] acc, double[] mag)
     {
-        ahrsFusion(fqPl, dt, gyro, acc, mag);
+        double accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
+
+         ahrsFusion(fqPl, dt, gyro, acc, mag);
+         if (accNorm > 9 && accNorm < 11) {
+             ahrsFusionRefine(fqPl, dt, gyro, acc, mag);
+         }
         q2dcm(fqPl, fCbn);
         double[] euler = dcm2euler(fCbn);
         fPsiPl = euler[0];
@@ -2656,7 +2747,7 @@ public class SensorFusion {
             {
                 if (val.fLinerAccD > 0)
                 {
-                    val.fLinerAccD = -3.0;
+                    //val.fLinerAccD = -3.0;
                 }
             }
 
