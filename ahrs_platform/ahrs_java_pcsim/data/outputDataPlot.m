@@ -38,6 +38,12 @@ end
 
 fclose(fin);
 
+for i = 1:length(roll)
+    if roll(i) < 0
+        roll(i) = roll(i) + 2*pi;
+    end
+end
+
 % yaw
 figure;
 plot(yaw*180/pi, 'r');
