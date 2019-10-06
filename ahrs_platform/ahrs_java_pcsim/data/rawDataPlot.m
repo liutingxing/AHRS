@@ -34,3 +34,16 @@ legend('x', 'y', 'z');
 xlabel('sample point');
 ylabel('gyro (degree/s)');
 end
+
+% mag measurement
+if 1
+figure
+plot(Mag(:, 1)*180/pi, 'r');
+hold on;
+plot(Mag(:, 2)*180/pi, 'g');
+plot(Mag(:, 3)*180/pi, 'b');
+title('mag measurement');
+legend('x', 'y', 'z');
+xlabel('sample point');
+ylabel('mag (uT)');
+end
