@@ -1057,7 +1057,7 @@ public class SensorFusion {
 
          ahrsFusion(fqPl, dt, gyro, acc, mag);
          if (accNorm > 9 && accNorm < 11) {
-             ahrsFusionRefine(fqPl, dt, gyro, acc, mag);
+             ahrsFusionReset(fqPl, dt, gyro, acc, mag);
          }
         q2dcm(fqPl, fCbn);
         double[] euler = dcm2euler(fCbn);
@@ -3094,7 +3094,7 @@ public class SensorFusion {
             }
         }
 
-        if (azimuth > 0 || azimuth < (-Math.PI + 0.2))
+        if (azimuth > 0 || azimuth < (-Math.PI + 0.3))
         {
             // forehand actions
             forehandRefine(sampleDataArray);
