@@ -1059,10 +1059,6 @@ public class SensorFusion {
          if (accNorm > 9 && accNorm < 11) {
              ahrsFusionRefine(fqPl, dt, gyro, acc, mag);
          }
-        if (uStaticFlag == 1)
-        {
-            ahrsFusionReset(fqPl, dt, gyro, acc, mag);
-        }
         q2dcm(fqPl, fCbn);
         double[] euler = dcm2euler(fCbn);
         fPsiPl = euler[0];
