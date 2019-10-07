@@ -858,7 +858,7 @@ public class SensorFusion {
 
         for (i = 0; i < 3; i++)
         {
-            fm[i] = mag[i] - fMagBias[i];
+            fm[i] = mag[i];
             fR[i][X] = fm[i];
         }
 
