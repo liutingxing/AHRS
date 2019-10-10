@@ -828,12 +828,13 @@ public class SensorFusion {
     private void ahrsFusionRefine(double[] fq, double dt, double[] gyro, double[] acc, double[] mag)
     {
         double[] fg = new double[]{-acc[0], -acc[1], -acc[2]};
+        double accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
 
         q2dcm(fq, fCbn);
         double[] euler = dcm2euler(fCbn);
         fPsiPl = euler[0];
-        fThePl = -Math.asin(fg[0] / SensorFusion.GRAVITY);
-        fPhiPl = Math.atan2(fg[1] / SensorFusion.GRAVITY, fg[2] / SensorFusion.GRAVITY);
+        fThePl = -Math.asin(fg[0] / accNorm);
+        fPhiPl = Math.atan2(fg[1] / accNorm, fg[2] / accNorm);
         euler2q(fq, fPsiPl, fThePl, fPhiPl);
     }
 
