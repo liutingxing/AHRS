@@ -1023,7 +1023,7 @@ public class SensorFusion {
         }
 
         if (accNorm > 9.5 && accNorm < 10.5){
-            gyroMeasError = 10 * Math.PI / 180;
+            gyroMeasError = 20 * Math.PI / 180;
         }
         else
         {
@@ -1058,9 +1058,7 @@ public class SensorFusion {
         double gyroNorm = Math.sqrt(gyro[0] * gyro[0] + gyro[1] * gyro[1] + gyro[2] * gyro[2]);
 
          ahrsFusion(fqPl, dt, gyro, acc, mag);
-         if (uStaticFlag == 1) {
-             ahrsFusionRefine(fqPl, dt, gyro, acc, mag);
-         }
+
         q2dcm(fqPl, fCbn);
         double[] euler = dcm2euler(fCbn);
         fPsiPl = euler[0];
