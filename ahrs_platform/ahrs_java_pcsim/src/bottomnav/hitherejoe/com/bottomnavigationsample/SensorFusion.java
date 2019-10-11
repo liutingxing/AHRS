@@ -1438,7 +1438,7 @@ public class SensorFusion {
             fThePl = euler[1];
             fPhiPl = euler[2];
             euler2q(fqPl, fPsiPl, fThePl, fPhiPl);
-            euler2dcm(fCnp, fPsiPl, 0, 0);
+            euler2dcm(fCnp, fPsiPl, fThePl, fPhiPl);
             temp = new Matrix(fCnp);
             fCnp = temp.transpose().getArray();
 
