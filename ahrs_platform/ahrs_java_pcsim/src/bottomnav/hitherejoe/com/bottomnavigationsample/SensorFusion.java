@@ -1023,11 +1023,11 @@ public class SensorFusion {
         }
 
         if (accNorm > 9.5 && accNorm < 10.5){
-            gyroMeasError = 10 * Math.PI / 180;
+            gyroMeasError = 20 * Math.PI / 180;
         }
         else
         {
-            gyroMeasError = 5 * Math.PI / 180;
+            gyroMeasError = 10 * Math.PI / 180;
         }
         beta = Math.sqrt(3.0 / 4.0) * gyroMeasError;
 
