@@ -1057,7 +1057,7 @@ public class SensorFusion {
         double accNorm = Math.sqrt(acc[0] * acc[0] + acc[1] * acc[1] + acc[2] * acc[2]);
         double gyroNorm = Math.sqrt(gyro[0] * gyro[0] + gyro[1] * gyro[1] + gyro[2] * gyro[2]);
 
-         ahrsFusion(fqPl, dt, gyro, acc, mag);
+        ahrsFusion(fqPl, dt, gyro, acc, mag);
 
         q2dcm(fqPl, fCbn);
         double[] euler = dcm2euler(fCbn);
@@ -1534,7 +1534,7 @@ public class SensorFusion {
             bias[i] /= gyroArray.size();
         }
 
-        //if (Math.abs(bias[0]) < 0.01 && Math.abs(bias[1]) < 0.01 && Math.abs(bias[2]) < 0.01)
+        if (Math.abs(bias[0]) < 0.1 && Math.abs(bias[1]) < 0.1 && Math.abs(bias[2]) < 0.1)
         {
             for (i = 0; i < 3; i++)
             {
