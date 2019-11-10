@@ -3080,21 +3080,13 @@ public class SensorFusion {
         }
 
         // check the attitude for action distinguish
-        double azimuth = 0;
         ArrayList<SampleData> sampleDataArrayCpy = new ArrayList<SampleData>();
         sampleDataArrayCpy = (ArrayList<SampleData>)sampleDataArray.clone();
         computeRefineParameters(sampleDataArray);
         removeFalsePeak(sampleDataArrayCpy);
-        for (SampleData val : sampleDataArrayCpy)
-        {
-            if (val.fLinerAccN > 0)
-            {
-                azimuth = val.fPsiPlPlat;
-                break;
-            }
-        }
+        double azimuth = sampleDataArray.get(fAccMaxIndex).fPsiPlPlat;
 
-        if (azimuth > 0 || azimuth < (-Math.PI + 0.3))
+        if (azimuth > 0)
         {
             // forehand actions
             forehandRefine(sampleDataArray);
