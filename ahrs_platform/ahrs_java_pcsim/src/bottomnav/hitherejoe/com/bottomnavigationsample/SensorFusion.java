@@ -3086,7 +3086,7 @@ public class SensorFusion {
         removeFalsePeak(sampleDataArrayCpy);
         double azimuth = sampleDataArray.get(fAccMaxIndex).fPsiPlPlat;
 
-        if (azimuth > 0)
+        if (azimuth > 0 && Math.abs(fPlatformOmegaMinZ) > fPlatformOmegaMaxZ)
         {
             // forehand actions
             forehandRefine(sampleDataArray);
