@@ -2763,7 +2763,7 @@ public class SensorFusion {
 
         computeRefineParameters(sampleDataArray);
 
-        if (fPlatformOmegaMaxZ < 6 && Math.abs(fPlatformOmegaMinZ) < 6 && fOmegaMax < 4 && Math.abs(fOmegaMin) < 4)
+        if (fPlatformOmegaMaxZ < 10 && Math.abs(fPlatformOmegaMinZ) < 10 && fOmegaMax < 4 && Math.abs(fOmegaMin) < 4)
         {
             pushpullRefine(sampleDataArray);
         }
@@ -2878,6 +2878,24 @@ public class SensorFusion {
         }
         // calculate the ins info firstly
         insStrapdownMechanization(dt, sampleDataArray);
+        // remove the backward action
+        endIndex = 0;
+        for(SampleData val:sampleDataArray)
+        {
+            int lastIndex = sampleDataArray.indexOf(val) - 1;
+            if (lastIndex > 0 && val.fPosN < sampleDataArray.get(lastIndex).fPosN)
+            {
+                endIndex = sampleDataArray.indexOf(val);
+                break;
+            }
+        }
+        if (endIndex > 0)
+        {
+            int arraySize = sampleDataArray.size();
+            for (int i = 0; i < arraySize - endIndex; i++) {
+                sampleDataArray.remove(sampleDataArray.size() - 1);
+            }
+        }
         // remove the backward action
         endIndex = 0;
         for(SampleData val:sampleDataArray)
