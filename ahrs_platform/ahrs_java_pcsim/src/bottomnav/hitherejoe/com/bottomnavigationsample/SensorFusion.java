@@ -2781,7 +2781,7 @@ public class SensorFusion {
 
         computeRefineParameters(sampleDataArray);
 
-        if (fPlatformOmegaMaxZ < 10 && Math.abs(fPlatformOmegaMinZ) < 10 && fOmegaMax < 4 && Math.abs(fOmegaMin) < 4)
+        if (fPlatformOmegaMaxZ < 10 && Math.abs(fPlatformOmegaMinZ) < 10 && fOmegaMax < 10 && Math.abs(fOmegaMin) < 10)
         {
             pushpullRefine(sampleDataArray);
         }
