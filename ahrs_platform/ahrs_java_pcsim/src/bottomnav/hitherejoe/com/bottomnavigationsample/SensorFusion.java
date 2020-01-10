@@ -2801,6 +2801,7 @@ public class SensorFusion {
             {
                 removeFalsePeak(sampleDataArray);
             }
+            computeRefineParameters(sampleDataArray);
 
             if (Math.abs(fOmegaMax) > Math.abs(fOmegaMin))
             {
@@ -2813,6 +2814,15 @@ public class SensorFusion {
                 fOmegaLetter = -1;
             }
 
+            // remove the prepare actions
+            startIndex = fAccMaxIndex;
+            if (startIndex > 0)
+            {
+                for (int i = 0; i < startIndex; i++)
+                {
+                    sampleDataArray.remove(0);
+                }
+            }
             // remove the negative gyro Z actions
             for (int i = 0; i < sampleDataArray.size(); i++)
             {
