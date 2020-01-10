@@ -1664,9 +1664,23 @@ public class SensorFusion {
     private double[] dcm2euler(double[][] cbn)
     {
         double[] euler = new double[3];
-        euler[0] = Math.atan2(cbn[1][0], cbn[0][0]);
-        euler[1] = Math.asin(-cbn[2][0]);
-        euler[2] = Math.atan2(cbn[2][1], cbn[2][2]);
+//        euler[0] = Math.atan2(cbn[1][0], cbn[0][0]);
+//        euler[1] = Math.asin(-cbn[2][0]);
+//        euler[2] = Math.atan2(cbn[2][1], cbn[2][2]);
+        double sy = Math.sqrt(cbn[0][0]*cbn[0][0] + cbn[1][0]*cbn[1][0]);
+        boolean singular = sy < 1e-6;
+
+        if (!singular) {
+            euler[0] = Math.atan2(cbn[1][0], cbn[0][0]);
+            euler[1] = Math.atan2(-cbn[2][0], sy);
+            euler[2] = Math.atan2(cbn[2][1], cbn[2][2]);
+        }
+        else
+        {
+            euler[0] = Math.atan2(cbn[1][0], cbn[0][0]);
+            euler[1] = Math.atan2(-cbn[2][0], sy);
+            euler[2] = 0;
+        }
 
         return euler;
     }
