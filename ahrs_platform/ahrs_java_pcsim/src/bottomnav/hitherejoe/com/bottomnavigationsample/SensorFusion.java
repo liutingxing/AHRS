@@ -2813,16 +2813,6 @@ public class SensorFusion {
                 fOmegaPeak = fOmegaMin;
                 fOmegaLetter = -1;
             }
-
-            // remove the prepare actions
-            startIndex = fAccMaxIndex;
-            if (startIndex > 0)
-            {
-                for (int i = 0; i < startIndex; i++)
-                {
-                    sampleDataArray.remove(0);
-                }
-            }
             // remove the negative gyro Z actions
             for (int i = 0; i < sampleDataArray.size(); i++)
             {
@@ -2841,24 +2831,33 @@ public class SensorFusion {
             }
             // calculate the ins info firstly
             insStrapdownMechanization(dt, sampleDataArray);
-            // remove the negative position actions
-            endIndex = 0;
-            for(SampleData val:sampleDataArray)
+            // remove the prepare actions
+            startIndex = fOmegaMaxIndex/3;
+            if (startIndex > 0)
             {
-                int lastIndex = sampleDataArray.indexOf(val) - 1;
-                if (lastIndex > 0 && val.fPosN < 0)
+                for (int i = 0; i < startIndex; i++)
                 {
-                    endIndex = sampleDataArray.indexOf(val);
-                    break;
+                    sampleDataArray.remove(0);
                 }
             }
-            if (endIndex > 0)
-            {
-                int arraySize = sampleDataArray.size();
-                for (int i = 0; i < arraySize - endIndex; i++) {
-                    sampleDataArray.remove(sampleDataArray.size() - 1);
-                }
-            }
+            // remove the negative position actions
+//            endIndex = 0;
+//            for(SampleData val:sampleDataArray)
+//            {
+//                int lastIndex = sampleDataArray.indexOf(val) - 1;
+//                if (lastIndex > 0 && val.fPosN < 0)
+//                {
+//                    endIndex = sampleDataArray.indexOf(val);
+//                    break;
+//                }
+//            }
+//            if (endIndex > 0)
+//            {
+//                int arraySize = sampleDataArray.size();
+//                for (int i = 0; i < arraySize - endIndex; i++) {
+//                    sampleDataArray.remove(sampleDataArray.size() - 1);
+//                }
+//            }
         }
     }
 
