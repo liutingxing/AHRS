@@ -563,6 +563,10 @@ public class SensorFusion {
         data.bValid = true;
         data.uActionCount ++;
         data.fRangeMax = fRangeMax;
+        if (data.sActionType == "push-pull")
+        {
+            data.fRangeMax *= 1.6;
+        }
         data.fVelocityMax = fVelocityMax;
         data.fStrikeAudio = fAudioMax;
         if (strikeIndex != -1) {
